@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { money, fmtDate } from "@/lib/calc";
+import { money } from "@/lib/calc";
 import { generateDailySummaryPDF } from "@/services/billPdf";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Package, AlertTriangle, IndianRupee, Wallet, ReceiptText, Printer, Plus, BarChart3, ChevronRight } from "lucide-react";
+import { AlertTriangle, IndianRupee, Wallet, ReceiptText, Printer, Plus, BarChart3, ChevronRight } from "lucide-react";
 
 const Stat = ({ icon: Icon, label, value, tone = "indigo", testid, onClick }) => (
   <button data-testid={testid} onClick={onClick} className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md">
@@ -49,13 +49,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 ds-fade" data-testid="dashboard-page">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-2xl font-bold text-slate-900">Namaste 🙏</h2>
-          <p className="text-sm text-slate-500">Aaj ka hisaab ek nazar me.</p>
-        </div>
-        <button data-testid="quick-bill-btn" onClick={() => navigate("/bill")}
-          className="rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-semibold text-white transition-transform active:scale-95">+ New Bill</button>
+      <div>
+        <h2 className="font-display text-2xl font-bold text-slate-900">Namaste 🙏</h2>
+        <p className="text-sm text-slate-500">Aaj ka hisaab ek nazar me.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -83,34 +79,11 @@ export default function Dashboard() {
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="mb-2 flex items-center gap-2"><Printer className="h-4 w-4 text-indigo-700" /><h3 className="font-display font-bold text-slate-900">Daily Summary</h3></div>
           <p className="text-sm text-slate-500">Aaj ki sale, cash/online, udhari aur expenses ka day-book.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-            <div className="rounded-lg bg-emerald-50 px-3 py-2"><p className="text-xs text-slate-500">Sale</p><p className="font-bold text-emerald-700">{money(stats.revenue)}</p></div>
-            <div className="rounded-lg bg-rose-50 px-3 py-2"><p className="text-xs text-slate-500">Udhari</p><p className="font-bold text-rose-700">{money(stats.totalUdhari)}</p></div>
-          </div>
           <button data-testid="dash-print-summary-btn" onClick={printSummary} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-semibold text-white active:scale-95"><Printer className="h-4 w-4" /> Print Daily Summary (PDF)</button>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <h3 className="mb-3 font-display font-bold text-slate-900">Recent Bills</h3>
-        <div className="space-y-2">
-          {invoices.slice(0, 6).map((i) => (
-            <button key={i.id} data-testid={`dash-bill-${i.id}`} onClick={() => navigate("/history")} className="flex w-full items-center justify-between border-b border-slate-100 py-2 text-left last:border-0 hover:bg-slate-50">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">{i.invoiceNo} · {i.customerName}</p>
-                <p className="text-xs text-slate-400">{fmtDate(i.date)} · {i.createdVia === "voice" ? "🎤 Voice" : "✍️ Manual"}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-slate-900">{money(i.grandTotal)}</p>
-                {i.amountPending > 0 && <p className="text-xs font-semibold text-rose-600">{money(i.amountPending)} udhari</p>}
-              </div>
-            </button>
-          ))}
-          {invoices.length === 0 && <p className="text-sm text-slate-500">Abhi koi bill nahi bana.</p>}
-        </div>
-      </div>
-
-      {/* Reports & Analytics — moved from the menu bar to the bottom of the dashboard */}
+      {/* Reports & Analytics — at the very bottom */}
       <button data-testid="dash-reports-btn" onClick={() => navigate("/analytics")} className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md">
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700"><BarChart3 className="h-5 w-5" /></div>

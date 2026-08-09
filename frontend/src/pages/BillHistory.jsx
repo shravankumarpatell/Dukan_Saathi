@@ -3,7 +3,7 @@ import { useApp } from "@/context/AppContext";
 import { money, fmtDate } from "@/lib/calc";
 import { generateBillPDF } from "@/services/billPdf";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Search, X } from "lucide-react";
+import { Search, X, ChevronRight } from "lucide-react";
 
 export default function BillHistory() {
   const { invoices, shop, customers } = useApp();
@@ -32,34 +32,35 @@ export default function BillHistory() {
   };
 
   return (
-    <div className="space-y-4 ds-fade" data-testid="history-page">
+    <div className="space-y-3 ds-fade" data-testid="history-page">
       <div>
         <h2 className="font-display text-2xl font-bold text-slate-900">Bill History</h2>
         <p className="text-sm text-slate-500">{date ? "Showing selected date · tap ✕ on date for all bills" : "Showing all bills"}</p>
       </div>
+
       <div className="flex flex-wrap gap-2">
-        <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2"><Search className="h-4 w-4 text-slate-400" /><input data-testid="history-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Invoice no / customer…" className="w-full bg-transparent text-sm outline-none" /></div>
-        <input data-testid="history-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-        {date && <button data-testid="history-date-clear" onClick={() => setDate("")} className="flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600"><X className="h-4 w-4" /></button>}
-        <select data-testid="history-filter" value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"><option value="all">All</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="pending">Pending</option></select>
+        <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2"><Search className="h-4 w-4 shrink-0 text-slate-400" /><input data-testid="history-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Invoice no / customer…" className="w-full bg-transparent outline-none" /></div>
+        <input data-testid="history-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2" />
+        {date && <button data-testid="history-date-clear" onClick={() => setDate("")} className="flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-600"><X className="h-4 w-4" /></button>}
+        <select data-testid="history-filter" value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2"><option value="all">All</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="pending">Pending</option></select>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="ds-stripe w-full text-sm">
-          <thead><tr className="border-b text-left text-xs uppercase text-slate-500"><th className="p-2.5">Invoice</th><th className="p-2.5">Customer</th><th className="p-2.5">Date</th><th className="p-2.5 text-right">Total</th><th className="p-2.5 text-center">Status</th></tr></thead>
-          <tbody>
-            {list.map((i) => (
-              <tr key={i.id} data-testid={`history-row-${i.id}`} onClick={() => openPdf(i)} className="cursor-pointer border-b border-slate-100 hover:bg-indigo-50">
-                <td className="p-2.5 font-semibold">{i.invoiceNo}</td>
-                <td className="p-2.5">{i.customerName}</td>
-                <td className="p-2.5 text-slate-500">{fmtDate(i.date)}</td>
-                <td className="p-2.5 text-right font-bold">{money(i.grandTotal)}</td>
-                <td className="p-2.5 text-center"><span className={`rounded-md px-2 py-0.5 text-xs font-bold ${i.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-700" : i.paymentStatus === "partial" ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700"}`}>{i.paymentStatus}</span></td>
-              </tr>
-            ))}
-            {list.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-sm text-slate-400">Koi bill nahi mila.</td></tr>}
-          </tbody>
-        </table>
+      {/* Flat, full-page list — no bordered box, no horizontal scroll */}
+      <div className="divide-y divide-slate-100" data-testid="history-list">
+        {list.map((i) => (
+          <button key={i.id} data-testid={`history-row-${i.id}`} onClick={() => openPdf(i)} className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors active:bg-slate-50">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold text-slate-900">{i.invoiceNo}</p>
+              <p className="truncate text-xs text-slate-400">{i.customerName} · {fmtDate(i.date)}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="font-bold tabular-nums text-slate-900">{money(i.grandTotal)}</p>
+              <span className={`text-[11px] font-bold ${i.paymentStatus === "paid" ? "text-emerald-600" : i.paymentStatus === "partial" ? "text-amber-600" : "text-rose-600"}`}>{i.paymentStatus}</span>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+          </button>
+        ))}
+        {list.length === 0 && <p className="py-8 text-center text-sm text-slate-400">Koi bill nahi mila.</p>}
       </div>
 
       <Dialog open={!!view} onOpenChange={(o) => !o && setView(null)}>

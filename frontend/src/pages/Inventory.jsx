@@ -79,14 +79,13 @@ export default function Inventory() {
                   {p.name}{low && <span className="ml-1.5 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">LOW</span>}
                 </p>
                 <p className="truncate text-xs text-slate-400">{[p.code, p.company, p.size].filter(Boolean).join(" · ")} · {p.unit}{p.unit === "box" ? ` ${p.piecesPerBox}/box` : ""}</p>
-                <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="flex items-center justify-end gap-1.5 text-[11px]">
                   <span className="rounded bg-teal-100 px-1.5 py-0.5 font-bold tabular-nums text-teal-700">Show {p.showroomQty}</span>
                   <span className="rounded bg-indigo-100 px-1.5 py-0.5 font-bold tabular-nums text-indigo-700">Godown {p.godownQty}</span>
                 </div>
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="font-bold tabular-nums text-slate-900">{money(p.sellPrice)}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-400">price</p>
+                <p className="mt-1 text-xs font-semibold tabular-nums text-slate-500">Price {money(p.sellPrice)}</p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
             </button>
