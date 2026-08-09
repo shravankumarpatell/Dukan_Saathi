@@ -15,10 +15,10 @@ export function seedData() {
   ];
 
   const customers = [
-    { id: "c1", name: "Ashok Kumar", phone: "9876543210", isContractor: true, siteNote: "Green Valley Villa, Plot 12", totalPending: 12500 },
-    { id: "c2", name: "Ramesh Traders", phone: "9812345678", isContractor: false, siteNote: "", totalPending: 0 },
-    { id: "c3", name: "Suresh", phone: "", isContractor: false, siteNote: "", totalPending: 3200 },
-    { id: "c4", name: "Ashok Singh", phone: "9900112233", isContractor: true, siteNote: "Sunrise Apartments", totalPending: 0 },
+    { id: "c1", name: "Ashok Kumar", phone: "9876543210", isContractor: true, siteNote: "Green Valley Villa, Plot 12", totalPending: 12500, storeCredit: 0 },
+    { id: "c2", name: "Ramesh Traders", phone: "9812345678", isContractor: false, siteNote: "", totalPending: 0, storeCredit: 2000 },
+    { id: "c3", name: "Suresh", phone: "", isContractor: false, siteNote: "", totalPending: 3200, storeCredit: 0 },
+    { id: "c4", name: "Ashok Singh", phone: "9900112233", isContractor: true, siteNote: "Sunrise Apartments", totalPending: 0, storeCredit: 1500 },
   ];
 
   const invoices = [

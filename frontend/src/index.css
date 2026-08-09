@@ -81,11 +81,11 @@ code {
         @apply bg-background text-foreground;
     }
     /* Prevent iOS Safari/Chrome from auto-zooming when a form field is focused.
-       Any control below 16px triggers zoom, so pin form controls to 16px. */
-    input,
+       Tailwind utilities (text-sm/text-xs) would otherwise win, so force >=16px. */
+    input:not([type="checkbox"]):not([type="radio"]),
     select,
     textarea {
-        font-size: 16px;
+        font-size: 16px !important;
     }
 }
 

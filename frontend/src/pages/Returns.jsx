@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import ProductSearch from "@/components/ProductSearch";
+import CustomerSearch from "@/components/CustomerSearch";
 import { matchCustomer } from "@/lib/fuzzy";
 import { money } from "@/lib/calc";
 import { toast } from "sonner";
@@ -47,7 +48,11 @@ export default function Returns() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div><label className="text-xs font-semibold text-slate-600">Quantity</label><input data-testid="return-qty" type="number" value={qty} onChange={(e) => setQty(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
-          <div><label className="text-xs font-semibold text-slate-600">Customer (optional)</label><input data-testid="return-customer" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Name" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+          <div><label className="text-xs font-semibold text-slate-600">Customer (optional)</label>
+            <CustomerSearch customers={customers} value={customerName} inputTestId="return-customer"
+              onChangeText={(t) => setCustomerName(t)}
+              onPick={(c) => setCustomerName(c ? c.name : customerName)} />
+          </div>
         </div>
         <div>
           <label className="text-xs font-semibold text-slate-600">Original invoice # (optional)</label>

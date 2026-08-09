@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
 import ProductSearch from "@/components/ProductSearch";
+import CustomerSearch from "@/components/CustomerSearch";
 import { computeBillTotals, money, sqftCalc, todayISO } from "@/lib/calc";
 import { matchCustomer } from "@/lib/fuzzy";
 import { toast } from "sonner";
@@ -20,6 +21,8 @@ export default function NewBill() {
   const [discount, setDiscount] = useState({ type: "flat", value: 0 });
   const [pay, setPay] = useState({ cash: 0, online: 0 });
   const [sqftFor, setSqftFor] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [useCredit, setUseCredit] = useState(false);
 
   const addItem = (p) => {
     setItems((prev) => [...prev, { productId: p.id, name: p.name, qty: 1, unit: p.unit, rate: type === "purchase" ? p.costPrice : p.sellPrice, piecesPerBox: p.piecesPerBox, size: p.size }]);
@@ -38,14 +41,21 @@ export default function NewBill() {
   }), [type, items, gstEnabled, gstRate, discount, pay, customerName, customerPhone, isContractor, siteNote]);
 
   const totals = computeBillTotals(draftBase);
+  const creditAvail = selectedCustomer?.storeCredit || 0;
+  const creditApplied = type === "sale" && useCredit && creditAvail > 0 ? Math.min(creditAvail, totals.amountPending) : 0;
+  const netPending = Math.max(0, totals.amountPending - creditApplied);
 
   const preview = () => {
     if (items.length === 0) return toast.error("Pehle item add kariye");
     if (type === "sale" && !customerName.trim()) return toast.error("Customer ka naam daaliye");
-    let d = { ...draftBase };
+    const payments = [
+      ...(Number(pay.cash) > 0 ? [{ mode: "cash", amount: Number(pay.cash) }] : []),
+      ...(Number(pay.online) > 0 ? [{ mode: "online", amount: Number(pay.online) }] : []),
+      ...(creditApplied > 0 ? [{ mode: "credit", amount: creditApplied }] : []),
+    ];
+    let d = { ...draftBase, payments };
     if (type === "sale") {
-      const m = matchCustomer(customers, customerName, customerPhone);
-      if (m.best) d.customerId = m.best.id;
+      d.customerId = selectedCustomer?.id || (matchCustomer(customers, customerName, customerPhone).best?.id) || null;
     }
     setDraft(d);
   };
@@ -99,8 +109,16 @@ export default function NewBill() {
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <h3 className="mb-3 font-display font-bold text-slate-900">{type === "purchase" ? "Supplier" : "Customer"}</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-semibold text-slate-600">Name</label><input data-testid="customer-name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g. Ashok Kumar" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
-              <div><label className="text-xs font-semibold text-slate-600">Phone (optional)</label><input data-testid="customer-phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="98xxxxxxxx" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-600">{type === "purchase" ? "Supplier name (search existing or add new)" : "Customer name (search existing or add new)"}</label>
+                <CustomerSearch
+                  customers={customers}
+                  value={customerName}
+                  onChangeText={(t) => { setCustomerName(t); setSelectedCustomer(null); setUseCredit(false); }}
+                  onPick={(c) => { if (c) { setSelectedCustomer(c); setCustomerName(c.name); setCustomerPhone(c.phone || ""); setIsContractor(!!c.isContractor); setSiteNote(c.siteNote || ""); } else { setSelectedCustomer(null); } }}
+                />
+              </div>
+              <div className="col-span-2"><label className="text-xs font-semibold text-slate-600">Phone (optional)</label><input data-testid="customer-phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="98xxxxxxxx" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
               <label className="col-span-2 flex items-center gap-2 text-sm text-slate-700"><input data-testid="is-contractor" type="checkbox" checked={isContractor} onChange={(e) => setIsContractor(e.target.checked)} /> Contractor / Dealer</label>
               {isContractor && <div className="col-span-2"><input data-testid="site-note" value={siteNote} onChange={(e) => setSiteNote(e.target.value)} placeholder="Project / site note" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>}
             </div>
@@ -141,8 +159,15 @@ export default function NewBill() {
                 <div><label className="text-xs font-semibold text-slate-600">Online ₹</label><input data-testid="pay-online" type="number" value={pay.online} onChange={(e) => setPay({ ...pay, online: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
               </div>
               <button data-testid="pay-full-btn" onClick={() => setPay({ cash: totals.grandTotal, online: 0 })} className="mt-2 text-xs font-semibold text-indigo-700">Full cash</button>
-              <div className={`mt-2 rounded-lg px-2 py-1.5 text-sm font-bold ${totals.amountPending > 0.5 ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`} data-testid="pending-line">
-                {totals.amountPending > 0.5 ? `Udhari: ${money(totals.amountPending)}` : "Fully paid ✓"}
+              {creditAvail > 0 && (
+                <label className="mt-2 flex items-center justify-between rounded-lg bg-violet-50 px-3 py-2 text-sm">
+                  <span className="font-semibold text-violet-800">Use store credit ({money(creditAvail)})</span>
+                  <input data-testid="use-store-credit" type="checkbox" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} />
+                </label>
+              )}
+              {creditApplied > 0 && <div className="mt-1 flex justify-between px-1 text-xs font-semibold text-violet-700" data-testid="credit-applied-line"><span>Store credit applied</span><span>- {money(creditApplied)}</span></div>}
+              <div className={`mt-2 rounded-lg px-2 py-1.5 text-sm font-bold ${netPending > 0.5 ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`} data-testid="pending-line">
+                {netPending > 0.5 ? `Udhari: ${money(netPending)}` : "Fully paid ✓"}
               </div>
             </div>
           )}

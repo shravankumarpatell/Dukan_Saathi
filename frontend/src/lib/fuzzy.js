@@ -36,3 +36,9 @@ export function searchProducts(products, query) {
   const fuse = new Fuse(products, { keys: ["name", "code", "company", "size"], threshold: 0.4 });
   return fuse.search(query).map((r) => r.item).slice(0, 30);
 }
+
+export function searchCustomers(customers, query) {
+  if (!query || !query.trim()) return customers.slice(0, 8);
+  const fuse = new Fuse(customers, { keys: ["name", "phone"], threshold: 0.4 });
+  return fuse.search(query).map((r) => r.item).slice(0, 8);
+}

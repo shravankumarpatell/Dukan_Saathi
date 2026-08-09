@@ -51,6 +51,7 @@ export default function Customers() {
                   {c.isContractor && <span className="flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 font-bold text-amber-700"><HardHat className="h-3 w-3" />Contractor</span>}
                 </div>
                 {c.siteNote && <p className="mt-1 text-xs text-slate-400">📍 {c.siteNote}</p>}
+                {c.storeCredit > 0 && <p className="mt-1 inline-block rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-bold text-violet-700" data-testid={`store-credit-${c.id}`}>Store credit: {money(c.storeCredit)}</p>}
               </div>
               <div className="text-right">
                 <p className="text-xs text-slate-400">Udhari</p>

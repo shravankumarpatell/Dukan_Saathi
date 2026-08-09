@@ -76,7 +76,7 @@ export function AppProvider({ children }) {
     if (m.best && !draftC.forceNew) return m.best;
     return api.add(shopId, "customers", {
       name, phone: draftC.customerPhone || "", isContractor: !!draftC.isContractor,
-      siteNote: draftC.siteNote || "", totalPending: 0,
+      siteNote: draftC.siteNote || "", totalPending: 0, storeCredit: 0,
     });
   }, [customers, shopId]);
 
@@ -127,6 +127,10 @@ export function AppProvider({ children }) {
       if (kind === "sale" && customer && totals.amountPending > 0) {
         await api.update(shopId, "customers", customer.id, { totalPending: round2((customer.totalPending || 0) + totals.amountPending) });
       }
+      const creditUsed = (draft.payments || []).filter((p) => p.mode === "credit").reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      if (kind === "sale" && customer && creditUsed > 0) {
+        await api.update(shopId, "customers", customer.id, { storeCredit: Math.max(0, round2((customer.storeCredit || 0) - creditUsed)) });
+      }
       setDraft(null);
       await refresh();
       speak(draft.language === "en" ? "Bill saved." : "Bill ban gaya. Stock update ho gaya.");
@@ -152,8 +156,12 @@ export function AppProvider({ children }) {
         invoiceId: draft.invoiceId || null, settlement: draft.settlement || "cash", date: todayISO(), createdVia: draft.createdVia || "manual",
       });
       if (draft.productId) await applyStockIn({ productId: draft.productId, qty: draft.qty }, "return");
-      if (customer && (draft.settlement === "adjust_udhari" || draft.settlement === "store_credit")) {
-        await api.update(shopId, "customers", customer.id, { totalPending: round2((customer.totalPending || 0) - (Number(draft.refundValue) || 0)) });
+      if (customer) {
+        if (draft.settlement === "adjust_udhari") {
+          await api.update(shopId, "customers", customer.id, { totalPending: round2((customer.totalPending || 0) - (Number(draft.refundValue) || 0)) });
+        } else if (draft.settlement === "store_credit") {
+          await api.update(shopId, "customers", customer.id, { storeCredit: round2((customer.storeCredit || 0) + (Number(draft.refundValue) || 0)) });
+        }
       }
       setDraft(null); await refresh();
       speak(draft.language === "en" ? "Return recorded and stock restored." : "Return ho gaya, stock wapas add ho gaya.");
@@ -219,7 +227,7 @@ export function AppProvider({ children }) {
     addProduct: (p) => api.add(shopId, "products", p).then(refresh),
     updateProduct: (id, p) => api.update(shopId, "products", id, p).then(refresh),
     deleteProduct: (id) => api.remove(shopId, "products", id).then(refresh),
-    addCustomer: (c) => api.add(shopId, "customers", { totalPending: 0, ...c }).then(refresh),
+    addCustomer: (c) => api.add(shopId, "customers", { totalPending: 0, storeCredit: 0, ...c }).then(refresh),
     updateCustomer: (id, c) => api.update(shopId, "customers", id, c).then(refresh),
     listPayments: () => api.list(shopId, "payments"),
     speak,
