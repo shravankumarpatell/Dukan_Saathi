@@ -75,7 +75,6 @@ export default function Analytics() {
         <h2 className="font-display text-2xl font-bold text-slate-900">Reports</h2>
         <div className="flex items-center gap-2">
           <select data-testid="range-select" value={range} onChange={(e) => setRange(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">{Object.entries(RANGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-          <button data-testid="print-summary-btn" onClick={printSummary} className="flex items-center gap-2 rounded-xl bg-indigo-900 px-3 py-2 text-sm font-semibold text-white active:scale-95"><Printer className="h-4 w-4" /> Daily Summary</button>
         </div>
       </div>
 
@@ -94,7 +93,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <h3 className="mb-2 font-display font-bold text-slate-900">Top customers</h3>
           {topCustomers.map((c) => <div key={c.name} className="flex justify-between border-b border-slate-100 py-1.5 text-sm last:border-0"><span className="text-slate-700">{c.name}</span><b>{money(c.spend)}</b></div>)}
@@ -104,15 +103,6 @@ export default function Analytics() {
           <h3 className="mb-2 flex items-center gap-1 font-display font-bold text-slate-900"><TrendingDown className="h-4 w-4 text-rose-500" /> Slow movers</h3>
           {slowMovers.map((p) => <div key={p.id} className="flex justify-between border-b border-slate-100 py-1.5 text-sm last:border-0"><span className="text-slate-700">{p.name}</span><span className="text-slate-400">{(p.showroomQty || 0) + (p.godownQty || 0)} left</span></div>)}
           {slowMovers.length === 0 && <p className="text-sm text-slate-400">Sab bik raha hai! 🎉</p>}
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h3 className="mb-2 font-display font-bold text-slate-900">Add expense</h3>
-          <div className="space-y-2">
-            <input data-testid="exp-amount" type="number" value={exp.amount} onChange={(e) => setExp({ ...exp, amount: e.target.value })} placeholder="Amount ₹" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-            <input data-testid="exp-note" value={exp.note} onChange={(e) => setExp({ ...exp, note: e.target.value })} placeholder="Note" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-            <div className="flex gap-2">{["cash", "online"].map((m) => <button key={m} data-testid={`exp-mode-${m}`} onClick={() => setExp({ ...exp, mode: m })} className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold capitalize ${exp.mode === m ? "border-indigo-900 bg-indigo-900 text-white" : "border-slate-300"}`}>{m}</button>)}</div>
-            <button data-testid="add-expense-btn" onClick={addExpense} className="flex w-full items-center justify-center gap-1 rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white active:scale-95"><Plus className="h-4 w-4" /> Add</button>
-          </div>
         </div>
       </div>
     </div>

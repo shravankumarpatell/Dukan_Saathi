@@ -120,7 +120,7 @@ export function AppProvider({ children }) {
         payments: draft.payments || [], amountPaid: totals.amountPaid, amountPending: totals.amountPending,
         paymentStatus: totals.paymentStatus, ewayRequired: totals.ewayRequired, createdVia: draft.createdVia || "manual",
       };
-      await api.add(shopId, "invoices", inv);
+      const saved = await api.add(shopId, "invoices", inv);
       for (const it of draft.items) {
         if (kind === "sale") await applyStockOut(it); else await applyStockIn(it);
       }
@@ -130,7 +130,7 @@ export function AppProvider({ children }) {
       setDraft(null);
       await refresh();
       speak(draft.language === "en" ? "Bill saved." : "Bill ban gaya. Stock update ho gaya.");
-      return { ok: true, invoiceNo };
+      return { ok: true, invoiceNo, invoice: saved, customer };
     }
 
     if (kind === "payment") {

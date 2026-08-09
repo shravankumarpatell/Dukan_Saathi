@@ -4,7 +4,7 @@ import { money, fmtDate } from "@/lib/calc";
 import { generateDailySummaryPDF } from "@/services/billPdf";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Package, AlertTriangle, IndianRupee, Wallet, ReceiptText, Printer, Plus } from "lucide-react";
+import { Package, AlertTriangle, IndianRupee, Wallet, ReceiptText, Printer, Plus, BarChart3, ChevronRight } from "lucide-react";
 
 const Stat = ({ icon: Icon, label, value, tone = "indigo", testid, onClick }) => (
   <button data-testid={testid} onClick={onClick} className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md">
@@ -108,6 +108,15 @@ export default function Dashboard() {
           {invoices.length === 0 && <p className="text-sm text-slate-500">Abhi koi bill nahi bana.</p>}
         </div>
       </div>
+
+      {/* Reports & Analytics — moved from the menu bar to the bottom of the dashboard */}
+      <button data-testid="dash-reports-btn" onClick={() => navigate("/analytics")} className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700"><BarChart3 className="h-5 w-5" /></div>
+          <div><p className="font-display font-bold text-slate-900">Reports &amp; Analytics</p><p className="text-xs text-slate-500">Top sellers, revenue chart, slow movers, top customers</p></div>
+        </div>
+        <ChevronRight className="h-5 w-5 text-slate-400" />
+      </button>
     </div>
   );
 }

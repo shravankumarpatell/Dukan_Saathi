@@ -156,6 +156,10 @@ export default function VoiceAssistant() {
     return () => window.removeEventListener("ds:voice-toggle", h);
   }, [toggle]);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("ds:voice-state", { detail: { listening } }));
+  }, [listening]);
+
   if (!supported) return null;
 
   return (
@@ -180,15 +184,7 @@ export default function VoiceAssistant() {
         </div>
       )}
 
-      {/* Push-to-talk FAB (desktop; mobile uses the bottom-nav mic) */}
-      <button
-        data-testid="voice-mic-button"
-        onClick={toggle}
-        className={`fixed bottom-8 right-8 z-50 hidden h-16 w-16 items-center justify-center rounded-full text-white shadow-xl ring-4 ring-orange-600/30 transition-transform active:scale-95 md:flex ${listening ? "ds-listening scale-105 bg-orange-500" : "bg-orange-600 hover:bg-orange-500"}`}
-        aria-label="Push to talk"
-      >
-        {listening ? <X className="h-7 w-7" /> : <Mic className="h-7 w-7" />}
-      </button>
+      {/* Mic FAB lives in the bottom nav (Layout); this component drives the logic + transcript bar. */}
     </>
   );
 }

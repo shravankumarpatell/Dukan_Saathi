@@ -21,6 +21,18 @@ export default function BillPreviewModal() {
 
   if (!isBill) return null;
 
+  const handleConfirm = async () => {
+    const d = draft;
+    const customer = d.customerId
+      ? customers.find((c) => c.id === d.customerId)
+      : { name: d.customerName, phone: d.customerPhone, siteNote: d.siteNote };
+    const res = await commitDraft();
+    const inv = res && res.invoice ? res.invoice : d;
+    const cust = (res && res.customer) || customer;
+    // Open the saved bill so the phone shows download / print / share options.
+    generateBillPDF({ shop, invoice: inv, customer: cust }, "newtab");
+  };
+
   return (
     <Dialog open={isBill} onOpenChange={(o) => { if (!o) cancelDraft(); }}>
       <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0" data-testid="bill-preview-modal">
@@ -58,7 +70,7 @@ export default function BillPreviewModal() {
           </button>
           <button
             data-testid="bill-confirm-btn"
-            onClick={commitDraft}
+            onClick={handleConfirm}
             className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white shadow-md transition-transform active:scale-95 hover:bg-emerald-700"
           >
             <Check className="h-4 w-4" /> Confirm &amp; Save
