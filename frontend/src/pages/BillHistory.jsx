@@ -3,7 +3,7 @@ import { useApp } from "@/context/AppContext";
 import { money, fmtDate } from "@/lib/calc";
 import { buildInvoicePdf } from "@/lib/invoicePdf";
 import { computeBillTotals } from "@/lib/calc";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Search, Eye } from "lucide-react";
 
 export default function BillHistory() {
@@ -53,7 +53,7 @@ export default function BillHistory() {
       </div>
 
       <Dialog open={!!view} onOpenChange={(o) => !o && setView(null)}>
-        <DialogContent className="max-w-3xl p-2"><iframe title="bill" src={view} className="h-[80vh] w-full rounded-md" /></DialogContent>
+        <DialogContent className="max-w-3xl p-2"><DialogTitle className="sr-only">Invoice PDF</DialogTitle><iframe title="bill" src={view} className="h-[80vh] w-full rounded-md" /></DialogContent>
       </Dialog>
     </div>
   );

@@ -3,7 +3,7 @@ import { useApp } from "@/context/AppContext";
 import { buildInvoicePdf } from "@/lib/invoicePdf";
 import { computeBillTotals, money } from "@/lib/calc";
 import { Check, X, AlertTriangle } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 // PDF preview = the confirmation step for a bill (PRD C8). Shopkeeper can turn the
 // screen to show the customer the real bill before anything is saved/committed.
@@ -24,6 +24,7 @@ export default function BillPreviewModal() {
   return (
     <Dialog open={isBill} onOpenChange={(o) => { if (!o) cancelDraft(); }}>
       <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0" data-testid="bill-preview-modal">
+        <DialogTitle className="sr-only">Bill Preview</DialogTitle>
         <div className="flex items-center justify-between border-b bg-indigo-900 px-4 py-3 text-white">
           <div>
             <p className="text-xs uppercase tracking-widest text-indigo-200">Confirm before commit</p>
