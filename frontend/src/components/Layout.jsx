@@ -1,30 +1,36 @@
 import React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import VoiceAssistant from "@/components/VoiceAssistant";
 import DraftCard from "@/components/DraftCard";
 import BillPreviewModal from "@/components/BillPreviewModal";
 import {
-  LayoutDashboard, Package, ReceiptText, Users, Undo2, Upload, BarChart3, LogOut, Settings, Info,
+  LayoutDashboard, Package, Users, Undo2, BarChart3, LogOut, Settings, Info, ReceiptText, Mic,
 } from "lucide-react";
 
-const NAV = [
+// Desktop sidebar (full nav). "New Bill" lives on the dashboard; Bulk Upload lives inside Stock.
+const SIDEBAR = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/inventory", label: "Stock", icon: Package },
-  { to: "/bill", label: "New Bill", icon: ReceiptText },
   { to: "/customers", label: "Udhari", icon: Users },
   { to: "/analytics", label: "Reports", icon: BarChart3 },
-];
-const MORE = [
   { to: "/returns", label: "Returns", icon: Undo2 },
-  { to: "/bulk", label: "Bulk Upload", icon: Upload },
   { to: "/history", label: "Bill History", icon: ReceiptText },
+  { to: "/settings", label: "Settings", icon: Settings },
+];
+
+// Mobile bottom bar: Stock, Returns, [MIC], Reports, Settings.
+const MOBILE_LEFT = [
+  { to: "/inventory", label: "Stock", icon: Package },
+  { to: "/returns", label: "Returns", icon: Undo2 },
+];
+const MOBILE_RIGHT = [
+  { to: "/analytics", label: "Reports", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function Layout({ children }) {
   const { shop, user, logout, isDemo, geminiReady } = useApp();
-  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-stone-100 pb-24 md:pb-0 md:pl-60">
@@ -35,7 +41,7 @@ export default function Layout({ children }) {
           <p className="text-xs text-slate-500">Bolo, bill banao, stock sambhalo</p>
         </div>
         <nav className="flex-1 space-y-1 p-3">
-          {[...NAV, ...MORE].map((n) => (
+          {SIDEBAR.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} data-testid={`nav-${n.label.toLowerCase().replace(/\s/g, "-")}`}
               className={({ isActive }) => `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-indigo-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
               <n.icon className="h-4 w-4" /> {n.label}
@@ -49,15 +55,11 @@ export default function Layout({ children }) {
         </div>
       </aside>
 
-      {/* Top header (mobile + desktop) */}
+      {/* Top header — shop name is the brand + tap-to-dashboard */}
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-        <div className="md:hidden">
-          <h1 className="font-display text-lg font-extrabold text-indigo-900">DukanSaathi</h1>
-        </div>
-        <div className="hidden md:block">
-          <p className="text-xs uppercase tracking-widest text-slate-400">Shop</p>
-          <p className="font-display font-bold text-slate-900">{shop?.name}</p>
-        </div>
+        <Link to="/" data-testid="shop-name-header" className="font-display text-xl font-extrabold tracking-tight text-indigo-900">
+          {shop?.name || "DukanSaathi"}
+        </Link>
         <div className="flex items-center gap-2">
           {isDemo && (
             <span data-testid="demo-badge" className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">
@@ -75,11 +77,27 @@ export default function Layout({ children }) {
 
       <main className="mx-auto max-w-6xl p-4 md:p-6">{children}</main>
 
-      {/* Bottom nav (mobile) */}
+      {/* Bottom nav (mobile) with center AI mic */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-slate-200 bg-white px-2 py-2 md:hidden">
-        {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.end} data-testid={`mnav-${n.label.toLowerCase().replace(/\s/g, "-")}`}
-            className={({ isActive }) => `flex flex-col items-center gap-0.5 rounded-lg px-2 py-1 text-[10px] font-semibold ${isActive ? "text-indigo-900" : "text-slate-400"}`}>
+        {MOBILE_LEFT.map((n) => (
+          <NavLink key={n.to} to={n.to} data-testid={`mnav-${n.label.toLowerCase()}`}
+            className={({ isActive }) => `flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-semibold ${isActive ? "text-indigo-900" : "text-slate-400"}`}>
+            <n.icon className="h-5 w-5" /> {n.label}
+          </NavLink>
+        ))}
+        <div className="flex flex-1 justify-center">
+          <button
+            data-testid="mobile-voice-mic"
+            onClick={() => window.dispatchEvent(new CustomEvent("ds:voice-toggle"))}
+            className="-mt-8 flex h-16 w-16 items-center justify-center rounded-full bg-orange-600 text-white shadow-xl ring-4 ring-orange-600/30 transition-transform active:scale-95"
+            aria-label="AI voice assistant"
+          >
+            <Mic className="h-7 w-7" />
+          </button>
+        </div>
+        {MOBILE_RIGHT.map((n) => (
+          <NavLink key={n.to} to={n.to} data-testid={`mnav-${n.label.toLowerCase()}`}
+            className={({ isActive }) => `flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-semibold ${isActive ? "text-indigo-900" : "text-slate-400"}`}>
             <n.icon className="h-5 w-5" /> {n.label}
           </NavLink>
         ))}

@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useApp } from "@/context/AppContext";
-import { buildInvoicePdf } from "@/lib/invoicePdf";
+import { generateBillPDF } from "@/services/billPdf";
 import { computeBillTotals, money } from "@/lib/calc";
 import { Check, X, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -15,7 +15,7 @@ export default function BillPreviewModal() {
     if (!isBill) return { pdfUri: null, totals: null };
     const t = computeBillTotals(draft);
     const customer = draft.customerId ? customers.find((c) => c.id === draft.customerId) : null;
-    const uri = buildInvoicePdf({ shop, draft, totals: t, customer: customer || { name: draft.customerName, phone: draft.customerPhone, siteNote: draft.siteNote } });
+    const uri = generateBillPDF({ shop, invoice: draft, customer: customer || { name: draft.customerName, phone: draft.customerPhone, siteNote: draft.siteNote } }, "bloburl");
     return { pdfUri: uri, totals: t };
   }, [draft, shop, customers, isBill]);
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { useSpeech, speak } from "@/hooks/useSpeech";
 import { parseCommand } from "@/services/gemini";
@@ -143,11 +143,18 @@ export default function VoiceAssistant() {
     speak(msg); setAnswer({ text: msg, tone: "err" });
   };
 
-  const toggle = () => {
+  const toggle = useCallback(() => {
     if (listening) { stop(); return; }
     setAnswer(null); setAsk(null);
     start(handleResult);
-  };
+  }, [listening, stop, start, handleResult]);
+
+  // Allow the mobile bottom-nav mic to trigger the same assistant.
+  useEffect(() => {
+    const h = () => toggle();
+    window.addEventListener("ds:voice-toggle", h);
+    return () => window.removeEventListener("ds:voice-toggle", h);
+  }, [toggle]);
 
   if (!supported) return null;
 
@@ -173,11 +180,11 @@ export default function VoiceAssistant() {
         </div>
       )}
 
-      {/* Push-to-talk FAB */}
+      {/* Push-to-talk FAB (desktop; mobile uses the bottom-nav mic) */}
       <button
         data-testid="voice-mic-button"
         onClick={toggle}
-        className={`fixed bottom-24 right-4 z-50 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-xl ring-4 ring-orange-600/30 transition-transform active:scale-95 md:right-8 md:bottom-8 ${listening ? "ds-listening scale-105 bg-orange-500" : "bg-orange-600 hover:bg-orange-500"}`}
+        className={`fixed bottom-8 right-8 z-50 hidden h-16 w-16 items-center justify-center rounded-full text-white shadow-xl ring-4 ring-orange-600/30 transition-transform active:scale-95 md:flex ${listening ? "ds-listening scale-105 bg-orange-500" : "bg-orange-600 hover:bg-orange-500"}`}
         aria-label="Push to talk"
       >
         {listening ? <X className="h-7 w-7" /> : <Mic className="h-7 w-7" />}

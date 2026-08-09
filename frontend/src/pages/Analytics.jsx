@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { money, fmtDate } from "@/lib/calc";
-import { buildDailySummaryPdf } from "@/lib/summaryPdf";
+import { generateDailySummaryPDF } from "@/services/billPdf";
 import { toast } from "sonner";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Printer, Plus, TrendingDown } from "lucide-react";
@@ -66,10 +66,7 @@ export default function Analytics() {
     const todayExp = expenses.filter((e) => new Date(e.date).toDateString() === today);
     const expensesTotal = todayExp.reduce((s, e) => s + (e.amount || 0), 0);
     const stats = { salesRevenue: todaySales.reduce((s, i) => s + (i.grandTotal || 0), 0), cashCollected: cash, onlineCollected: online, udhariAdded, udhariCollected: 0, expensesTotal, netCash: cash - expensesTotal };
-    const uri = buildDailySummaryPdf({ shop, dateISO: new Date().toISOString(), stats, expenses: todayExp });
-    const w = window.open();
-    if (w) w.document.write(`<iframe src="${uri}" style="width:100%;height:100%;border:0"></iframe>`);
-    else toast.error("Popup blocked");
+    generateDailySummaryPDF({ shop, dateISO: new Date().toISOString(), stats, expenses: todayExp }, "newtab");
   };
 
   return (
