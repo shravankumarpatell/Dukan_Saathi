@@ -43,7 +43,8 @@ export default function Dashboard() {
     const todayExp = expenses.filter((e) => new Date(e.date).toDateString() === today);
     const expensesTotal = todayExp.reduce((s, e) => s + (e.amount || 0), 0);
     const s = { salesRevenue: stats.revenue, cashCollected: cash, onlineCollected: online, udhariAdded, udhariCollected: 0, expensesTotal, netCash: cash - expensesTotal };
-    generateDailySummaryPDF({ shop, dateISO: new Date().toISOString(), stats: s, expenses: todayExp }, "newtab");
+    const sales = todaySales.map((i) => ({ invoiceNo: i.invoiceNo, customerName: i.customerName, grandTotal: i.grandTotal }));
+    generateDailySummaryPDF({ shop, dateISO: new Date().toISOString(), stats: s, sales, expenses: todayExp }, "newtab");
   };
 
   return (

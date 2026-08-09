@@ -1,0 +1,84 @@
+{
+  "summary": "Verified all 7 user-reported fixes in this round on the DukanSaathi demo-mode PWA at phone viewport 414x850. Every point PASSES with concrete DOM/state evidence. No regressions. Only pre-existing minor a11y console warnings from iteration_1 persist.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "BillPreviewModal / product-form-dialog / history PDF dialog", "issues": ["Radix a11y warning still logs: 'Missing Description or aria-describedby for {DialogContent}'. Cosmetic — carried over from iteration_1."]},
+      {"screen": "NewBill gst-rate select", "issues": ["Hydration warning still logs: '<span> cannot be a child of <option>'. Carried over from iteration_1."]}
+    ]
+  },
+  "verification_evidence": {
+    "point1_stock_layout": {
+      "listBorderWidth": "0px",
+      "listBoxShadow": "none",
+      "bodyHasHScroll": false,
+      "listHasHScroll": false,
+      "rowCount": 7,
+      "firstRowId": "product-row-p1",
+      "low_row_bg": "rgb(255, 241, 242)",
+      "low_badge": true,
+      "product_form_dialog_opens_prefilled": true,
+      "prefilled_fields_count": 11
+    },
+    "point2_input_fontsize": {
+      "inventory_search_fontSize_px": 16,
+      "note": "Meets >=16px requirement to prevent iOS zoom-on-focus. Base CSS rule in index.css confirmed applied."
+    },
+    "point3_partial_sale_preview": {
+      "bill_preview_modal": true,
+      "bill_pdf_frame": true,
+      "confirm_button_present": true
+    },
+    "point4_confirm_opens_pdf": {
+      "window_open_calls": [{"url_prefix": "blob:https://dukan-voice-billing.preview.emergentagent.com/", "target": "_blank"}],
+      "invoice_saved": true,
+      "invoice_count_before": 5,
+      "invoice_count_after": 6,
+      "paymentStatus": "partial",
+      "amountPending": 10532,
+      "grandTotal": 20532
+    },
+    "point5_history_defaults_today": {
+      "history_date_value": "2026-08-09",
+      "expected_today": "2026-08-09",
+      "rows_when_today": 2,
+      "rows_after_clear": 5,
+      "history_pdf_frame_opens_on_row_click": true
+    },
+    "point6_daybook_pdf": {
+      "dash_print_summary_btn_present": true,
+      "window_open_calls": [{"url_prefix": "blob:https://dukan-voice-billing.preview.emergentagent.com/", "target": "_blank"}]
+    },
+    "point7_regression_stat_nav": {
+      "stat-revenue -> /analytics": true,
+      "stat-bills -> /history": true,
+      "stat-udhari -> /customers": true,
+      "stat-lowstock -> /inventory?low=1 (low-filter-banner shown)": true,
+      "dash-reports-btn -> /analytics": true
+    },
+    "point8_regression_sale_math": {
+      "product_2130_total_stock_before": 160,
+      "product_2130_total_stock_after": 155,
+      "stock_decreased_by_sold_qty": true,
+      "customer_udhari_incremented_by_pending": true,
+      "invoice_persisted_in_localStorage": true
+    }
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "commitDraft() remains the single write-path — partial sale correctly split payments/amountPending/paymentStatus='partial'.",
+    "window.open is invoked with a blob: URL for both bill PDF (BillPreviewModal.handleConfirm) and day-book PDF (dash-print-summary-btn). sw.js correctly bypasses non-http requests so blob URLs open.",
+    "History date default to today's yyyy-mm-dd works; clearing shows the full history."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (no backend)", "frontend": "100% (7/7 fixes verified)"},
+  "test_credentials": "Demo login via data-testid='demo-login-btn' — no email/password.",
+  "seed_data_creation": "Added 1 partial-paid sale invoice (GST/2026/0005, grandTotal 20532, paid 10000, pending 10532) via quick-bill flow to validate points 3/4/8. No cleanup needed (per-browser localStorage).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "window.open can be monkey-patched to record calls (blob URLs) since headless can't open a new tab. Voice mic FAB (voice-mic-button) is not testable headless. localStorage key: dukansaathi_demo-shop."
+}

@@ -7,9 +7,11 @@ import { Search, X } from "lucide-react";
 
 export default function BillHistory() {
   const { invoices, shop, customers } = useApp();
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(todayStr);
   const [view, setView] = useState(null);
 
   const list = useMemo(() => invoices.filter((i) => {
@@ -31,7 +33,10 @@ export default function BillHistory() {
 
   return (
     <div className="space-y-4 ds-fade" data-testid="history-page">
-      <h2 className="font-display text-2xl font-bold text-slate-900">Bill History</h2>
+      <div>
+        <h2 className="font-display text-2xl font-bold text-slate-900">Bill History</h2>
+        <p className="text-sm text-slate-500">{date ? "Showing selected date · tap ✕ on date for all bills" : "Showing all bills"}</p>
+      </div>
       <div className="flex flex-wrap gap-2">
         <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2"><Search className="h-4 w-4 text-slate-400" /><input data-testid="history-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Invoice no / customer…" className="w-full bg-transparent text-sm outline-none" /></div>
         <input data-testid="history-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />

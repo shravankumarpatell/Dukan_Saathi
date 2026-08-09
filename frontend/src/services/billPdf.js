@@ -1,7 +1,6 @@
 // Fully client-side PDF generation (no server, ₹0 cost, works on Firebase Hosting).
-// jsPDF (document) + jspdf-autotable (line-item tables) + to-words (amount in words, en-IN Rupees).
-// NOTE: jsPDF's built-in fonts cannot render the ₹ glyph (it prints as "¹"), so all PDF
-// amounts use the "Rs." prefix with Indian-style digit grouping — matching the target design.
+// jsPDF + jspdf-autotable + to-words. jsPDF built-in fonts can't render the ₹ glyph, so
+// amounts are plain Indian-grouped numbers and the "(Rs.)" unit is shown in the column/label.
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { ToWords } from "to-words";
@@ -17,10 +16,10 @@ function amountInWords(n) {
   catch { return ""; }
 }
 
-// "Rs. 1,23,456.00" — Indian grouping, 2 decimals, no unicode rupee glyph.
-function inr(n) {
+// Plain Indian-grouped amount, 2 decimals, NO "Rs." prefix (unit lives in the header/label).
+function num(n) {
   const v = Number(n) || 0;
-  return "Rs. " + v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const INDIGO = [49, 46, 129];
@@ -42,7 +41,6 @@ export function generateBillPDF({ shop, invoice, customer }, output = "bloburl")
   const H = doc.internal.pageSize.getHeight();
   const M = 40;
 
-  // Header: shop (left) + document type & meta (right)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...INDIGO);
@@ -75,7 +73,6 @@ export function generateBillPDF({ shop, invoice, customer }, output = "bloburl")
   doc.setLineWidth(0.5);
   y += 18;
 
-  // Bill To
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(30);
@@ -93,72 +90,76 @@ export function generateBillPDF({ shop, invoice, customer }, output = "bloburl")
     i + 1,
     it.name + (it.unit ? `  (${it.unit})` : ""),
     String(it.qty),
-    inr(it.rate),
-    inr((Number(it.qty) || 0) * (Number(it.rate) || 0)),
+    num(it.rate),
+    num((Number(it.qty) || 0) * (Number(it.rate) || 0)),
   ]);
 
   autoTable(doc, {
     startY: y + 6,
-    head: [["#", "Item", "Qty", "Rate", "Amount"]],
+    head: [["#", "Item", "Qty", "Rate (Rs.)", "Amount (Rs.)"]],
     body,
     theme: "grid",
-    headStyles: { fillColor: INDIGO, textColor: 255, fontSize: 9, halign: "left" },
+    headStyles: { fillColor: INDIGO, textColor: 255, fontSize: 9 },
     bodyStyles: { fontSize: 9, textColor: 40 },
     columnStyles: {
       0: { cellWidth: 28, halign: "left" },
       1: { halign: "left" },
-      2: { halign: "center", cellWidth: 55 },
+      2: { halign: "center", cellWidth: 50 },
       3: { halign: "right", cellWidth: 95 },
       4: { halign: "right", cellWidth: 100 },
     },
     margin: { left: M, right: M },
   });
 
-  // Totals block (right aligned)
-  let yy = doc.lastAutoTable.finalY + 18;
+  // Totals block (right aligned) — clear gap before the grand-total divider.
+  let yy = doc.lastAutoTable.finalY + 20;
   const rx = W - M;
-  const lx = W - M - 230;
-  const row = (label, val, bold) => {
+  const lx = W - M - 240;
+  const trow = (label, val, bold) => {
     doc.setFont("helvetica", bold ? "bold" : "normal");
     doc.setFontSize(bold ? 12 : 9);
     doc.setTextColor(bold ? 20 : 80);
     doc.text(label, lx, yy);
     doc.text(val, rx, yy, { align: "right" });
-    yy += bold ? 20 : 15;
+    yy += bold ? 4 : 15;
   };
-  row("Subtotal", inr(totals.subtotal));
-  if (totals.discountOff > 0) row("Discount", "- " + inr(totals.discountOff));
-  if (totals.gstRate > 0) row(`GST @ ${totals.gstRate}%`, inr(totals.gstAmount));
-  doc.setDrawColor(200); doc.line(lx, yy - 7, rx, yy - 7);
-  row("Grand Total", inr(totals.grandTotal), true);
+  trow("Subtotal (Rs.)", num(totals.subtotal));
+  if (totals.discountOff > 0) trow("Discount (Rs.)", "- " + num(totals.discountOff));
+  if (totals.gstRate > 0) trow(`GST @ ${totals.gstRate}% (Rs.)`, num(totals.gstAmount));
+  yy += 6;
+  doc.setDrawColor(190); doc.setLineWidth(0.8);
+  doc.line(lx, yy, rx, yy);
+  doc.setLineWidth(0.5);
+  yy += 18;
+  trow("Grand Total (Rs.)", num(totals.grandTotal), true);
 
-  // Amount in words (left)
+  // Amount in words (left, under the table)
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
   doc.setTextColor(90);
-  const wl = doc.splitTextToSize("Amount in words: " + amountInWords(totals.grandTotal), W - 2 * M - 240);
+  const wl = doc.splitTextToSize("Amount in words: " + amountInWords(totals.grandTotal), W - 2 * M - 250);
   doc.text(wl, M, doc.lastAutoTable.finalY + 30);
 
   // Payments + status
-  let py = yy + 6;
+  let py = yy + 12;
   (draft.payments || []).forEach((p) => {
     doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(70);
-    doc.text(`Paid via ${p.mode}: ${inr(p.amount)}`, M, py); py += 13;
+    doc.text(`Paid via ${p.mode} (Rs.): ${num(p.amount)}`, M, py); py += 13;
   });
   doc.setFont("helvetica", "bold"); doc.setFontSize(10);
   if (totals.amountPending > 0.5) {
     doc.setTextColor(225, 29, 72);
-    doc.text(`Status: PENDING (Udhari) ${inr(totals.amountPending)}`, M, py); py += 15;
+    doc.text("Status: PENDING", M, py); py += 14;
+    doc.text(`Balance Due (Rs.): ${num(totals.amountPending)}`, M, py); py += 15;
   } else {
     doc.setTextColor(5, 150, 105);
     doc.text("Status: PAID", M, py); py += 15;
   }
   if (totals.ewayRequired) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(217, 119, 6);
-    doc.text("* E-way bill required (invoice value >= Rs. 50,000)", M, py);
+    doc.text("* E-way bill required (invoice value >= 50,000)", M, py);
   }
 
-  // Footer
   doc.setDrawColor(225); doc.setLineWidth(0.5);
   doc.line(M, H - 44, W - M, H - 44);
   doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(150);
@@ -169,8 +170,8 @@ export function generateBillPDF({ shop, invoice, customer }, output = "bloburl")
   return emit(doc, output, `${draft.invoiceNo || "bill"}.pdf`);
 }
 
-// Printable daily day-book (F6): sales, cash/online, udhari, expenses, net cash.
-export function generateDailySummaryPDF({ shop, dateISO, stats, expenses }, output = "newtab") {
+// Printable daily day-book (F6): summary + sales/income detail + expenses detail.
+export function generateDailySummaryPDF({ shop, dateISO, stats, sales, expenses }, output = "newtab") {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -191,36 +192,49 @@ export function generateDailySummaryPDF({ shop, dateISO, stats, expenses }, outp
   autoTable(doc, {
     startY: 92,
     theme: "grid",
-    head: [["Metric", "Amount"]],
+    head: [["Summary", "Amount (Rs.)"]],
     headStyles: { fillColor: INDIGO, textColor: 255 },
     bodyStyles: { fontSize: 10 },
     columnStyles: { 1: { halign: "right", cellWidth: 180 } },
     body: [
-      ["Sales Revenue", inr(stats.salesRevenue)],
-      ["Cash Collected", inr(stats.cashCollected)],
-      ["Online Collected", inr(stats.onlineCollected)],
-      ["Udhari Added Today", inr(stats.udhariAdded)],
-      ["Udhari Collected Today", inr(stats.udhariCollected)],
-      ["Expenses", inr(stats.expensesTotal)],
-      ["Net Cash Position", inr(stats.netCash)],
+      ["Sales Revenue", num(stats.salesRevenue)],
+      ["Cash Collected", num(stats.cashCollected)],
+      ["Online Collected", num(stats.onlineCollected)],
+      ["Udhari Added Today", num(stats.udhariAdded)],
+      ["Udhari Collected Today", num(stats.udhariCollected)],
+      ["Expenses", num(stats.expensesTotal)],
+      ["Net Cash Position", num(stats.netCash)],
     ],
     margin: { left: M, right: M },
   });
 
   let y = doc.lastAutoTable.finalY + 20;
-  if (expenses && expenses.length) {
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(30);
-    doc.text("Expenses Detail", M, y);
-    autoTable(doc, {
-      startY: y + 8,
-      theme: "striped",
-      head: [["Note", "Mode", "Amount"]],
-      headStyles: { fillColor: [234, 88, 12], textColor: 255 },
-      body: expenses.map((e) => [e.note || "-", e.mode, inr(e.amount)]),
-      columnStyles: { 2: { halign: "right" } },
-      margin: { left: M, right: M },
-    });
-  }
+
+  // Sales / income detail
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(30);
+  doc.text("Sales / Income Detail", M, y);
+  autoTable(doc, {
+    startY: y + 8,
+    theme: "striped",
+    head: [["Invoice", "Customer", "Amount (Rs.)"]],
+    headStyles: { fillColor: [5, 150, 105], textColor: 255 },
+    body: (sales && sales.length ? sales : [{ invoiceNo: "-", customerName: "No sales today", grandTotal: 0 }]).map((s) => [s.invoiceNo, s.customerName, num(s.grandTotal)]),
+    columnStyles: { 2: { halign: "right" } },
+    margin: { left: M, right: M },
+  });
+
+  y = doc.lastAutoTable.finalY + 20;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(30);
+  doc.text("Expenses Detail", M, y);
+  autoTable(doc, {
+    startY: y + 8,
+    theme: "striped",
+    head: [["Note", "Mode", "Amount (Rs.)"]],
+    headStyles: { fillColor: [234, 88, 12], textColor: 255 },
+    body: (expenses && expenses.length ? expenses : [{ note: "No expenses today", mode: "-", amount: 0 }]).map((e) => [e.note || "-", e.mode, num(e.amount)]),
+    columnStyles: { 2: { halign: "right" } },
+    margin: { left: M, right: M },
+  });
 
   doc.setDrawColor(225); doc.line(M, H - 44, W - M, H - 44);
   doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(150);
