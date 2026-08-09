@@ -1,0 +1,15 @@
+{
+  "_comment": "DukanSaathi configuration. Paste your real Firebase web config and Gemini key here (or use frontend/.env). While these stay as placeholders (starting with YOUR_), the app runs in DEMO mode using local browser storage so you can try every feature without any backend.",
+  "firebase": {
+    "apiKey": "YOUR_FIREBASE_API_KEY",
+    "authDomain": "YOUR_PROJECT.firebaseapp.com",
+    "projectId": "YOUR_PROJECT_ID",
+    "storageBucket": "YOUR_PROJECT.appspot.com",
+    "messagingSenderId": "YOUR_SENDER_ID",
+    "appId": "YOUR_APP_ID"
+  },
+  "gemini": {
+    "apiKey": "YOUR_GEMINI_API_KEY",
+    "model": "gemini-flash-latest"
+  }
+}
