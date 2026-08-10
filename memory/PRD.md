@@ -68,3 +68,11 @@ AI voice-first stock & billing assistant for local Indian retail (tiles & sanita
 - Returned stock is added to godown (not showroom) via `stockIn` — acceptable.
 - Radix Dialog a11y: consider adding DialogDescription to sqft/payment dialogs.
 - P1 future: wire live Gemini for chatbot; real Firebase Auth + Firestore once creds provided.
+
+
+## Msg-3 6-point refinement (2026-06-10) — frontend-tested 6/6 PASS (100%)
+- Duplicate items blocked: a product already on the bill is greyed ("✓ added") in search and can't be added twice.
+- Oversell blocked: a sale can't exceed available stock — Confirm & Save is stopped with a toast; the "Bacha" line turns red live.
+- E-way bill logic/alerts fully removed (calc, New Bill, PDF); deleted dead files invoicePdf.js, BillPreviewModal.jsx, VoiceAssistant.jsx.
+- Stock deduction is now GODOWN-first, then showroom only when godown is empty (piece-accurate; verified 120→110 with showroom untouched).
+- Chatbot: buildShopContext expanded to full shop/products/customers/invoices knowledge; streaming hardened (res.ok check + local fallback). Reads REACT_APP_GEMINI_API_KEY from frontend/.env — empty = free local mode, filled = live Gemini (needs a frontend restart to pick up the key).

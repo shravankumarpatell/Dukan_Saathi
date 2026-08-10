@@ -28,7 +28,10 @@ export default function NewBill() {
   const [useCredit, setUseCredit] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const addItem = (p) => setItems((prev) => [...prev, { productId: p.id, name: p.name, qty: "1", pieces: "", unit: p.unit, rate: String(type === "purchase" ? p.costPrice : p.sellPrice), piecesPerBox: p.piecesPerBox || 1, size: p.size }]);
+  const addItem = (p) => {
+    if (items.some((it) => it.productId === p.id)) return toast.error("Ye item pehle se add hai");
+    setItems((prev) => [...prev, { productId: p.id, name: p.name, qty: "1", pieces: "", unit: p.unit, rate: String(type === "purchase" ? p.costPrice : p.sellPrice), piecesPerBox: p.piecesPerBox || 1, size: p.size }]);
+  };
   const updItem = (i, patch) => setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   const delItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
 
@@ -81,6 +84,10 @@ export default function NewBill() {
 
   const save = async () => {
     if (items.length === 0) return toast.error("Pehle item add kariye");
+    if (type === "sale") {
+      const over = items.filter((it) => { const r = remaining(it); return r && r.short; });
+      if (over.length) return toast.error(`Stock me itna maal nahi: ${over.map((i) => i.name).join(", ")}`);
+    }
     if (saving) return;
     setSaving(true);
     try {
@@ -108,7 +115,7 @@ export default function NewBill() {
         <div className="space-y-4 lg:col-span-2">
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <label className="mb-2 block text-sm font-semibold text-slate-700">Add item (search catalog)</label>
-            <ProductSearch products={products} onPick={addItem} />
+            <ProductSearch products={products} onPick={addItem} disabledIds={items.map((it) => it.productId)} />
 
             <div className="mt-4 space-y-2">
               {items.length === 0 && <p className="py-6 text-center text-sm text-slate-400">Koi item nahi. Upar search karke add karein.</p>}
@@ -178,7 +185,6 @@ export default function NewBill() {
               {totals.discountOff > 0 && <Row l="Discount" v={"- " + money(totals.discountOff)} />}
               {totals.gstRate > 0 && <Row l={`GST ${totals.gstRate}%`} v={money(totals.gstAmount)} />}
               <div className="flex justify-between border-t border-slate-200 pt-2 font-display text-lg font-bold text-slate-900"><span>Total</span><span data-testid="bill-grand-total">{money(totals.grandTotal)}</span></div>
-              {totals.ewayRequired && <p className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700">⚠ E-way bill required (≥ ₹50,000)</p>}
             </div>
           </div>
 

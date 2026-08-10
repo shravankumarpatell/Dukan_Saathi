@@ -65,11 +65,12 @@ export function AppProvider({ children }) {
     const p = products.find((x) => x.id === it.productId); if (!p) return;
     const ppb = Number(p.piecesPerBox) || 1;
     const soldPieces = (Number(it.qty) || 0) * ppb + (Number(it.pieces) || 0);
-    const showPieces = Math.round((p.showroomQty || 0) * ppb);
-    const fromShow = Math.min(showPieces, soldPieces);
-    const remShow = showPieces - fromShow;
-    const remGod = Math.max(0, Math.round((p.godownQty || 0) * ppb) - (soldPieces - fromShow));
-    await api.update(shopId, "products", p.id, { showroomQty: round2(remShow / ppb), godownQty: round2(remGod / ppb) });
+    // Sell from GODOWN first; only when godown is empty, sell from showroom.
+    const godPieces = Math.round((p.godownQty || 0) * ppb);
+    const fromGod = Math.min(godPieces, soldPieces);
+    const remGod = godPieces - fromGod;
+    const remShow = Math.max(0, Math.round((p.showroomQty || 0) * ppb) - (soldPieces - fromGod));
+    await api.update(shopId, "products", p.id, { godownQty: round2(remGod / ppb), showroomQty: round2(remShow / ppb) });
     await api.add(shopId, "stockLedger", { productId: p.id, change: -soldPieces, reason: "sale", timestamp: todayISO() });
   };
   const stockIn = async (it, reason = "purchase") => {
@@ -96,7 +97,7 @@ export function AppProvider({ children }) {
       grandTotal: isReturn ? round2(d.refundTotal || totals.subtotal) : totals.grandTotal,
       payments: d.payments || [], amountPaid: isReturn ? 0 : totals.amountPaid,
       amountPending: isReturn ? 0 : totals.amountPending, paymentStatus: isReturn ? "return" : totals.paymentStatus,
-      ewayRequired: totals.ewayRequired, createdVia: d.createdVia || "manual",
+      createdVia: d.createdVia || "manual",
       settlement: d.settlement || null, originalInvoiceNo: d.originalInvoiceNo || null, refundTotal: isReturn ? round2(d.refundTotal || totals.subtotal) : undefined,
     };
     const saved = await api.add(shopId, "invoices", inv);

@@ -1,8 +1,7 @@
-// Core business math: GST, e-way bill, sq-ft calculator (area or L×W, box+pieces),
+// Core business math: GST, sq-ft calculator (area or L×W, box+pieces),
 // money-in-words, formatting, and per-item amount (boxes + loose pieces).
 export const GST_DEFAULT = 18;
 export const GST_SLABS = [0, 5, 12, 18, 28, 40];
-export const EWAY_THRESHOLD = 50000;
 
 export function money(n) {
   const v = Number(n) || 0;
@@ -83,11 +82,10 @@ export function computeBillTotals(draft) {
   const payments = draft.payments || [];
   const amountPaid = round2(payments.reduce((s, p) => s + (Number(p.amount) || 0), 0));
   const amountPending = round2(grandTotal - amountPaid);
-  const ewayRequired = grandTotal >= EWAY_THRESHOLD;
   let paymentStatus = "paid";
   if (amountPending > 0.5 && amountPaid > 0.5) paymentStatus = "partial";
   else if (amountPending > 0.5) paymentStatus = "pending";
-  return { subtotal, discountOff, taxable, gstRate, gstAmount, grandTotal, amountPaid, amountPending, ewayRequired, paymentStatus };
+  return { subtotal, discountOff, taxable, gstRate, gstAmount, grandTotal, amountPaid, amountPending, paymentStatus };
 }
 
 export function todayISO() { return new Date().toISOString(); }

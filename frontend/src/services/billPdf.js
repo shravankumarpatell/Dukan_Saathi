@@ -91,7 +91,6 @@ export function generateBillPDF({ shop, invoice, customer }, output = "bloburl")
     doc.setFont("helvetica", "bold"); doc.setFontSize(10);
     if (totals.amountPending > 0.5) { doc.setTextColor(225, 29, 72); doc.text("Status: PENDING", M, py); py += 14; doc.text(`Balance Due: ${num(totals.amountPending)}`, M, py); py += 15; }
     else { doc.setTextColor(5, 150, 105); doc.text("Status: PAID", M, py); py += 15; }
-    if (totals.ewayRequired) { doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(217, 119, 6); doc.text("* E-way bill required (value >= 50,000)", M, py); }
   }
 
   doc.setDrawColor(225); doc.setLineWidth(0.5); doc.line(M, H - 44, W - M, H - 44);

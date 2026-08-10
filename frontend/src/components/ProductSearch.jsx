@@ -4,7 +4,7 @@ import { money } from "@/lib/calc";
 import { Search } from "lucide-react";
 
 // Product search for manual line-item entry (PRD C9): by name, code, or company.
-export default function ProductSearch({ products, onPick, placeholder = "Search product by name, code, company…" }) {
+export default function ProductSearch({ products, onPick, placeholder = "Search product by name, code, company…", disabledIds = [] }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const results = useMemo(() => searchProducts(products, q), [products, q]);
@@ -27,15 +27,17 @@ export default function ProductSearch({ products, onPick, placeholder = "Search 
           {results.length === 0 && <div className="px-3 py-4 text-sm text-slate-500">No products found.</div>}
           {results.map((p) => {
             const total = (p.showroomQty || 0) + (p.godownQty || 0);
+            const added = disabledIds.includes(p.id);
             return (
               <button
                 key={p.id}
                 data-testid={`product-option-${p.id}`}
-                onClick={() => { onPick(p); setQ(""); setOpen(false); }}
-                className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left transition-colors hover:bg-indigo-50"
+                disabled={added}
+                onClick={() => { if (added) return; onPick(p); setQ(""); setOpen(false); }}
+                className={`flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left transition-colors ${added ? "cursor-not-allowed opacity-40" : "hover:bg-indigo-50"}`}
               >
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{p.name}</p>
+                  <p className="text-sm font-semibold text-slate-900">{p.name}{added && <span className="ml-1 text-xs font-bold text-emerald-600">✓ added</span>}</p>
                   <p className="text-xs text-slate-500">{[p.code, p.company, p.size].filter(Boolean).join(" · ")}</p>
                 </div>
                 <div className="text-right">
