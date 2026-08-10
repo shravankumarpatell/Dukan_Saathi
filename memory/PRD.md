@@ -43,3 +43,18 @@ AI voice-first stock & billing assistant for local Indian retail (tiles & sanita
 ## Notes
 - PDF iframe renders blank in headless Chromium (no PDF plugin) — fine in real browsers.
 - Firebase Cloud Functions from PRD not deployable in this sandbox; Gemini called client-side (user supplies own key).
+
+## Msg-158 16-point overhaul (2026-06-10) — frontend-tested 12/12 PASS
+- Chatbot: replaced voice assistant with a ChatGPT-style streaming text chat (`Chat.jsx` + `services/chat.js`), 1-hour context, knows shop stock/udhari/sales. Runs in local mode (no API cost); Gemini wiring is a future P1. `/chat` route registered in App.js.
+- New Bill: removed the dead preview flow → single "Confirm & Save" (`confirm-save-btn`) that commits and opens the PDF in a NEW TAB, then resets the form. Added Box + Pieces inputs with live per-item amount (`itemAmount`) and a "Bacha" remaining boxes+pieces line. Customer name optional (walk-in).
+- Sq-ft: `sqftCalc` supports Direct sq-ft OR Length×Width; New Bill dialog has a mode toggle; Dashboard has a standalone `SqftCard`.
+- PDFs: all "Rs." removed — plain INR numbers only (`billPdf.js`).
+- Udhari: Customers page split into Customers | Udhari tabs; Udhari tab has NO add button; Record Payment now allocates against specific pending bills (`allocatePayment`), updating each invoice + customer balance.
+- Returns: full invoice-based flow — enter invoice no → fetch bill → select items/qty → editable refund → settlement → return PDF; auto-restores stock (to godown) and adjusts udhari/store credit.
+- Bill History: customer name now shown ABOVE invoice no.
+- Number inputs (qty/rate/pieces/length/width) right-aligned; text inputs place caret at end (no select-all).
+
+## Known minor items (non-blocking)
+- Returned stock is added to godown (not showroom) via `stockIn` — acceptable.
+- Radix Dialog a11y: consider adding DialogDescription to sqft/payment dialogs.
+- P1 future: wire live Gemini for chatbot; real Firebase Auth + Firestore once creds provided.

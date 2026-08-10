@@ -9,6 +9,7 @@ import Inventory from "@/pages/Inventory";
 import NewBill from "@/pages/NewBill";
 import Customers from "@/pages/Customers";
 import Returns from "@/pages/Returns";
+import Chat from "@/pages/Chat";
 import BulkUpload from "@/pages/BulkUpload";
 import Analytics from "@/pages/Analytics";
 import BillHistory from "@/pages/BillHistory";
@@ -38,6 +39,7 @@ function Shell() {
         <Route path="/bill" element={<NewBill />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/returns" element={<Returns />} />
+        <Route path="/chat" element={<Chat />} />
         <Route path="/bulk" element={<BulkUpload />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/history" element={<BillHistory />} />
