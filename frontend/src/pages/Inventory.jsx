@@ -95,7 +95,7 @@ export default function Inventory() {
       </div>
 
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
-        <DialogContent className="max-h-[90vh] overflow-auto" data-testid="product-form-dialog">
+        <DialogContent className="max-h-[90vh] overflow-auto" data-testid="product-form-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader><DialogTitle>{form?.id ? "Edit Product" : "Add Product"}</DialogTitle></DialogHeader>
           {form && (
             <div className="grid grid-cols-2 gap-3">

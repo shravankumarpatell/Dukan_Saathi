@@ -3,8 +3,7 @@ import { NavLink, Link } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import VoiceAssistant from "@/components/VoiceAssistant";
 import DraftCard from "@/components/DraftCard";
-import BillPreviewModal from "@/components/BillPreviewModal";
-import { LayoutDashboard, Package, Undo2, Info, Mic, Plus } from "lucide-react";
+import { LayoutDashboard, Package, Undo2, Info, Bot, Plus } from "lucide-react";
 
 const LEFT = [
   { to: "/", label: "Home", icon: LayoutDashboard, end: true },
@@ -13,13 +12,6 @@ const LEFT = [
 
 export default function Layout({ children }) {
   const { shop, user, isDemo, geminiReady } = useApp();
-  const [listening, setListening] = useState(false);
-
-  useEffect(() => {
-    const h = (e) => setListening(!!(e.detail && e.detail.listening));
-    window.addEventListener("ds:voice-state", h);
-    return () => window.removeEventListener("ds:voice-state", h);
-  }, []);
 
   return (
     <div className="relative mx-auto min-h-screen max-w-md bg-stone-100 shadow-sm md:border-x md:border-slate-200">
@@ -67,16 +59,14 @@ export default function Layout({ children }) {
           <Undo2 className="h-6 w-6" /> Returns
         </NavLink>
 
-        {/* AI mic — plain icon, no orange circle */}
-        <button data-testid="voice-mic-button" onClick={() => window.dispatchEvent(new CustomEvent("ds:voice-toggle"))}
-          className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-semibold transition-colors ${listening ? "text-orange-600" : "text-slate-400"}`}>
-          <Mic className={`h-6 w-6 ${listening ? "animate-pulse" : ""}`} /> Assistant
-        </button>
+        {/* AI chat assistant */}
+        <NavLink to="/chat" data-testid="mnav-assistant"
+          className={({ isActive }) => `flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-semibold transition-colors ${isActive ? "text-indigo-900" : "text-slate-400"}`}>
+          <Bot className="h-6 w-6" /> Assistant
+        </NavLink>
       </nav>
 
-      <VoiceAssistant />
       <DraftCard />
-      <BillPreviewModal />
     </div>
   );
 }
