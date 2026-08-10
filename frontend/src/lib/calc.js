@@ -20,6 +20,15 @@ export function itemAmount(it) {
   return round2(qty * rate + pieces * piecePrice);
 }
 
+// Breakdown a (possibly fractional) box quantity into whole boxes + loose pieces.
+export function piecesBreakdown(qtyBoxes, piecesPerBox) {
+  const ppb = Number(piecesPerBox) || 1;
+  const totalPieces = Math.round((Number(qtyBoxes) || 0) * ppb);
+  const boxes = Math.floor(totalPieces / ppb);
+  const loose = totalPieces - boxes * ppb;
+  return { totalPieces, boxes, loose, ppb };
+}
+
 export function numberToWordsINR(amount) {
   const num = Math.floor(Number(amount) || 0);
   if (num === 0) return "Zero Rupees Only";
@@ -57,7 +66,7 @@ export function genInvoiceNo(seq, gstEnabled, prefix) {
   const yr = new Date().getFullYear();
   const nn = String(seq).padStart(4, "0");
   const p = prefix || (gstEnabled ? "GST" : "INV");
-  return `${p}/${yr}/${nn}`;
+  return `${p}${yr}${nn}`;
 }
 
 export function computeBillTotals(draft) {

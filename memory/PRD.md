@@ -54,7 +54,17 @@ AI voice-first stock & billing assistant for local Indian retail (tiles & sanita
 - Bill History: customer name now shown ABOVE invoice no.
 - Number inputs (qty/rate/pieces/length/width) right-aligned; text inputs place caret at end (no select-all).
 
-## Known minor items (non-blocking)
+## Msg-2 9-point refinement (2026-06-10) — frontend-tested 12/12 PASS
+- Invoice numbers now separator-free: `${prefix}${year}${seq}` (e.g. GST20260006, RET20260007); seed invoices GST20260001..05.
+- New `NumberInput` component used across all numeric fields: fully clearable (no stuck "0"), decimal-safe, caret jumps to the last digit on focus.
+- New Bill & Returns each have a **Preview** (opens PDF in new tab, no commit, fields kept) alongside **Confirm & Save** (commit + PDF + reset).
+- Returns: original invoice is now a search-and-select dropdown (`InvoiceSearch`).
+- Stock list shows pieces remaining (boxes+loose + Total pcs); `stockOut`/`stockIn` are piece-aware (showroom-first) so box+loose sales stay perfectly in sync.
+- PDFs: removed "All amounts are in Indian Rupees."; return title is just "RETURN INVOICE".
+- Dashboard "Total Udhari" opens `/customers?tab=udhari`; Udhari tab is first/left, Customers right (Udhari default).
+- Customer names are unique & required (duplicate/empty rejected with a toast).
+
+
 - Returned stock is added to godown (not showroom) via `stockIn` — acceptable.
 - Radix Dialog a11y: consider adding DialogDescription to sqft/payment dialogs.
 - P1 future: wire live Gemini for chatbot; real Firebase Auth + Firestore once creds provided.

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { money, sqftCalc } from "@/lib/calc";
 import { generateDailySummaryPDF } from "@/services/billPdf";
+import NumberInput from "@/components/NumberInput";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AlertTriangle, IndianRupee, Wallet, ReceiptText, Printer, Plus, BarChart3, ChevronRight, Calculator } from "lucide-react";
@@ -57,7 +58,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat testid="stat-revenue" icon={IndianRupee} label="Aaj Sale" value={money(stats.revenue)} tone="emerald" onClick={() => navigate("/analytics")} />
         <Stat testid="stat-bills" icon={ReceiptText} label="Aaj Bills" value={stats.todayCount} tone="indigo" onClick={() => navigate("/history")} />
-        <Stat testid="stat-udhari" icon={Wallet} label="Total Udhari" value={money(stats.totalUdhari)} tone="rose" onClick={() => navigate("/customers")} />
+        <Stat testid="stat-udhari" icon={Wallet} label="Total Udhari" value={money(stats.totalUdhari)} tone="rose" onClick={() => navigate("/customers?tab=udhari")} />
         <Stat testid="stat-lowstock" icon={AlertTriangle} label="Low Stock" value={stats.lowStock.length} tone="amber" onClick={() => navigate("/inventory?low=1")} />
       </div>
 
@@ -102,7 +103,7 @@ function SqftCard() {
   const [d, setD] = useState({ roomArea: 100, roomLengthFt: 10, roomWidthFt: 10, tileLenInch: 24, tileWidInch: 24, piecesPerBox: 4, wastagePct: 5 });
   const input = mode === "area" ? { roomArea: d.roomArea } : { roomLengthFt: d.roomLengthFt, roomWidthFt: d.roomWidthFt };
   const res = sqftCalc({ ...input, tileLenInch: d.tileLenInch, tileWidInch: d.tileWidInch, piecesPerBox: d.piecesPerBox, wastagePct: d.wastagePct, ratePerBox: 0 });
-  const F = (k, l) => <div key={k}><label className="text-xs font-semibold text-slate-600">{l}</label><input data-testid={`dash-sqft-${k}`} type="number" inputMode="decimal" value={d[k]} onChange={(e) => setD({ ...d, [k]: Number(e.target.value) })} className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:ring-2 focus:ring-indigo-500" /></div>;
+  const F = (k, l) => <div key={k}><label className="text-xs font-semibold text-slate-600">{l}</label><NumberInput data-testid={`dash-sqft-${k}`} value={d[k]} onChange={(v) => setD({ ...d, [k]: v })} className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:ring-2 focus:ring-indigo-500" /></div>;
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4" data-testid="dash-sqft-card">
       <div className="mb-3 flex items-center gap-2"><Calculator className="h-4 w-4 text-orange-600" /><h3 className="font-display font-bold text-slate-900">Quick Sq-ft Calculator</h3></div>

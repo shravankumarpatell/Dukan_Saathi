@@ -2,18 +2,14 @@ import React, { useState, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
 import ProductSearch from "@/components/ProductSearch";
 import CustomerSearch from "@/components/CustomerSearch";
+import NumberInput from "@/components/NumberInput";
 import { generateBillPDF } from "@/services/billPdf";
 import { computeBillTotals, itemAmount, money, sqftCalc, todayISO } from "@/lib/calc";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trash2, Calculator, Save } from "lucide-react";
+import { Trash2, Calculator, Save, Eye } from "lucide-react";
 
 const NUM = "w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-right tabular-nums outline-none focus:ring-2 focus:ring-indigo-500";
-
-const blank = {
-  type: "sale", items: [], customerName: "", customerPhone: "", isContractor: false, siteNote: "",
-  discount: { type: "flat", value: 0 }, pay: { cash: 0, online: 0 }, selectedCustomer: null, useCredit: false,
-};
 
 export default function NewBill() {
   const { products, customers, shop, commitBill } = useApp();
@@ -25,21 +21,21 @@ export default function NewBill() {
   const [siteNote, setSiteNote] = useState("");
   const [gstEnabled, setGstEnabled] = useState(shop?.gstEnabled ?? true);
   const [gstRate, setGstRate] = useState(18);
-  const [discount, setDiscount] = useState({ type: "flat", value: 0 });
-  const [pay, setPay] = useState({ cash: 0, online: 0 });
+  const [discount, setDiscount] = useState({ type: "flat", value: "" });
+  const [pay, setPay] = useState({ cash: "", online: "" });
   const [sqftFor, setSqftFor] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [useCredit, setUseCredit] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const addItem = (p) => setItems((prev) => [...prev, { productId: p.id, name: p.name, qty: 1, pieces: 0, unit: p.unit, rate: type === "purchase" ? p.costPrice : p.sellPrice, piecesPerBox: p.piecesPerBox || 1, size: p.size }]);
+  const addItem = (p) => setItems((prev) => [...prev, { productId: p.id, name: p.name, qty: "1", pieces: "", unit: p.unit, rate: String(type === "purchase" ? p.costPrice : p.sellPrice), piecesPerBox: p.piecesPerBox || 1, size: p.size }]);
   const updItem = (i, patch) => setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   const delItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
 
   const reset = () => {
     setType("sale"); setItems([]); setCustomerName(""); setCustomerPhone(""); setIsContractor(false); setSiteNote("");
-    setGstEnabled(shop?.gstEnabled ?? true); setGstRate(18); setDiscount({ type: "flat", value: 0 });
-    setPay({ cash: 0, online: 0 }); setSelectedCustomer(null); setUseCredit(false);
+    setGstEnabled(shop?.gstEnabled ?? true); setGstRate(18); setDiscount({ type: "flat", value: "" });
+    setPay({ cash: "", online: "" }); setSelectedCustomer(null); setUseCredit(false);
   };
 
   const draftBase = useMemo(() => ({
@@ -60,11 +56,27 @@ export default function NewBill() {
   const remaining = (it) => {
     const p = products.find((x) => x.id === it.productId); if (!p) return null;
     const ppb = Number(it.piecesPerBox) || 1;
-    const availPieces = ((p.showroomQty || 0) + (p.godownQty || 0)) * ppb;
+    const availPieces = Math.round(((p.showroomQty || 0) + (p.godownQty || 0)) * ppb);
     const soldPieces = (Number(it.qty) || 0) * ppb + (Number(it.pieces) || 0);
     const left = availPieces - soldPieces;
     const boxes = Math.trunc(left / ppb); const pc = left - boxes * ppb;
     return { left, boxes, pc, short: left < 0 };
+  };
+
+  const buildDraft = () => {
+    const payments = [
+      ...(Number(pay.cash) > 0 ? [{ mode: "cash", amount: Number(pay.cash) }] : []),
+      ...(Number(pay.online) > 0 ? [{ mode: "online", amount: Number(pay.online) }] : []),
+      ...(creditApplied > 0 ? [{ mode: "credit", amount: creditApplied }] : []),
+    ];
+    return { ...draftBase, payments, customerId: selectedCustomer?.id || null };
+  };
+
+  const preview = () => {
+    if (items.length === 0) return toast.error("Pehle item add kariye");
+    const d = buildDraft();
+    const inv = { ...d, invoiceNo: (gstEnabled ? "GST" : "INV") + "-PREVIEW", customerName: customerName || "Walk-in" };
+    generateBillPDF({ shop, invoice: inv, customer: selectedCustomer || { name: customerName || "Walk-in" } }, "newtab");
   };
 
   const save = async () => {
@@ -72,22 +84,14 @@ export default function NewBill() {
     if (saving) return;
     setSaving(true);
     try {
-      const payments = [
-        ...(Number(pay.cash) > 0 ? [{ mode: "cash", amount: Number(pay.cash) }] : []),
-        ...(Number(pay.online) > 0 ? [{ mode: "online", amount: Number(pay.online) }] : []),
-        ...(creditApplied > 0 ? [{ mode: "credit", amount: creditApplied }] : []),
-      ];
-      const d = { ...draftBase, payments, customerId: selectedCustomer?.id || null };
-      const { invoice, customer } = await commitBill(d);
+      const { invoice, customer } = await commitBill(buildDraft());
       generateBillPDF({ shop, invoice, customer: customer || { name: invoice.customerName } }, "newtab");
       toast.success(`${invoice.invoiceNo} save ho gaya`);
       reset();
-    } catch (e) {
-      toast.error("Save nahi hua, dobara koshish karein");
-    } finally { setSaving(false); }
+    } catch (e) { toast.error("Save nahi hua, dobara koshish karein"); } finally { setSaving(false); }
   };
 
-  const applySqft = (res) => { updItem(sqftFor.index, { qty: res.boxesNeeded, pieces: res.loosePieces }); setSqftFor(null); toast.success(`${res.boxesNeeded} box + ${res.loosePieces} pc (${res.tilesNeeded} tiles) for ${res.roomArea} sq-ft`); };
+  const applySqft = (res) => { updItem(sqftFor.index, { qty: String(res.boxesNeeded), pieces: String(res.loosePieces) }); setSqftFor(null); toast.success(`${res.boxesNeeded} box + ${res.loosePieces} pc (${res.tilesNeeded} tiles) for ${res.roomArea} sq-ft`); };
 
   return (
     <div className="space-y-4 ds-fade pb-10" data-testid="new-bill-page">
@@ -118,9 +122,9 @@ export default function NewBill() {
                       <button data-testid={`del-item-${i}`} onClick={() => delItem(i)} className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></button>
                     </div>
                     <div className={`mt-2 grid gap-2 ${isBox ? "grid-cols-4" : "grid-cols-3"}`}>
-                      <div><label className="text-xs text-slate-500">{isBox ? "Box" : "Qty"}</label><input data-testid={`item-qty-${i}`} type="number" inputMode="decimal" value={it.qty} onChange={(e) => updItem(i, { qty: Number(e.target.value) })} className={NUM} /></div>
-                      {isBox && <div><label className="text-xs text-slate-500">Pieces</label><input data-testid={`item-pieces-${i}`} type="number" inputMode="decimal" value={it.pieces} onChange={(e) => updItem(i, { pieces: Number(e.target.value) })} className={NUM} /></div>}
-                      <div><label className="text-xs text-slate-500">Rate{isBox ? "/box" : ""}</label><input data-testid={`item-rate-${i}`} type="number" inputMode="decimal" value={it.rate} onChange={(e) => updItem(i, { rate: Number(e.target.value) })} className={NUM} /></div>
+                      <div><label className="text-xs text-slate-500">{isBox ? "Box" : "Qty"}</label><NumberInput data-testid={`item-qty-${i}`} value={it.qty} onChange={(v) => updItem(i, { qty: v })} className={NUM} /></div>
+                      {isBox && <div><label className="text-xs text-slate-500">Pieces</label><NumberInput data-testid={`item-pieces-${i}`} value={it.pieces} onChange={(v) => updItem(i, { pieces: v })} className={NUM} /></div>}
+                      <div><label className="text-xs text-slate-500">Rate{isBox ? "/box" : ""}</label><NumberInput data-testid={`item-rate-${i}`} value={it.rate} onChange={(v) => updItem(i, { rate: v })} className={NUM} /></div>
                       <div><label className="text-xs text-slate-500">Amount</label><p className="rounded-lg bg-slate-50 px-2 py-1.5 text-right text-sm font-bold tabular-nums" data-testid={`item-amount-${i}`}>{money(itemAmount(it))}</p></div>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
@@ -164,8 +168,8 @@ export default function NewBill() {
             <div className="mb-3">
               <label className="text-xs font-semibold text-slate-600">Discount</label>
               <div className="mt-1 flex gap-2">
-                <select data-testid="discount-type" value={discount.type} onChange={(e) => setDiscount({ ...discount, type: e.target.value })} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"><option value="flat">₹</option><option value="percent">%</option></select>
-                <input data-testid="discount-value" type="number" inputMode="decimal" value={discount.value} onChange={(e) => setDiscount({ ...discount, value: e.target.value })} className={NUM} />
+                <select data-testid="discount-type" value={discount.type} onChange={(e) => setDiscount({ ...discount, type: e.target.value })} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"><option value="flat">Rs</option><option value="percent">%</option></select>
+                <NumberInput data-testid="discount-value" value={discount.value} onChange={(v) => setDiscount({ ...discount, value: v })} className={NUM} />
               </div>
             </div>
 
@@ -182,10 +186,10 @@ export default function NewBill() {
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <h3 className="mb-2 font-display font-bold text-slate-900">Payment split</h3>
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs font-semibold text-slate-600">Cash ₹</label><input data-testid="pay-cash" type="number" inputMode="decimal" value={pay.cash} onChange={(e) => setPay({ ...pay, cash: e.target.value })} className={NUM} /></div>
-                <div><label className="text-xs font-semibold text-slate-600">Online ₹</label><input data-testid="pay-online" type="number" inputMode="decimal" value={pay.online} onChange={(e) => setPay({ ...pay, online: e.target.value })} className={NUM} /></div>
+                <div><label className="text-xs font-semibold text-slate-600">Cash ₹</label><NumberInput data-testid="pay-cash" value={pay.cash} onChange={(v) => setPay({ ...pay, cash: v })} className={NUM} /></div>
+                <div><label className="text-xs font-semibold text-slate-600">Online ₹</label><NumberInput data-testid="pay-online" value={pay.online} onChange={(v) => setPay({ ...pay, online: v })} className={NUM} /></div>
               </div>
-              <button data-testid="pay-full-btn" onClick={() => setPay({ cash: totals.grandTotal, online: 0 })} className="mt-2 text-xs font-semibold text-indigo-700">Full cash</button>
+              <button data-testid="pay-full-btn" onClick={() => setPay({ cash: String(totals.grandTotal), online: "" })} className="mt-2 text-xs font-semibold text-indigo-700">Full cash</button>
               {creditAvail > 0 && (
                 <label className="mt-2 flex items-center justify-between rounded-lg bg-violet-50 px-3 py-2 text-sm">
                   <span className="font-semibold text-violet-800">Use store credit ({money(creditAvail)})</span>
@@ -199,10 +203,11 @@ export default function NewBill() {
             </div>
           )}
 
-          <button data-testid="confirm-save-btn" onClick={save} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3.5 font-bold text-white shadow-md transition-transform active:scale-95 hover:bg-orange-500 disabled:opacity-60">
-            <Save className="h-5 w-5" /> {saving ? "Saving…" : "Confirm & Save"}
-          </button>
-          <p className="text-center text-xs text-slate-400">Save karte hi PDF invoice nayi tab me khul jayega.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button data-testid="preview-bill-btn" onClick={preview} className="flex items-center justify-center gap-2 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3.5 font-bold text-indigo-800 transition-transform active:scale-95"><Eye className="h-5 w-5" /> Preview</button>
+            <button data-testid="confirm-save-btn" onClick={save} disabled={saving} className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3.5 font-bold text-white shadow-md transition-transform active:scale-95 hover:bg-orange-500 disabled:opacity-60"><Save className="h-5 w-5" /> {saving ? "…" : "Confirm & Save"}</button>
+          </div>
+          <p className="text-center text-xs text-slate-400">Preview sirf dikhata hai (save nahi). Confirm & Save par PDF nayi tab me khulega.</p>
         </div>
       </div>
 
@@ -215,12 +220,12 @@ const Row = ({ l, v }) => <div className="flex justify-between text-slate-600"><
 
 function SqftDialog({ sqftFor, onClose, onApply }) {
   const [mode, setMode] = useState("lw");
-  const [d, setD] = useState({ roomArea: 100, roomLengthFt: 10, roomWidthFt: 10, tileLenInch: 24, tileWidInch: 24, wastagePct: 5 });
+  const [d, setD] = useState({ roomArea: "100", roomLengthFt: "10", roomWidthFt: "10", tileLenInch: "24", tileWidInch: "24", wastagePct: "5" });
   if (!sqftFor) return null;
   const it = sqftFor.item;
   const input = mode === "area" ? { roomArea: d.roomArea } : { roomLengthFt: d.roomLengthFt, roomWidthFt: d.roomWidthFt };
   const res = sqftCalc({ ...input, tileLenInch: d.tileLenInch, tileWidInch: d.tileWidInch, wastagePct: d.wastagePct, piecesPerBox: it.piecesPerBox || 1, ratePerBox: it.rate });
-  const F = (k, l) => <div key={k}><label className="text-xs font-semibold text-slate-600">{l}</label><input data-testid={`sqft-${k}`} type="number" inputMode="decimal" value={d[k]} onChange={(e) => setD({ ...d, [k]: Number(e.target.value) })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm tabular-nums" /></div>;
+  const F = (k, l) => <div key={k}><label className="text-xs font-semibold text-slate-600">{l}</label><NumberInput data-testid={`sqft-${k}`} value={d[k]} onChange={(v) => setD({ ...d, [k]: v })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm tabular-nums" /></div>;
   return (
     <Dialog open={!!sqftFor} onOpenChange={(o) => !o && onClose()}>
       <DialogContent data-testid="sqft-dialog">

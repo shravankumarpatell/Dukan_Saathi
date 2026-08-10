@@ -63,16 +63,22 @@ export function AppProvider({ children }) {
 
   const stockOut = async (it) => {
     const p = products.find((x) => x.id === it.productId); if (!p) return;
-    const qty = Number(it.qty) || 0;
-    const fromShow = Math.min(p.showroomQty || 0, qty);
-    await api.update(shopId, "products", p.id, { showroomQty: (p.showroomQty || 0) - fromShow, godownQty: Math.max(0, (p.godownQty || 0) - (qty - fromShow)) });
-    await api.add(shopId, "stockLedger", { productId: p.id, change: -qty, reason: "sale", timestamp: todayISO() });
+    const ppb = Number(p.piecesPerBox) || 1;
+    const soldPieces = (Number(it.qty) || 0) * ppb + (Number(it.pieces) || 0);
+    const showPieces = Math.round((p.showroomQty || 0) * ppb);
+    const fromShow = Math.min(showPieces, soldPieces);
+    const remShow = showPieces - fromShow;
+    const remGod = Math.max(0, Math.round((p.godownQty || 0) * ppb) - (soldPieces - fromShow));
+    await api.update(shopId, "products", p.id, { showroomQty: round2(remShow / ppb), godownQty: round2(remGod / ppb) });
+    await api.add(shopId, "stockLedger", { productId: p.id, change: -soldPieces, reason: "sale", timestamp: todayISO() });
   };
   const stockIn = async (it, reason = "purchase") => {
     const p = products.find((x) => x.id === it.productId); if (!p) return;
-    const qty = Number(it.qty) || 0;
-    await api.update(shopId, "products", p.id, { godownQty: (p.godownQty || 0) + qty });
-    await api.add(shopId, "stockLedger", { productId: p.id, change: qty, reason, timestamp: todayISO() });
+    const ppb = Number(p.piecesPerBox) || 1;
+    const addPieces = (Number(it.qty) || 0) * ppb + (Number(it.pieces) || 0);
+    const godPieces = Math.round((p.godownQty || 0) * ppb) + addPieces;
+    await api.update(shopId, "products", p.id, { godownQty: round2(godPieces / ppb) });
+    await api.add(shopId, "stockLedger", { productId: p.id, change: addPieces, reason, timestamp: todayISO() });
   };
 
   // Commit a sale / purchase / return invoice (the write path for bills). Returns saved invoice.
@@ -147,6 +153,15 @@ export function AppProvider({ children }) {
     return { ok: true };
   }, [draft, shopId, products, refresh]);
 
+  // Add a customer; names are UNIQUE — if the name already exists, return that customer.
+  const addCustomer = useCallback(async (c) => {
+    const name = (c.name || "").trim();
+    if (name) { const existing = customers.find((x) => (x.name || "").trim().toLowerCase() === name.toLowerCase()); if (existing) return existing; }
+    const saved = await api.add(shopId, "customers", { totalPending: 0, storeCredit: 0, ...c, name });
+    await refresh();
+    return saved;
+  }, [customers, shopId, refresh]);
+
   const value = {
     user, authLoading, shop, shopId, saveShop, logout,
     products, customers, invoices, returns, expenses, refresh,
@@ -154,7 +169,7 @@ export function AppProvider({ children }) {
     isDemo: IS_DEMO, geminiReady: GEMINI_READY,
     addProduct: (p) => api.add(shopId, "products", p).then(refresh),
     updateProduct: (id, p) => api.update(shopId, "products", id, p).then(refresh),
-    addCustomer: (c) => api.add(shopId, "customers", { totalPending: 0, storeCredit: 0, ...c }).then(refresh),
+    addCustomer,
     speak,
   };
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

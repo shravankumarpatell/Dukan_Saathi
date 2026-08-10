@@ -36,10 +36,9 @@ export function generateBillPDF({ shop, invoice, customer }, output = "bloburl")
   if (shop?.address) { doc.text(shop.address, M, ly); ly += 12; }
   if (shop?.phone) { doc.text("Ph: " + shop.phone, M, ly); ly += 12; }
   if (shop?.gstEnabled && shop?.gstin) { doc.text("GSTIN: " + shop.gstin, M, ly); ly += 12; }
-  doc.setFontSize(8); doc.setTextColor(150); doc.text("All amounts are in Indian Rupees.", M, ly); ly += 12;
 
   doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(isReturn ? 190 : 20, isReturn ? 30 : 20, isReturn ? 45 : 20);
-  const title = isReturn ? "RETURN INVOICE / CREDIT NOTE" : (draft.type === "purchase" ? "PURCHASE / STOCK-IN" : (shop?.gstEnabled ? "TAX INVOICE" : "INVOICE"));
+  const title = isReturn ? "RETURN INVOICE" : (draft.type === "purchase" ? "PURCHASE / STOCK-IN" : (shop?.gstEnabled ? "TAX INVOICE" : "INVOICE"));
   doc.text(title, W - M, 54, { align: "right" });
   doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(90);
   doc.text("No: " + (draft.invoiceNo || "DRAFT"), W - M, 72, { align: "right" });
@@ -108,7 +107,6 @@ export function generateDailySummaryPDF({ shop, dateISO, stats, sales, expenses 
   doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.setTextColor(...INDIGO); doc.text(shop?.name || "DukanSaathi", M, 50);
   doc.setFontSize(13); doc.setTextColor(30); doc.text("Daily Day-book", M, 72);
   doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(90); doc.text(fmtDate(dateISO), W - M, 72, { align: "right" });
-  doc.setFontSize(8); doc.setTextColor(150); doc.text("All amounts are in Indian Rupees.", M, 86);
   autoTable(doc, {
     startY: 96, theme: "grid", head: [["Summary", "Amount"]],
     headStyles: { fillColor: INDIGO, textColor: 255 }, bodyStyles: { fontSize: 10 }, columnStyles: { 1: { halign: "right", cellWidth: 180 } },
