@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Link } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import VoiceAssistant from "@/components/VoiceAssistant";
 import DraftCard from "@/components/DraftCard";
 import { LayoutDashboard, Package, Undo2, Info, Bot, Plus } from "lucide-react";
 

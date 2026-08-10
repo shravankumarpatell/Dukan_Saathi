@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { money } from "@/lib/calc";
+import { money, sqftCalc } from "@/lib/calc";
 import { generateDailySummaryPDF } from "@/services/billPdf";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { AlertTriangle, IndianRupee, Wallet, ReceiptText, Printer, Plus, BarChart3, ChevronRight } from "lucide-react";
+import { AlertTriangle, IndianRupee, Wallet, ReceiptText, Printer, Plus, BarChart3, ChevronRight, Calculator } from "lucide-react";
 
 const Stat = ({ icon: Icon, label, value, tone = "indigo", testid, onClick }) => (
   <button data-testid={testid} onClick={onClick} className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md">
@@ -83,6 +83,8 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <SqftCard />
+
       {/* Reports & Analytics — at the very bottom */}
       <button data-testid="dash-reports-btn" onClick={() => navigate("/analytics")} className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md">
         <div className="flex items-center gap-3">
@@ -91,6 +93,35 @@ export default function Dashboard() {
         </div>
         <ChevronRight className="h-5 w-5 text-slate-400" />
       </button>
+    </div>
+  );
+}
+
+function SqftCard() {
+  const [mode, setMode] = useState("lw");
+  const [d, setD] = useState({ roomArea: 100, roomLengthFt: 10, roomWidthFt: 10, tileLenInch: 24, tileWidInch: 24, piecesPerBox: 4, wastagePct: 5 });
+  const input = mode === "area" ? { roomArea: d.roomArea } : { roomLengthFt: d.roomLengthFt, roomWidthFt: d.roomWidthFt };
+  const res = sqftCalc({ ...input, tileLenInch: d.tileLenInch, tileWidInch: d.tileWidInch, piecesPerBox: d.piecesPerBox, wastagePct: d.wastagePct, ratePerBox: 0 });
+  const F = (k, l) => <div key={k}><label className="text-xs font-semibold text-slate-600">{l}</label><input data-testid={`dash-sqft-${k}`} type="number" inputMode="decimal" value={d[k]} onChange={(e) => setD({ ...d, [k]: Number(e.target.value) })} className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:ring-2 focus:ring-indigo-500" /></div>;
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4" data-testid="dash-sqft-card">
+      <div className="mb-3 flex items-center gap-2"><Calculator className="h-4 w-4 text-orange-600" /><h3 className="font-display font-bold text-slate-900">Quick Sq-ft Calculator</h3></div>
+      <div className="mb-3 flex rounded-xl border border-slate-300 bg-white p-1 text-sm">
+        <button data-testid="dash-sqft-mode-lw" onClick={() => setMode("lw")} className={`flex-1 rounded-lg px-3 py-1.5 font-semibold ${mode === "lw" ? "bg-indigo-900 text-white" : "text-slate-600"}`}>Length × Width</button>
+        <button data-testid="dash-sqft-mode-area" onClick={() => setMode("area")} className={`flex-1 rounded-lg px-3 py-1.5 font-semibold ${mode === "area" ? "bg-indigo-900 text-white" : "text-slate-600"}`}>Direct sq-ft</button>
+      </div>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        {mode === "area" ? F("roomArea", "Area (sq-ft)") : (<>{F("roomLengthFt", "Length (ft)")}{F("roomWidthFt", "Width (ft)")}</>)}
+        {F("tileLenInch", "Tile L (inch)")}
+        {F("tileWidInch", "Tile W (inch)")}
+        {F("piecesPerBox", "Pcs / box")}
+        {F("wastagePct", "Wastage %")}
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-indigo-50 p-3 text-center text-sm">
+        <div><p className="text-xs text-slate-500">Area</p><b data-testid="dash-sqft-area">{res.roomArea}</b></div>
+        <div><p className="text-xs text-slate-500">Tiles</p><b data-testid="dash-sqft-tiles">{res.tilesNeeded}</b></div>
+        <div><p className="text-xs text-slate-500">Boxes + loose</p><b data-testid="dash-sqft-boxes">{res.boxesNeeded} + {res.loosePieces}</b></div>
+      </div>
     </div>
   );
 }

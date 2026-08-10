@@ -1,0 +1,48 @@
+{
+  "summary": "Frontend-only test of DukanSaathi PWA on 430x900 mobile viewport. 11 of 12 feature areas PASS with concrete DOM + localStorage evidence. Found ONE critical routing bug: /chat route is NOT registered in App.js so the Assistant bottom-nav navigates back to the dashboard, breaking the chatbot flow entirely.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "App.js router",
+        "issue": "Route for /chat is MISSING. Chat.jsx exists and Layout.jsx has NavLink to='/chat' (data-testid=mnav-assistant), but App.js Routes list only contains /, /inventory, /bill, /customers, /returns, /bulk, /analytics, /history, /settings and a catch-all Navigate to='/'. Result: clicking the Assistant bottom-nav or navigating to /chat lands the user back on the dashboard. Chatbot (chat-page, chat-input, chat-send, chat-suggestion) is unreachable in the app UI.",
+        "selector": "[data-testid=mnav-assistant]",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verification_evidence": {
+    "1_demo_login": "PASS - clicking demo-login-btn navigates to dashboard-page.",
+    "2_dash_sqft_calc": "PASS - Direct sq-ft mode: area=200 -> tiles=53, boxes=13+1. LW mode 12x10 -> area=120. Toggling dash-sqft-mode-lw / dash-sqft-mode-area switches the input controls; dash-sqft-area/tiles/boxes update live.",
+    "3_new_bill_box_pieces": "PASS - For box-unit tile 2130 Highlight (piecesPerBox=4): both item-qty-0 and item-pieces-0 rendered. qty=2, pieces=3, rate=450 -> item-amount-0=₹1,237.50 (=2*450 + 3*450/4). item-remaining-0 visible ('Bacha: 157 box + 1 pc').",
+    "3b_bacha_rose": "PASS - overselling (qty=9999) turns item-remaining-0 rose (class contains 'text-rose-600').",
+    "4_sqft_dialog": "PASS - sqft-btn-0 opens sqft-dialog. sqft-mode-lw with 10x10 -> boxes '6 box + 3 pc'. sqft-mode-area with 150 sq-ft -> boxes '10 box + 0 pc'. sqft-apply-btn correctly fills item-qty-0=10, item-pieces-0=0.",
+    "5_confirm_save_reset": "PASS - confirm-save-btn on a bill with 1 item saves invoice (GST/2026/0006 appeared in history), clears items list (0 bill-item elements after), and calls window.open (blob URL) exactly twice (patched capture). PDF preview blank in headless is acceptable per requirements.",
+    "6_walkin_optional_name": "PASS - saving with blank customer name creates invoice with customerName='Walk-in' (verified in Bill History row: 'Walk-in / GST/2026/0006 · 10 Aug 2026 / ₹1,062').",
+    "7_bill_history_customer_first": "PASS - Each history-row shows customer name on first line (font-semibold), then invoiceNo + date on second line ('Walk-in' / 'GST/2026/0006 · 10 Aug 2026'). New bills appear at top. 6 rows visible after clearing date filter.",
+    "8_customers_tabs": "PASS - tab-customers shows add-customer-btn (visible=True). tab-udhari lists 2 udhari cards (Ashok Kumar, Suresh) and add-customer-btn is NOT visible (correct per spec).",
+    "9_udhari_bill_specific_payment": "PASS - Clicking pay-btn-c1 (Ashok) opens payment-dialog listing his 2 pending invoices (GST/2026/0001 pending ₹2310, GST/2026/0005 pending ₹10532). pay-bill-fill-i1 sets amount to full 2310 (pay-alloc-total=₹2,310). Overriding to ₹1155 -> pay-alloc-total=₹1,155. submit-payment-btn: customer.totalPending 12500->11345 (delta -1155), invoice.amountPending 2310->1155, paymentStatus='partial'. Exactly matches spec.",
+    "10_return_flow": "PASS - Entering GST/2026/0001 and clicking fetch-bill-btn shows return-detail with items. Setting return-qty-0=1 auto-updates return-refund=450. Selecting settle-adjust_udhari (btn shows selected/bg-indigo-900). submit-return-btn: form resets (return-detail hidden), stock increases by +1 (godownQty went from 120 to 121, showroom unchanged as commitBill stockIn adds to godown), customer.totalPending 11345->10895 (delta -450 = refund). 1 return invoice persisted.",
+    "11_chatbot": "CRITICAL BUG - /chat route missing. Navigating to /chat or clicking mnav-assistant lands on dashboard (chat_page_visible=False, url='/'). chat-input, chat-send, chat-suggestion, chat-msg-assistant are unreachable."
+  },
+  "critical_code_review_comments": [
+    "BUG: /app/frontend/src/App.js Routes list is missing '<Route path=\"/chat\" element={<Chat />} />'. Chat.jsx and the Layout NavLink already exist. Add the import (import Chat from '@/pages/Chat') and register the route. Trivial one-line fix.",
+    "MINOR: Returns commitBill on type=return calls stockIn which adds ONLY to godownQty (not showroom). This is functionally acceptable (stock is back in inventory), but may surprise a user expecting returned tiles to reappear on showroom. Consider adding a note in the return flow.",
+    "MINOR (React hydration warning): NewBill.jsx line 161 <select> option renders trigger a devtool span injection warning ('<span> cannot be a child of <option>'). Not a functional bug but produces console warnings on every page render.",
+    "MINOR: Missing aria-describedby on DialogContent in Radix Dialog usages (sqft-dialog, payment-dialog) generates a11y warnings. Add DialogDescription for a11y compliance."
+  ],
+  "test_report_links": [],
+  "action_items": [
+    "CRITICAL: Add missing /chat route in /app/frontend/src/App.js (import Chat from './pages/Chat' and register <Route path='/chat' element={<Chat/>} />) — without this the chatbot feature (streamed local answers, suggestion chips) is entirely unreachable from the UI."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (no backend, demo mode)", "frontend": "91.7% (11/12 features PASS; 1 CRITICAL routing bug)"},
+  "test_credentials": "Demo login = click data-testid=demo-login-btn. No user/pass. LocalStorage key = dukansaathi_demo-shop containing {products, customers, invoices, expenses, stockLedger, returns, meta}.",
+  "seed_data_creation": "Created 1 Walk-in sale (~₹1,062 GST/2026/0006), 1 partial payment on Ashok Kumar's GST/2026/0001 (₹1,155), and 1 return invoice against GST/2026/0001 (refund ₹450 adjusted to udhari). Reset by localStorage.clear() + reload.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "After main agent adds the /chat route, retest ONLY the Chatbot flow: navigate to /chat, verify chat-page renders, click a chat-suggestion (fills chat-input), click chat-send, wait ~3s, and verify at least one chat-msg-assistant element with non-empty content (local answer engine streams word-by-word ~28ms/word). All other 11 features are confirmed working with concrete data-level evidence."
+}

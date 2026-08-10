@@ -50,8 +50,8 @@ export default function BillHistory() {
         {list.map((i) => (
           <button key={i.id} data-testid={`history-row-${i.id}`} onClick={() => openPdf(i)} className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors active:bg-slate-50">
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-slate-900">{i.invoiceNo}</p>
-              <p className="truncate text-xs text-slate-400">{i.customerName} · {fmtDate(i.date)}</p>
+              <p className="truncate font-semibold text-slate-900">{i.customerName || "Walk-in"}</p>
+              <p className="truncate text-xs text-slate-400">{i.invoiceNo} · {fmtDate(i.date)}</p>
             </div>
             <div className="shrink-0 text-right">
               <p className="font-bold tabular-nums text-slate-900">{money(i.grandTotal)}</p>
