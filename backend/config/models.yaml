@@ -1,0 +1,18 @@
+primary:
+  provider: "google"
+  model: "gemini-3.5-flash"
+  temperature: 0.0
+  max_retries: 2
+  timeout_seconds: 30
+
+fallback:
+  provider: "google"
+  model: "gemini-3.6-flash"
+  temperature: 0.0
+  max_retries: 1
+  timeout_seconds: 60
+
+retry_policy:
+  wait_exponential_multiplier: 1
+  wait_exponential_max: 10
+  stop_after_attempt: 3

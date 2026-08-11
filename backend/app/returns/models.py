@@ -1,0 +1,23 @@
+"""Pydantic models for Return endpoints."""
+
+from pydantic import BaseModel, Field
+
+
+class ReturnItemInput(BaseModel):
+    productId: str = Field(..., min_length=1)
+    name: str = ""
+    qty: float = Field(default=0, ge=0)
+    pieces: float = Field(default=0, ge=0)
+    unit: str = "box"
+    rate: float = Field(default=0, ge=0)
+    piecesPerBox: int = Field(default=1, ge=1)
+
+
+class CreateReturnRequest(BaseModel):
+    """Request body for creating a return invoice."""
+    originalInvoiceNo: str = Field(..., min_length=1)
+    items: list[ReturnItemInput] = Field(..., min_length=1)
+    refundTotal: float = Field(..., ge=0)
+    settlement: str = Field(..., pattern="^(cash|adjust_udhari|store_credit)$")
+    customerId: str | None = None
+    customerName: str = ""

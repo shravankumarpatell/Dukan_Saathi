@@ -17,6 +17,6 @@ self.addEventListener("fetch", (e) => {
         caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
         return res;
       })
-      .catch(() => caches.match(e.request))
-  );
+      .catch(() => caches.match(e.request).then((res) => res || Response.error()))
+    );
 });

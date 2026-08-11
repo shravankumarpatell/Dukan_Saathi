@@ -1,28 +1,27 @@
-import cfg from "@/config.json";
+/**
+ * Application configuration.
+ *
+ * Firebase config comes from config.json or environment variables.
+ * Gemini API key is NO LONGER needed on the frontend — it's proxied through the backend.
+ */
 
-const env = process.env;
+import raw from "@/config.json";
 
-function pick(envVal, jsonVal) {
-  if (envVal && envVal.trim() && !envVal.startsWith("YOUR_")) return envVal.trim();
-  if (jsonVal && !String(jsonVal).startsWith("YOUR_")) return jsonVal;
-  return "";
-}
-
+// Firebase config from config.json or env vars
 export const firebaseConfig = {
-  apiKey: pick(env.REACT_APP_FIREBASE_API_KEY, cfg.firebase.apiKey),
-  authDomain: pick(env.REACT_APP_FIREBASE_AUTH_DOMAIN, cfg.firebase.authDomain),
-  projectId: pick(env.REACT_APP_FIREBASE_PROJECT_ID, cfg.firebase.projectId),
-  storageBucket: pick(env.REACT_APP_FIREBASE_STORAGE_BUCKET, cfg.firebase.storageBucket),
-  messagingSenderId: pick(env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID, cfg.firebase.messagingSenderId),
-  appId: pick(env.REACT_APP_FIREBASE_APP_ID, cfg.firebase.appId),
+  apiKey: process.env.REACT_APP_FB_API_KEY || raw.firebase?.apiKey || "",
+  authDomain: process.env.REACT_APP_FB_AUTH_DOMAIN || raw.firebase?.authDomain || "",
+  projectId: process.env.REACT_APP_FB_PROJECT_ID || raw.firebase?.projectId || "",
+  storageBucket: process.env.REACT_APP_FB_STORAGE_BUCKET || raw.firebase?.storageBucket || "",
+  messagingSenderId: process.env.REACT_APP_FB_SENDER_ID || raw.firebase?.messagingSenderId || "",
+  appId: process.env.REACT_APP_FB_APP_ID || raw.firebase?.appId || "",
 };
 
-export const geminiConfig = {
-  apiKey: pick(env.REACT_APP_GEMINI_API_KEY, cfg.gemini.apiKey),
-  model: pick(env.REACT_APP_GEMINI_MODEL, cfg.gemini.model) || "gemini-flash-latest",
-};
+// Firebase is always required
+export const FIREBASE_READY = !!(firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_"));
 
-export const FIREBASE_READY = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
-export const GEMINI_READY = Boolean(geminiConfig.apiKey);
-// The whole app falls back to DEMO mode (local storage + local NLU) until Firebase is configured.
-export const IS_DEMO = !FIREBASE_READY;
+// Gemini is always available via backend proxy
+export const GEMINI_READY = true;
+
+// Demo mode removed
+export const IS_DEMO = false;

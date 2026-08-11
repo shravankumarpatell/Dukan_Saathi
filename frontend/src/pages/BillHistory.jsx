@@ -34,33 +34,33 @@ export default function BillHistory() {
   return (
     <div className="space-y-3 ds-fade" data-testid="history-page">
       <div>
-        <h2 className="font-display text-2xl font-bold text-slate-900">Bill History</h2>
-        <p className="text-sm text-slate-500">{date ? "Showing selected date · tap ✕ on date for all bills" : "Showing all bills"}</p>
+        <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-[#F5F5F7]">Bill History</h2>
+        <p className="text-sm text-slate-500 dark:text-[#A1A1A6]">{date ? "Showing selected date · tap ✕ on date for all bills" : "Showing all bills"}</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2"><Search className="h-4 w-4 shrink-0 text-slate-400" /><input data-testid="history-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Invoice no / customer…" className="w-full bg-transparent outline-none" /></div>
-        <input data-testid="history-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2" />
-        {date && <button data-testid="history-date-clear" onClick={() => setDate("")} className="flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-600"><X className="h-4 w-4" /></button>}
-        <select data-testid="history-filter" value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2"><option value="all">All</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="pending">Pending</option></select>
+        <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-[#2C2C2E] dark:bg-[#1C1C1E]"><Search className="h-4 w-4 shrink-0 text-slate-400 dark:text-[#6E6E73]" /><input data-testid="history-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Invoice no / customer…" className="w-full bg-transparent outline-none dark:text-[#A1A1A6] dark:placeholder-[#6E6E73]" /></div>
+        <input data-testid="history-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-[#2C2C2E] dark:bg-[#1C1C1E] dark:text-[#A1A1A6] dark:[color-scheme:dark]" />
+        {date && <button data-testid="history-date-clear" onClick={() => setDate("")} className="flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-600 dark:border-[#2C2C2E] dark:bg-[#1C1C1E] dark:text-[#A1A1A6]"><X className="h-4 w-4" /></button>}
+        <select data-testid="history-filter" value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-[#2C2C2E] dark:bg-[#1C1C1E] dark:text-[#A1A1A6]"><option value="all">All</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="pending">Pending</option></select>
       </div>
 
-      {/* Flat, full-page list — no bordered box, no horizontal scroll */}
-      <div className="divide-y divide-slate-100" data-testid="history-list">
+      {/* Flat, full-page list */}
+      <div className="divide-y divide-slate-100 dark:divide-[#2C2C2E]" data-testid="history-list">
         {list.map((i) => (
-          <button key={i.id} data-testid={`history-row-${i.id}`} onClick={() => openPdf(i)} className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors active:bg-slate-50">
+          <button key={i.id} data-testid={`history-row-${i.id}`} onClick={() => openPdf(i)} className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors active:bg-slate-50 dark:active:bg-[#2C2C2E]">
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-slate-900">{i.customerName || "Walk-in"}</p>
-              <p className="truncate text-xs text-slate-400">{i.invoiceNo} · {fmtDate(i.date)}</p>
+              <p className="truncate font-semibold text-slate-900 dark:text-[#F5F5F7]">{i.customerName || "Walk-in"}</p>
+              <p className="truncate text-xs text-slate-400 dark:text-[#6E6E73]">{i.invoiceNo} · {fmtDate(i.date)}</p>
             </div>
             <div className="shrink-0 text-right">
-              <p className="font-bold tabular-nums text-slate-900">{money(i.grandTotal)}</p>
-              <span className={`text-[11px] font-bold ${i.paymentStatus === "paid" ? "text-emerald-600" : i.paymentStatus === "partial" ? "text-amber-600" : "text-rose-600"}`}>{i.paymentStatus}</span>
+              <p className="font-bold tabular-nums text-slate-900 dark:text-[#F5F5F7]">{money(i.grandTotal)}</p>
+              <span className={`text-[11px] font-bold ${i.paymentStatus === "paid" ? "text-emerald-600 dark:text-[#34D399]" : i.paymentStatus === "partial" ? "text-amber-600 dark:text-[#FBBF24]" : "text-rose-600 dark:text-[#FB7185]"}`}>{i.paymentStatus}</span>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-[#6E6E73]" />
           </button>
         ))}
-        {list.length === 0 && <p className="py-8 text-center text-sm text-slate-400">Koi bill nahi mila.</p>}
+        {list.length === 0 && <p className="py-8 text-center text-sm text-slate-400 dark:text-[#6E6E73]">Koi bill nahi mila.</p>}
       </div>
 
       <Dialog open={!!view} onOpenChange={(o) => !o && setView(null)}>

@@ -1,0 +1,5 @@
+chunk_size: 1000
+chunk_overlap: 100
+embedding_model: "gemini-embedding-001"
+top_k: 5
+similarity_threshold: 0.7

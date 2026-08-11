@@ -8,10 +8,10 @@ import { toast } from "sonner";
 import { AlertTriangle, IndianRupee, Wallet, ReceiptText, Printer, Plus, BarChart3, ChevronRight, Calculator } from "lucide-react";
 
 const Stat = ({ icon: Icon, label, value, tone = "indigo", testid, onClick }) => (
-  <button data-testid={testid} onClick={onClick} className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md">
-    <div className={`mb-2 inline-flex rounded-lg p-2 bg-${tone}-100 text-${tone}-700`}><Icon className="h-4 w-4" /></div>
-    <p className="text-xs uppercase tracking-widest text-slate-400">{label}</p>
-    <p className="font-display text-2xl font-bold text-slate-900">{value}</p>
+  <button data-testid={testid} onClick={onClick} className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md dark:border-[#2C2C2E] dark:bg-[#1C1C1E] dark:hover:border-[#818CF8]/40">
+    <div className={`mb-2 inline-flex rounded-lg p-2 bg-${tone}-100 text-${tone}-700 dark:bg-${tone}-900/40 dark:text-${tone}-400`}><Icon className="h-4 w-4" /></div>
+    <p className="text-xs uppercase tracking-widest text-slate-400 dark:text-[#6E6E73]">{label}</p>
+    <p className="font-display text-2xl font-bold text-slate-900 dark:text-[#F5F5F7]">{value}</p>
   </button>
 );
 
@@ -25,7 +25,7 @@ export default function Dashboard() {
     const todaySales = invoices.filter((i) => i.type === "sale" && new Date(i.date).toDateString() === today);
     const revenue = todaySales.reduce((s, i) => s + (i.grandTotal || 0), 0);
     const totalUdhari = customers.reduce((s, c) => s + (c.totalPending || 0), 0);
-    const lowStock = products.filter((p) => (p.showroomQty || 0) + (p.godownQty || 0) <= (p.lowStockThreshold || 0));
+    const lowStock = products.filter((p) => ((p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0)) <= (p.lowStockThreshold || 0));
     return { revenue, totalUdhari, lowStock, todayCount: todaySales.length };
   }, [products, invoices, customers]);
 
@@ -51,8 +51,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 ds-fade" data-testid="dashboard-page">
       <div>
-        <h2 className="font-display text-2xl font-bold text-slate-900">Namaste 🙏</h2>
-        <p className="text-sm text-slate-500">Aaj ka hisaab ek nazar me.</p>
+        <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-[#F5F5F7]">Namaste 🙏</h2>
+        <p className="text-sm text-slate-500 dark:text-[#A1A1A6]">Aaj ka hisaab ek nazar me.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -64,35 +64,35 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Add expense */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="mb-3 flex items-center gap-2"><IndianRupee className="h-4 w-4 text-orange-600" /><h3 className="font-display font-bold text-slate-900">Add Expense</h3></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2C2C2E] dark:bg-[#1C1C1E]">
+          <div className="mb-3 flex items-center gap-2"><IndianRupee className="h-4 w-4 text-orange-600 dark:text-[#FB923C]" /><h3 className="font-display font-bold text-slate-900 dark:text-[#F5F5F7]">Add Expense</h3></div>
           <div className="grid grid-cols-2 gap-2">
-            <input data-testid="dash-exp-amount" type="number" value={exp.amount} onChange={(e) => setExp({ ...exp, amount: e.target.value })} placeholder="Amount ₹" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-            <input data-testid="dash-exp-note" value={exp.note} onChange={(e) => setExp({ ...exp, note: e.target.value })} placeholder="Note" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <input data-testid="dash-exp-amount" type="number" value={exp.amount} onChange={(e) => setExp({ ...exp, amount: e.target.value })} placeholder="Amount ₹" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-[#2C2C2E] dark:bg-[#2C2C2E] dark:text-[#A1A1A6] dark:placeholder-[#6E6E73]" />
+            <input data-testid="dash-exp-note" value={exp.note} onChange={(e) => setExp({ ...exp, note: e.target.value })} placeholder="Note" className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-[#2C2C2E] dark:bg-[#2C2C2E] dark:text-[#A1A1A6] dark:placeholder-[#6E6E73]" />
           </div>
           <div className="mt-2 flex gap-2">
-            {["cash", "online"].map((m) => <button key={m} data-testid={`dash-exp-mode-${m}`} onClick={() => setExp({ ...exp, mode: m })} className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold capitalize ${exp.mode === m ? "border-indigo-900 bg-indigo-900 text-white" : "border-slate-300"}`}>{m}</button>)}
-            <button data-testid="dash-add-expense-btn" onClick={addExpense} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white active:scale-95"><Plus className="h-4 w-4" /> Add</button>
+            {["cash", "online"].map((m) => <button key={m} data-testid={`dash-exp-mode-${m}`} onClick={() => setExp({ ...exp, mode: m })} className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold capitalize ${exp.mode === m ? "border-indigo-900 bg-indigo-900 text-white dark:border-[#818CF8]/40 dark:bg-[#818CF8] dark:text-[#F5F5F7] hover:dark:bg-[#6366F1]" : "border-slate-300 dark:border-[#2C2C2E] dark:text-[#A1A1A6]"}`}>{m}</button>)}
+            <button data-testid="dash-add-expense-btn" onClick={addExpense} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white active:scale-95 dark:bg-[#FB923C]"><Plus className="h-4 w-4" /> Add</button>
           </div>
         </div>
 
         {/* Daily summary */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="mb-2 flex items-center gap-2"><Printer className="h-4 w-4 text-indigo-700" /><h3 className="font-display font-bold text-slate-900">Daily Summary</h3></div>
-          <p className="text-sm text-slate-500">Aaj ki sale, cash/online, udhari aur expenses ka day-book.</p>
-          <button data-testid="dash-print-summary-btn" onClick={printSummary} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-semibold text-white active:scale-95"><Printer className="h-4 w-4" /> Print Daily Summary (PDF)</button>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2C2C2E] dark:bg-[#1C1C1E]">
+          <div className="mb-2 flex items-center gap-2"><Printer className="h-4 w-4 text-indigo-700 dark:text-[#F5F5F7]" /><h3 className="font-display font-bold text-slate-900 dark:text-[#F5F5F7]">Daily Summary</h3></div>
+          <p className="text-sm text-slate-500 dark:text-[#A1A1A6]">Aaj ki sale, cash/online, udhari aur expenses ka day-book.</p>
+          <button data-testid="dash-print-summary-btn" onClick={printSummary} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-semibold text-white active:scale-95 dark:bg-[#818CF8] dark:text-[#F5F5F7] hover:dark:bg-[#6366F1]"><Printer className="h-4 w-4" /> Print Daily Summary (PDF)</button>
         </div>
       </div>
 
       <SqftCard />
 
       {/* Reports & Analytics — at the very bottom */}
-      <button data-testid="dash-reports-btn" onClick={() => navigate("/analytics")} className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md">
+      <button data-testid="dash-reports-btn" onClick={() => navigate("/analytics")} className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition-transform active:scale-95 hover:border-indigo-300 hover:shadow-md dark:border-[#2C2C2E] dark:bg-[#1C1C1E] dark:hover:border-[#818CF8]/40">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700"><BarChart3 className="h-5 w-5" /></div>
-          <div><p className="font-display font-bold text-slate-900">Reports &amp; Analytics</p><p className="text-xs text-slate-500">Top sellers, revenue chart, slow movers, top customers</p></div>
+          <div className="rounded-lg bg-indigo-100 p-2 text-indigo-700 dark:bg-[#2C2C2E] dark:text-[#F5F5F7]"><BarChart3 className="h-5 w-5" /></div>
+          <div><p className="font-display font-bold text-slate-900 dark:text-[#F5F5F7]">Reports &amp; Analytics</p><p className="text-xs text-slate-500 dark:text-[#A1A1A6]">Top sellers, revenue chart, slow movers, top customers</p></div>
         </div>
-        <ChevronRight className="h-5 w-5 text-slate-400" />
+        <ChevronRight className="h-5 w-5 text-slate-400 dark:text-[#6E6E73]" />
       </button>
     </div>
   );
@@ -103,13 +103,13 @@ function SqftCard() {
   const [d, setD] = useState({ roomArea: 100, roomLengthFt: 10, roomWidthFt: 10, tileLenInch: 24, tileWidInch: 24, piecesPerBox: 4, wastagePct: 5 });
   const input = mode === "area" ? { roomArea: d.roomArea } : { roomLengthFt: d.roomLengthFt, roomWidthFt: d.roomWidthFt };
   const res = sqftCalc({ ...input, tileLenInch: d.tileLenInch, tileWidInch: d.tileWidInch, piecesPerBox: d.piecesPerBox, wastagePct: d.wastagePct, ratePerBox: 0 });
-  const F = (k, l) => <div key={k}><label className="text-xs font-semibold text-slate-600">{l}</label><NumberInput data-testid={`dash-sqft-${k}`} value={d[k]} onChange={(v) => setD({ ...d, [k]: v })} className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:ring-2 focus:ring-indigo-500" /></div>;
+  const F = (k, l) => <div key={k}><label className="text-xs font-semibold text-slate-600 dark:text-[#A1A1A6]">{l}</label><NumberInput data-testid={`dash-sqft-${k}`} value={d[k]} onChange={(v) => setD({ ...d, [k]: v })} className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:ring-2 focus:ring-indigo-500 dark:border-[#2C2C2E] dark:bg-[#2C2C2E] dark:text-[#A1A1A6]" /></div>;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4" data-testid="dash-sqft-card">
-      <div className="mb-3 flex items-center gap-2"><Calculator className="h-4 w-4 text-orange-600" /><h3 className="font-display font-bold text-slate-900">Quick Sq-ft Calculator</h3></div>
-      <div className="mb-3 flex rounded-xl border border-slate-300 bg-white p-1 text-sm">
-        <button data-testid="dash-sqft-mode-lw" onClick={() => setMode("lw")} className={`flex-1 rounded-lg px-3 py-1.5 font-semibold ${mode === "lw" ? "bg-indigo-900 text-white" : "text-slate-600"}`}>Length × Width</button>
-        <button data-testid="dash-sqft-mode-area" onClick={() => setMode("area")} className={`flex-1 rounded-lg px-3 py-1.5 font-semibold ${mode === "area" ? "bg-indigo-900 text-white" : "text-slate-600"}`}>Direct sq-ft</button>
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2C2C2E] dark:bg-[#1C1C1E]" data-testid="dash-sqft-card">
+      <div className="mb-3 flex items-center gap-2"><Calculator className="h-4 w-4 text-orange-600 dark:text-[#FB923C]" /><h3 className="font-display font-bold text-slate-900 dark:text-[#F5F5F7]">Quick Sq-ft Calculator</h3></div>
+      <div className="mb-3 flex rounded-xl border border-slate-300 bg-white p-1 text-sm dark:border-[#2C2C2E] dark:bg-[#2C2C2E]">
+        <button data-testid="dash-sqft-mode-lw" onClick={() => setMode("lw")} className={`flex-1 rounded-lg px-3 py-1.5 font-semibold ${mode === "lw" ? "bg-indigo-900 text-white dark:bg-[#818CF8] dark:text-[#F5F5F7] hover:dark:bg-[#6366F1]" : "text-slate-600 dark:text-[#A1A1A6]"}`}>Length × Width</button>
+        <button data-testid="dash-sqft-mode-area" onClick={() => setMode("area")} className={`flex-1 rounded-lg px-3 py-1.5 font-semibold ${mode === "area" ? "bg-indigo-900 text-white dark:bg-[#818CF8] dark:text-[#F5F5F7] hover:dark:bg-[#6366F1]" : "text-slate-600 dark:text-[#A1A1A6]"}`}>Direct sq-ft</button>
       </div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {mode === "area" ? F("roomArea", "Area (sq-ft)") : (<>{F("roomLengthFt", "Length (ft)")}{F("roomWidthFt", "Width (ft)")}</>)}
@@ -118,10 +118,10 @@ function SqftCard() {
         {F("piecesPerBox", "Pcs / box")}
         {F("wastagePct", "Wastage %")}
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-indigo-50 p-3 text-center text-sm">
-        <div><p className="text-xs text-slate-500">Area</p><b data-testid="dash-sqft-area">{res.roomArea}</b></div>
-        <div><p className="text-xs text-slate-500">Tiles</p><b data-testid="dash-sqft-tiles">{res.tilesNeeded}</b></div>
-        <div><p className="text-xs text-slate-500">Boxes + loose</p><b data-testid="dash-sqft-boxes">{res.boxesNeeded} + {res.loosePieces}</b></div>
+      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-indigo-50 p-3 text-center text-sm dark:bg-[#2C2C2E]">
+        <div><p className="text-xs text-slate-500 dark:text-[#A1A1A6]">Area</p><b data-testid="dash-sqft-area" className="dark:text-[#A1A1A6]">{res.roomArea}</b></div>
+        <div><p className="text-xs text-slate-500 dark:text-[#A1A1A6]">Tiles</p><b data-testid="dash-sqft-tiles" className="dark:text-[#A1A1A6]">{res.tilesNeeded}</b></div>
+        <div><p className="text-xs text-slate-500 dark:text-[#A1A1A6]">Boxes + loose</p><b data-testid="dash-sqft-boxes" className="dark:text-[#A1A1A6]">{res.boxesNeeded} + {res.loosePieces}</b></div>
       </div>
     </div>
   );

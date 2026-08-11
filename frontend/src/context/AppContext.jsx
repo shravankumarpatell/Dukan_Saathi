@@ -1,10 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import api from "@/services/data";
+import * as api from "@/services/api";
 import { onAuth, signOut as authSignOut } from "@/services/auth";
-import { computeBillTotals, genInvoiceNo, round2, todayISO } from "@/lib/calc";
-import { matchCustomer } from "@/lib/fuzzy";
 import { speak } from "@/hooks/useSpeech";
-import { IS_DEMO, GEMINI_READY } from "@/services/config";
 
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -19,7 +16,6 @@ export function AppProvider({ children }) {
   const [returns, setReturns] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [draft, setDraft] = useState(null);
-  const shopId = user?.uid || null;
 
   // Put caret at end (never select-all) when a text field is focused.
   useEffect(() => {
@@ -33,145 +29,179 @@ export function AppProvider({ children }) {
     return () => document.removeEventListener("focusin", h);
   }, []);
 
-  const loadAll = useCallback(async (sid) => {
-    if (!sid) return;
-    const [p, c, i, r, e] = await Promise.all([api.list(sid, "products"), api.list(sid, "customers"), api.list(sid, "invoices"), api.list(sid, "returns"), api.list(sid, "expenses")]);
-    setProducts(p); setCustomers(c); setInvoices(i.sort((a, b) => new Date(b.date) - new Date(a.date))); setReturns(r); setExpenses(e);
+  // ── Load all data from backend ──
+  const loadAll = useCallback(async () => {
+    try {
+      const [p, c, i, e] = await Promise.all([
+        api.listProducts(),
+        api.listCustomers(),
+        api.listInvoices(),
+        api.listExpenses(),
+      ]);
+      setProducts(p);
+      setCustomers(c);
+      setInvoices(i);
+      setExpenses(e);
+    } catch (err) {
+      console.error("Failed to load data:", err);
+    }
   }, []);
 
+  // ── Auth listener ──
   useEffect(() => {
     const unsub = onAuth(async (u) => {
-      setUser(u); setAuthLoading(false);
-      if (u) { const s = await api.ensureShop(u.uid, { name: u.shopName || u.name, ownerName: u.name }); setShop(s); await loadAll(u.uid); }
-      else { setShop(null); setProducts([]); setCustomers([]); setInvoices([]); setReturns([]); setExpenses([]); }
+      setUser(u);
+      setAuthLoading(false);
+      if (u) {
+        try {
+          const s = await api.getShop();
+          setShop(s);
+          await loadAll();
+        } catch (err) {
+          console.error("Failed to initialize shop:", err);
+        }
+      } else {
+        setShop(null);
+        setProducts([]);
+        setCustomers([]);
+        setInvoices([]);
+        setReturns([]);
+        setExpenses([]);
+      }
     });
     return unsub;
   }, [loadAll]);
 
-  const refresh = useCallback(() => loadAll(shopId), [loadAll, shopId]);
-  const saveShop = useCallback(async (patch) => { const s = await api.saveShop(shopId, patch); setShop(s); return s; }, [shopId]);
-  const logout = useCallback(async () => { await authSignOut(); }, []);
+  const refresh = useCallback(() => loadAll(), [loadAll]);
 
-  const resolveCustomer = useCallback(async (d) => {
-    if (!d) return null;
-    if (d.customerId) return customers.find((c) => c.id === d.customerId) || null;
-    const name = (d.customerName || "").trim();
-    if (!name) return null;
-    if (!d.forceNew) { const m = matchCustomer(customers, name, d.customerPhone); if (m.best) return m.best; }
-    return api.add(shopId, "customers", { name, phone: d.customerPhone || "", isContractor: !!d.isContractor, siteNote: d.siteNote || "", totalPending: 0, storeCredit: 0 });
-  }, [customers, shopId]);
+  const saveShop = useCallback(async (patch) => {
+    const s = await api.updateShop(patch);
+    setShop(s);
+    return s;
+  }, []);
 
-  const stockOut = async (it) => {
-    const p = products.find((x) => x.id === it.productId); if (!p) return;
-    const ppb = Number(p.piecesPerBox) || 1;
-    const soldPieces = (Number(it.qty) || 0) * ppb + (Number(it.pieces) || 0);
-    // Sell from GODOWN first; only when godown is empty, sell from showroom.
-    const godPieces = Math.round((p.godownQty || 0) * ppb);
-    const fromGod = Math.min(godPieces, soldPieces);
-    const remGod = godPieces - fromGod;
-    const remShow = Math.max(0, Math.round((p.showroomQty || 0) * ppb) - (soldPieces - fromGod));
-    await api.update(shopId, "products", p.id, { godownQty: round2(remGod / ppb), showroomQty: round2(remShow / ppb) });
-    await api.add(shopId, "stockLedger", { productId: p.id, change: -soldPieces, reason: "sale", timestamp: todayISO() });
-  };
-  const stockIn = async (it, reason = "purchase") => {
-    const p = products.find((x) => x.id === it.productId); if (!p) return;
-    const ppb = Number(p.piecesPerBox) || 1;
-    const addPieces = (Number(it.qty) || 0) * ppb + (Number(it.pieces) || 0);
-    const godPieces = Math.round((p.godownQty || 0) * ppb) + addPieces;
-    await api.update(shopId, "products", p.id, { godownQty: round2(godPieces / ppb) });
-    await api.add(shopId, "stockLedger", { productId: p.id, change: addPieces, reason, timestamp: todayISO() });
-  };
+  const logout = useCallback(async () => {
+    await authSignOut();
+  }, []);
 
-  // Commit a sale / purchase / return invoice (the write path for bills). Returns saved invoice.
+  // ── Create a sale or purchase invoice — all logic is now SERVER-SIDE ──
   const commitBill = useCallback(async (d) => {
-    const customer = await resolveCustomer(d);
-    const isReturn = d.type === "return";
-    const seq = await api.nextInvoiceSeq(shopId);
-    const invoiceNo = genInvoiceNo(seq, d.gstEnabled, isReturn ? "RET" : (d.type === "purchase" ? "PUR" : undefined));
-    const totals = computeBillTotals(d);
-    const inv = {
-      invoiceNo, date: d.date || todayISO(), type: d.type,
-      customerId: customer?.id || null, customerName: customer?.name || d.customerName || "Walk-in",
-      items: d.items, discount: d.discount || null, gstEnabled: !!d.gstEnabled, gstRate: totals.gstRate,
-      subtotal: totals.subtotal, discountOff: totals.discountOff, gstAmount: totals.gstAmount,
-      grandTotal: isReturn ? round2(d.refundTotal || totals.subtotal) : totals.grandTotal,
-      payments: d.payments || [], amountPaid: isReturn ? 0 : totals.amountPaid,
-      amountPending: isReturn ? 0 : totals.amountPending, paymentStatus: isReturn ? "return" : totals.paymentStatus,
+    if (d.type === "return") {
+      // Returns go through the dedicated returns endpoint
+      const inv = await api.createReturn({
+        originalInvoiceNo: d.originalInvoiceNo,
+        items: d.items,
+        refundTotal: d.refundTotal || 0,
+        settlement: d.settlement || "cash",
+        customerId: d.customerId || null,
+        customerName: d.customerName || "Walk-in",
+      });
+      await refresh();
+      speak("Return ho gaya.");
+      return { invoice: inv, customer: null };
+    }
+
+    // Sale or purchase — server computes totals, validates stock, manages everything
+    const inv = await api.createBill({
+      type: d.type,
+      items: (d.items || []).map((it) => ({
+        productId: it.productId,
+        name: it.name || "",
+        qty: Number(it.qty) || 0,
+        pieces: Number(it.pieces) || 0,
+        unit: it.unit || "box",
+        rate: Number(it.rate) || 0,
+        piecesPerBox: Number(it.piecesPerBox) || 1,
+        size: it.size || "",
+      })),
+      gstEnabled: !!d.gstEnabled,
+      gstRate: Number(d.gstRate) || 18,
+      discount: d.discount || null,
+      payments: d.payments || [],
+      customerId: d.customerId || null,
+      customerName: d.customerName || "",
+      customerPhone: d.customerPhone || "",
+      isContractor: !!d.isContractor,
+      siteNote: d.siteNote || "",
       createdVia: d.createdVia || "manual",
-      settlement: d.settlement || null, originalInvoiceNo: d.originalInvoiceNo || null, refundTotal: isReturn ? round2(d.refundTotal || totals.subtotal) : undefined,
-    };
-    const saved = await api.add(shopId, "invoices", inv);
-    for (const it of d.items) { if (d.type === "sale") await stockOut(it); else await stockIn(it, isReturn ? "return" : "purchase"); }
-    if (customer) {
-      if (d.type === "sale" && totals.amountPending > 0) await api.update(shopId, "customers", customer.id, { totalPending: round2((customer.totalPending || 0) + totals.amountPending) });
-      const creditUsed = (d.payments || []).filter((p) => p.mode === "credit").reduce((s, p) => s + (Number(p.amount) || 0), 0);
-      if (d.type === "sale" && creditUsed > 0) await api.update(shopId, "customers", customer.id, { storeCredit: Math.max(0, round2((customer.storeCredit || 0) - creditUsed)) });
-      if (isReturn) {
-        const r = Number(d.refundTotal || totals.subtotal) || 0;
-        if (d.settlement === "adjust_udhari") await api.update(shopId, "customers", customer.id, { totalPending: round2((customer.totalPending || 0) - r) });
-        else if (d.settlement === "store_credit") await api.update(shopId, "customers", customer.id, { storeCredit: round2((customer.storeCredit || 0) + r) });
-      }
-    }
-    if (isReturn) await api.add(shopId, "returns", { invoiceNo, originalInvoiceNo: d.originalInvoiceNo || null, customerId: customer?.id || null, customerName: customer?.name || d.customerName, items: d.items, refundTotal: inv.refundTotal, settlement: d.settlement, date: todayISO() });
-    await refresh();
-    speak(d.type === "sale" ? "Bill ban gaya." : isReturn ? "Return ho gaya." : "Purchase save ho gayi.");
-    return { invoice: saved, customer };
-  }, [resolveCustomer, shopId, products, refresh]);
+      language: d.language || "hi",
+    });
 
-  // Record a payment allocated across specific pending bills (udhari settlement).
+    await refresh();
+    speak(d.type === "sale" ? "Bill ban gaya." : "Purchase save ho gayi.");
+    return { invoice: inv, customer: null };
+  }, [refresh]);
+
+  // ── Record payment allocated across specific pending bills ──
   const allocatePayment = useCallback(async (customerId, allocations, mode) => {
-    const customer = customers.find((c) => c.id === customerId);
-    let total = 0;
-    for (const a of allocations) {
-      const amt = Number(a.amount) || 0; if (amt <= 0) continue; total += amt;
-      const inv = invoices.find((i) => i.id === a.invoiceId); if (!inv) continue;
-      const paid = round2((inv.amountPaid || 0) + amt);
-      const pending = round2((inv.grandTotal || 0) - paid);
-      const status = pending <= 0.5 ? "paid" : (paid > 0.5 ? "partial" : "pending");
-      await api.update(shopId, "invoices", inv.id, { amountPaid: paid, amountPending: Math.max(0, pending), paymentStatus: status, payments: [...(inv.payments || []), { mode: mode || "cash", amount: amt }] });
-    }
-    if (customer && total > 0) await api.update(shopId, "customers", customer.id, { totalPending: Math.max(0, round2((customer.totalPending || 0) - total)) });
+    const result = await api.allocatePayment(customerId, allocations, mode || "cash");
     await refresh();
-    return total;
-  }, [customers, invoices, shopId, refresh]);
+    return result.totalPaid;
+  }, [refresh]);
 
-  // Generic draft commit for expense / stock transfer / bulk (confirmation cards).
+  // ── Generic draft commit for expense / stock transfer / bulk ──
   const commitDraft = useCallback(async () => {
     if (!draft) return;
-    if (draft.kind === "stock_transfer") {
-      const p = products.find((x) => x.id === draft.productId);
-      if (p) { const qty = Number(draft.qty) || 0; await api.update(shopId, "products", p.id, { godownQty: Math.max(0, (p.godownQty || 0) - qty), showroomQty: (p.showroomQty || 0) + qty }); }
-    } else if (draft.kind === "expense") {
-      await api.add(shopId, "expenses", { date: draft.date || todayISO(), amount: Number(draft.amount) || 0, note: draft.note || "", mode: draft.mode || "cash" });
-    } else if (draft.kind === "bulk_stock") {
-      for (const row of draft.rows) {
-        const ex = products.find((p) => (p.code && row.code && p.code.toLowerCase() === row.code.toLowerCase()) || p.name.toLowerCase() === (row.name || "").toLowerCase());
-        if (ex) await api.update(shopId, "products", ex.id, { godownQty: (ex.godownQty || 0) + (Number(row.qty) || 0), costPrice: Number(row.price) || ex.costPrice });
-        else await api.add(shopId, "products", { name: row.name, code: row.code || "", company: row.company || "", size: row.size || "", unit: "box", piecesPerBox: 1, costPrice: Number(row.price) || 0, sellPrice: round2((Number(row.price) || 0) * 1.4), showroomQty: 0, godownQty: Number(row.qty) || 0, lowStockThreshold: 10 });
-      }
-    }
-    setDraft(null); await refresh();
-    return { ok: true };
-  }, [draft, shopId, products, refresh]);
 
-  // Add a customer; names are UNIQUE — if the name already exists, return that customer.
+    if (draft.kind === "stock_transfer") {
+      await api.transferStock(draft.productId, Number(draft.qty) || 0);
+    } else if (draft.kind === "expense") {
+      await api.createExpense({
+        amount: Number(draft.amount) || 0,
+        note: draft.note || "",
+        mode: draft.mode || "cash",
+      });
+    } else if (draft.kind === "bulk_stock") {
+      await api.bulkImportProducts(
+        draft.rows.map((r) => ({
+          name: r.name || "",
+          code: r.code || "",
+          company: r.company || "",
+          size: r.size || "",
+          qty: Number(r.qty) || 0,
+          price: Number(r.price) || 0,
+        }))
+      );
+    }
+
+    setDraft(null);
+    await refresh();
+    return { ok: true };
+  }, [draft, refresh]);
+
+  // ── Add customer ──
   const addCustomer = useCallback(async (c) => {
-    const name = (c.name || "").trim();
-    if (name) { const existing = customers.find((x) => (x.name || "").trim().toLowerCase() === name.toLowerCase()); if (existing) return existing; }
-    const saved = await api.add(shopId, "customers", { totalPending: 0, storeCredit: 0, ...c, name });
+    const saved = await api.createCustomer({
+      name: (c.name || "").trim(),
+      phone: c.phone || "",
+      isContractor: !!c.isContractor,
+      siteNote: c.siteNote || "",
+    });
     await refresh();
     return saved;
-  }, [customers, shopId, refresh]);
+  }, [refresh]);
+
+  // ── Product CRUD ──
+  const addProduct = useCallback(async (p) => {
+    await api.createProduct(p);
+    await refresh();
+  }, [refresh]);
+
+  const updateProduct = useCallback(async (id, p) => {
+    await api.updateProduct(id, p);
+    await refresh();
+  }, [refresh]);
+
+  // ── Gemini readiness (always true now since it's proxied through backend) ──
+  const geminiReady = true;
 
   const value = {
-    user, authLoading, shop, shopId, saveShop, logout,
+    user, authLoading, shop, saveShop, logout,
     products, customers, invoices, returns, expenses, refresh,
     draft, setDraft, commitDraft, cancelDraft: () => setDraft(null), commitBill, allocatePayment,
-    isDemo: IS_DEMO, geminiReady: GEMINI_READY,
-    addProduct: (p) => api.add(shopId, "products", p).then(refresh),
-    updateProduct: (id, p) => api.update(shopId, "products", id, p).then(refresh),
-    addCustomer,
-    speak,
+    isDemo: false, geminiReady,
+    addProduct, updateProduct, addCustomer, speak,
   };
+
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

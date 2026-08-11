@@ -4,7 +4,7 @@ import { geminiConfig, GEMINI_READY } from "@/services/config";
 import { money } from "@/lib/calc";
 
 export function buildShopContext({ shop, products, customers, invoices, expenses }) {
-  const prod = (products || []).map((p) => `- ${p.name}${p.code ? ` (${p.code})` : ""} — ${[p.company, p.size].filter(Boolean).join(" ")} | stock: godown ${p.godownQty} + showroom ${p.showroomQty} ${p.unit}${(p.piecesPerBox || 1) > 1 ? ` @ ${p.piecesPerBox} pcs/box` : ""} | cost ₹${p.costPrice} sell ₹${p.sellPrice}`).join("\n");
+  const prod = (products || []).map((p) => `- ${p.name}${p.code ? ` (${p.code})` : ""} — ${[p.company, p.size].filter(Boolean).join(" ")} | stock: ${p.stockQty || ((p.showroomQty || 0) + (p.godownQty || 0))} ${p.unit}${(p.piecesPerBox || 1) > 1 ? ` @ ${p.piecesPerBox} pcs/box` : ""} | cost ₹${p.costPrice} sell ₹${p.sellPrice}`).join("\n");
   const custs = (customers || []).map((c) => `- ${c.name || "Walk-in"}${c.phone ? ` (${c.phone})` : ""}${c.isContractor ? " [contractor]" : ""} — udhari ₹${c.totalPending || 0}, store-credit ₹${c.storeCredit || 0}${c.siteNote ? `, site: ${c.siteNote}` : ""}`).join("\n");
   const recent = (invoices || []).slice(0, 30).map((i) => `- ${i.invoiceNo} | ${new Date(i.date).toLocaleDateString("en-IN")} | ${i.type} | ${i.customerName || "Walk-in"} | total ₹${i.grandTotal} | paid ₹${i.amountPaid || 0} | pending ₹${i.amountPending || 0} (${i.paymentStatus})`).join("\n");
   const today = new Date().toDateString();
@@ -56,8 +56,8 @@ export function localAnswer(text, { products, customers, invoices }) {
   const findP = () => products.find((p) => q.includes((p.code || "").toLowerCase()) || (p.name && q.includes(p.name.toLowerCase().split(" ")[0])));
   if (/(stock|kitna|bacha|maal)/.test(q)) {
     const p = findP();
-    if (p) return `${p.name}: ${(p.showroomQty || 0) + (p.godownQty || 0)} ${p.unit} total (showroom ${p.showroomQty}, godown ${p.godownQty}). Price ${money(p.sellPrice)}.`;
-    const low = products.filter((p) => (p.showroomQty || 0) + (p.godownQty || 0) <= (p.lowStockThreshold || 0));
+    if (p) return `${p.name}: ${(p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0)} ${p.unit} total stock. Price ${money(p.sellPrice)}.`;
+    const low = products.filter((p) => ((p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0)) <= (p.lowStockThreshold || 0));
     return low.length ? `Low stock: ${low.map((p) => p.name).join(", ")}.` : "Stock theek hai.";
   }
   if (/(udhari|udhar|pending|baaki|due|balance)/.test(q)) {

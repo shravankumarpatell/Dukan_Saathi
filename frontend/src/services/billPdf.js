@@ -58,7 +58,7 @@ export function generateBillPDF({ shop, invoice, customer }, output = "bloburl")
   const body = (draft.items || []).map((it, i) => [i + 1, it.name, qtyLabel(it), num(it.rate), num(itemAmount(it))]);
   autoTable(doc, {
     startY: y + 6,
-    head: [["#", "Item", "Qty", "Rate", "Amount"]],
+    head: [["#", "Item", { content: "Qty", styles: { halign: "center" } }, { content: "Rate", styles: { halign: "right" } }, { content: "Amount", styles: { halign: "right" } }]],
     body, theme: "grid",
     headStyles: { fillColor: INDIGO, textColor: 255, fontSize: 9 },
     bodyStyles: { fontSize: 9, textColor: 40 },
@@ -107,17 +107,17 @@ export function generateDailySummaryPDF({ shop, dateISO, stats, sales, expenses 
   doc.setFontSize(13); doc.setTextColor(30); doc.text("Daily Day-book", M, 72);
   doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(90); doc.text(fmtDate(dateISO), W - M, 72, { align: "right" });
   autoTable(doc, {
-    startY: 96, theme: "grid", head: [["Summary", "Amount"]],
+    startY: 96, theme: "grid", head: [["Summary", { content: "Amount", styles: { halign: "right" } }]],
     headStyles: { fillColor: INDIGO, textColor: 255 }, bodyStyles: { fontSize: 10 }, columnStyles: { 1: { halign: "right", cellWidth: 180 } },
     body: [["Sales Revenue", num(stats.salesRevenue)], ["Cash Collected", num(stats.cashCollected)], ["Online Collected", num(stats.onlineCollected)], ["Udhari Added Today", num(stats.udhariAdded)], ["Udhari Collected Today", num(stats.udhariCollected)], ["Expenses", num(stats.expensesTotal)], ["Net Cash Position", num(stats.netCash)]],
     margin: { left: M, right: M },
   });
   let y = doc.lastAutoTable.finalY + 20;
   doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(30); doc.text("Sales / Income Detail", M, y);
-  autoTable(doc, { startY: y + 8, theme: "striped", head: [["Invoice", "Customer", "Amount"]], headStyles: { fillColor: [5, 150, 105], textColor: 255 }, body: (sales && sales.length ? sales : [{ invoiceNo: "-", customerName: "No sales today", grandTotal: 0 }]).map((s) => [s.invoiceNo, s.customerName, num(s.grandTotal)]), columnStyles: { 2: { halign: "right" } }, margin: { left: M, right: M } });
+  autoTable(doc, { startY: y + 8, theme: "striped", head: [["Invoice", "Customer", { content: "Amount", styles: { halign: "right" } }]], headStyles: { fillColor: [5, 150, 105], textColor: 255 }, body: (sales && sales.length ? sales : [{ invoiceNo: "-", customerName: "No sales today", grandTotal: 0 }]).map((s) => [s.invoiceNo, s.customerName, num(s.grandTotal)]), columnStyles: { 2: { halign: "right" } }, margin: { left: M, right: M } });
   y = doc.lastAutoTable.finalY + 20;
   doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(30); doc.text("Expenses Detail", M, y);
-  autoTable(doc, { startY: y + 8, theme: "striped", head: [["Note", "Mode", "Amount"]], headStyles: { fillColor: [234, 88, 12], textColor: 255 }, body: (expenses && expenses.length ? expenses : [{ note: "No expenses today", mode: "-", amount: 0 }]).map((e) => [e.note || "-", e.mode, num(e.amount)]), columnStyles: { 2: { halign: "right" } }, margin: { left: M, right: M } });
+  autoTable(doc, { startY: y + 8, theme: "striped", head: [["Note", "Mode", { content: "Amount", styles: { halign: "right" } }]], headStyles: { fillColor: [234, 88, 12], textColor: 255 }, body: (expenses && expenses.length ? expenses : [{ note: "No expenses today", mode: "-", amount: 0 }]).map((e) => [e.note || "-", e.mode, num(e.amount)]), columnStyles: { 2: { halign: "right" } }, margin: { left: M, right: M } });
   doc.setDrawColor(225); doc.line(M, H - 44, W - M, H - 44);
   doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(150); doc.text("This is a computer-generated day-book.", M, H - 30);
   doc.setTextColor(...INDIGO); doc.text("Powered by DukanSaathi", W - M, H - 30, { align: "right" });

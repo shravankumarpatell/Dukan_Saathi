@@ -1,0 +1,73 @@
+"""Pydantic models for Invoice endpoints."""
+
+from pydantic import BaseModel, Field
+
+
+class PaymentEntry(BaseModel):
+    mode: str = Field(..., pattern="^(cash|online|credit)$")
+    amount: float = Field(..., ge=0)
+
+
+class BillItemInput(BaseModel):
+    productId: str = Field(..., min_length=1)
+    name: str = ""
+    qty: float = Field(default=0, ge=0)
+    pieces: float = Field(default=0, ge=0)
+    unit: str = "box"
+    rate: float = Field(default=0, ge=0)
+    piecesPerBox: int = Field(default=1, ge=1)
+    size: str = ""
+
+
+class DiscountInput(BaseModel):
+    type: str = Field(default="flat", pattern="^(flat|percent)$")
+    value: float = Field(default=0, ge=0)
+
+
+class CreateBillRequest(BaseModel):
+    """Request body for creating a sale or purchase invoice.
+
+    The server computes all totals, validates stock, and manages
+    customer balances. The frontend should NOT send pre-computed totals.
+    """
+    type: str = Field(..., pattern="^(sale|purchase)$")
+    items: list[BillItemInput] = Field(..., min_length=1)
+    gstEnabled: bool = True
+    gstRate: float = Field(default=18, ge=0)
+    discount: DiscountInput | None = None
+    payments: list[PaymentEntry] = Field(default_factory=list)
+
+    # Customer (optional — blank = Walk-in)
+    customerId: str | None = None
+    customerName: str = ""
+    customerPhone: str = ""
+    isContractor: bool = False
+    siteNote: str = ""
+
+    createdVia: str = "manual"
+    language: str = "hi"
+
+
+class InvoiceResponse(BaseModel):
+    id: str
+    invoiceNo: str = ""
+    date: str = ""
+    type: str = ""
+    customerId: str | None = None
+    customerName: str = ""
+    items: list[dict] = Field(default_factory=list)
+    discount: dict | None = None
+    gstEnabled: bool = False
+    gstRate: float = 0
+    subtotal: float = 0
+    discountOff: float = 0
+    gstAmount: float = 0
+    grandTotal: float = 0
+    payments: list[dict] = Field(default_factory=list)
+    amountPaid: float = 0
+    amountPending: float = 0
+    paymentStatus: str = ""
+    createdVia: str = "manual"
+    settlement: str | None = None
+    originalInvoiceNo: str | None = None
+    refundTotal: float | None = None

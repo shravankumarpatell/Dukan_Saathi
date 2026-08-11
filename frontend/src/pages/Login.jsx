@@ -1,23 +1,15 @@
 import React, { useState } from "react";
-import { useApp } from "@/context/AppContext";
-import { signInGoogle, signInDemo } from "@/services/auth";
+import { signInGoogle } from "@/services/auth";
 import { toast } from "sonner";
 import { Mic, ShieldCheck, ScanLine, ReceiptIndianRupee } from "lucide-react";
 
 export default function Login() {
-  const { isDemo } = useApp();
-  const [shopName, setShopName] = useState("");
   const [busy, setBusy] = useState(false);
 
   const doGoogle = async () => {
     setBusy(true);
     try { await signInGoogle(); }
     catch (e) { toast.error("Google sign-in failed. Add your preview domain to Firebase Authorized domains."); }
-    setBusy(false);
-  };
-  const doDemo = async () => {
-    setBusy(true);
-    await signInDemo(shopName || "Demo Tiles & Sanitary");
     setBusy(false);
   };
 
@@ -45,35 +37,16 @@ export default function Login() {
       </div>
 
       {/* Right: auth */}
-      <div className="flex items-center justify-center bg-stone-100 p-6">
-        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="font-display text-2xl font-bold text-slate-900">Apni dukaan kholiye</h2>
-          <p className="mt-1 text-sm text-slate-500">Sign in to manage stock, billing & udhari.</p>
+      <div className="flex items-center justify-center bg-stone-100 p-6 dark:bg-[#111113]">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-[#2C2C2E] dark:bg-[#1C1C1E]">
+          <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-[#F5F5F7]">Apni dukaan kholiye</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-[#A1A1A6]">Sign in to manage stock, billing & udhari.</p>
 
           <div className="mt-6 space-y-3">
-            <label className="block text-sm font-semibold text-slate-700">Shop ka naam</label>
-            <input data-testid="shop-name-input" value={shopName} onChange={(e) => setShopName(e.target.value)}
-              placeholder="e.g. Sharma Tiles & Sanitary"
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-
-            {!isDemo && (
-              <button data-testid="google-login-btn" onClick={doGoogle} disabled={busy}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-900 px-4 py-3 font-semibold text-white transition-transform active:scale-95 disabled:opacity-60">
-                Continue with Google
-              </button>
-            )}
-
-            <button data-testid="demo-login-btn" onClick={doDemo} disabled={busy}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-orange-600 bg-orange-600 px-4 py-3 font-semibold text-white transition-transform active:scale-95 disabled:opacity-60">
-              {isDemo ? "Enter Demo Shop" : "Try a Demo Shop"}
+            <button data-testid="google-login-btn" onClick={doGoogle} disabled={busy}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-900 px-4 py-3 font-semibold text-white transition-transform active:scale-95 disabled:opacity-60 dark:bg-[#818CF8] dark:text-[#F5F5F7] hover:dark:bg-[#6366F1]">
+              Continue with Google
             </button>
-          </div>
-
-          <div className="mt-5 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-            {isDemo
-              ? "Running in DEMO mode with sample data (stored in your browser). Add Firebase config in config.json / .env to enable Google login and cloud sync."
-              : "Firebase connected. Use Google to sign in to your shop."}
           </div>
         </div>
       </div>

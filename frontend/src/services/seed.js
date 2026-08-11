@@ -5,13 +5,13 @@ export function seedData() {
   const iso = (offset) => new Date(now - offset * day).toISOString();
 
   const products = [
-    { id: "p1", name: "2130 Highlight", code: "2130", company: "Kajaria", size: "2x2 ft", unit: "box", piecesPerBox: 4, costPrice: 320, sellPrice: 450, showroomQty: 40, godownQty: 120, lowStockThreshold: 25 },
-    { id: "p2", name: "3420 Highlight Blue", code: "3420B", company: "Somany", size: "1x1 ft", unit: "box", piecesPerBox: 9, costPrice: 210, sellPrice: 300, showroomQty: 6, godownQty: 10, lowStockThreshold: 20 },
-    { id: "p3", name: "3420 Highlight Yellow", code: "3420Y", company: "Somany", size: "1x1 ft", unit: "box", piecesPerBox: 9, costPrice: 210, sellPrice: 300, showroomQty: 22, godownQty: 40, lowStockThreshold: 20 },
-    { id: "p4", name: "Marble Finish Floor Tile", code: "MF24", company: "Kajaria", size: "2x4 ft", unit: "box", piecesPerBox: 2, costPrice: 600, sellPrice: 820, showroomQty: 25, godownQty: 60, lowStockThreshold: 15 },
-    { id: "p5", name: "Wash Basin Ivory", code: "WB-IV", company: "Cera", size: "", unit: "piece", piecesPerBox: 1, costPrice: 900, sellPrice: 1400, showroomQty: 6, godownQty: 10, lowStockThreshold: 5 },
-    { id: "p6", name: "One Piece Closet", code: "OPC-01", company: "Hindware", size: "", unit: "piece", piecesPerBox: 1, costPrice: 5200, sellPrice: 7200, showroomQty: 3, godownQty: 4, lowStockThreshold: 3 },
-    { id: "p7", name: "Wall Tile Glossy White", code: "WTGW", company: "Nitco", size: "1x1.5 ft", unit: "box", piecesPerBox: 6, costPrice: 180, sellPrice: 260, showroomQty: 50, godownQty: 90, lowStockThreshold: 20 },
+    { id: "p1", name: "2130 Highlight", code: "2130", company: "Kajaria", size: "2x2 ft", unit: "box", piecesPerBox: 4, costPrice: 320, sellPrice: 450, stockQty: 160, lowStockThreshold: 25 },
+    { id: "p2", name: "3420 Highlight Blue", code: "3420B", company: "Somany", size: "1x1 ft", unit: "box", piecesPerBox: 9, costPrice: 210, sellPrice: 300, stockQty: 16, lowStockThreshold: 20 },
+    { id: "p3", name: "3420 Highlight Yellow", code: "3420Y", company: "Somany", size: "1x1 ft", unit: "box", piecesPerBox: 9, costPrice: 210, sellPrice: 300, stockQty: 62, lowStockThreshold: 20 },
+    { id: "p4", name: "Marble Finish Floor Tile", code: "MF24", company: "Kajaria", size: "2x4 ft", unit: "box", piecesPerBox: 2, costPrice: 600, sellPrice: 820, stockQty: 85, lowStockThreshold: 15 },
+    { id: "p5", name: "Wash Basin Ivory", code: "WB-IV", company: "Cera", size: "", unit: "piece", piecesPerBox: 1, costPrice: 900, sellPrice: 1400, stockQty: 16, lowStockThreshold: 5 },
+    { id: "p6", name: "One Piece Closet", code: "OPC-01", company: "Hindware", size: "", unit: "piece", piecesPerBox: 1, costPrice: 5200, sellPrice: 7200, stockQty: 7, lowStockThreshold: 3 },
+    { id: "p7", name: "Wall Tile Glossy White", code: "WTGW", company: "Nitco", size: "1x1.5 ft", unit: "box", piecesPerBox: 6, costPrice: 180, sellPrice: 260, stockQty: 140, lowStockThreshold: 20 },
   ];
 
   const customers = [

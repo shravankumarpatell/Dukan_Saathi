@@ -1,0 +1,4 @@
+app_name: "DukanSaathi GenAI Backend"
+version: "1.0.0"
+environment: "production"
+log_level: "INFO"

@@ -26,3 +26,8 @@
 .ds-stripe tbody tr:nth-child(even) { background-color: #f8fafc; }
 
 ::selection { background: #fed7aa; color: #7c2d12; }
+
+/* ─── Desktop sidebar link transitions ─── */
+.ds-sidebar-link {
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}

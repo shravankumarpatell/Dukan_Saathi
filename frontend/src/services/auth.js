@@ -1,44 +1,42 @@
-// Auth abstraction. DEMO mode -> local demo shop. Firebase mode -> Google sign-in.
-import { IS_DEMO } from "@/services/config";
-import { auth, googleProvider } from "@/firebase";
-import { onAuthStateChanged, signInWithPopup, signOut as fbSignOut } from "firebase/auth";
+/**
+ * Authentication service — Firebase Auth only.
+ * Demo mode has been removed.
+ */
 
-const DEMO_USER_KEY = "dukansaathi_demo_user";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut as fbSignOut } from "firebase/auth";
+import "@/firebase";
 
+const auth = getAuth();
+const googleProvider = new GoogleAuthProvider();
+
+/**
+ * Listen for auth state changes. Calls cb with user object or null.
+ */
 export function onAuth(cb) {
-  if (IS_DEMO) {
-    const raw = localStorage.getItem(DEMO_USER_KEY);
-    cb(raw ? JSON.parse(raw) : null);
-    const handler = (e) => {
-      if (e.key === DEMO_USER_KEY) cb(e.newValue ? JSON.parse(e.newValue) : null);
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }
-  return onAuthStateChanged(auth, (u) => {
-    if (!u) return cb(null);
-    cb({ uid: u.uid, name: u.displayName || "Shop Owner", email: u.email, photo: u.photoURL });
+  return auth.onAuthStateChanged((fbUser) => {
+    if (fbUser) {
+      cb({
+        uid: fbUser.uid,
+        name: fbUser.displayName || fbUser.email?.split("@")[0] || "User",
+        email: fbUser.email,
+        picture: fbUser.photoURL,
+      });
+    } else {
+      cb(null);
+    }
   });
 }
 
-export async function signInDemo(shopName) {
-  const user = { uid: "demo-shop", name: shopName || "Demo Owner", email: "demo@dukansaathi.app", photo: null, shopName: shopName || "Demo Tiles & Sanitary" };
-  localStorage.setItem(DEMO_USER_KEY, JSON.stringify(user));
-  window.dispatchEvent(new StorageEvent("storage", { key: DEMO_USER_KEY, newValue: JSON.stringify(user) }));
-  return user;
-}
-
+/**
+ * Sign in with Google.
+ */
 export async function signInGoogle() {
-  const res = await signInWithPopup(auth, googleProvider);
-  const u = res.user;
-  return { uid: u.uid, name: u.displayName, email: u.email, photo: u.photoURL };
+  return signInWithPopup(auth, googleProvider);
 }
 
+/**
+ * Sign out.
+ */
 export async function signOut() {
-  if (IS_DEMO) {
-    localStorage.removeItem(DEMO_USER_KEY);
-    window.dispatchEvent(new StorageEvent("storage", { key: DEMO_USER_KEY, newValue: null }));
-    return;
-  }
-  await fbSignOut(auth);
+  return fbSignOut(auth);
 }
