@@ -73,7 +73,17 @@ export default function Customers() {
               <button data-testid={`pay-btn-${c.id}`} onClick={() => openPay(c)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-800 active:scale-95 dark:border-[#2C2C2E] dark:bg-[#2C2C2E] dark:text-[#818CF8]"><Wallet className="h-4 w-4" /> Record Payment</button>
             </div>
           ))}
-          {dueSorted.length === 0 && <p className="col-span-full py-8 text-center text-sm text-slate-400 dark:text-[#6E6E73]">Koi udhari baaki nahi 🎉</p>}
+          {dueSorted.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-emerald-100 p-3 dark:bg-emerald-900/30 mb-3">
+                <Wallet className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h3 className="font-semibold text-slate-900 dark:text-[#F5F5F7]">Zero Udhari! 🎉</h3>
+              <p className="text-sm text-slate-500 dark:text-[#A1A1A6] mt-1 max-w-sm">
+                All your customers have cleared their dues.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -99,7 +109,18 @@ export default function Customers() {
                 </div>
               </div>
             ))}
-            {allSorted.length === 0 && <p className="py-8 text-center text-sm text-slate-400 dark:text-[#6E6E73]">Koi customer nahi.</p>}
+            {allSorted.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                <Users className="h-12 w-12 text-slate-300 dark:text-[#3A3A3C] mb-3" />
+                <h3 className="font-semibold text-slate-900 dark:text-[#F5F5F7]">No customers yet</h3>
+                <p className="text-sm text-slate-500 dark:text-[#A1A1A6] mt-1 mb-4 max-w-sm">
+                  Add your first customer to start tracking udhari and history.
+                </p>
+                <button onClick={() => setForm({ name: "", phone: "", isContractor: false, siteNote: "" })} className="rounded-lg bg-indigo-900 px-4 py-2 text-sm font-semibold text-white dark:bg-[#818CF8]">
+                  Add Customer
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}

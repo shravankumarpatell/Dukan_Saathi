@@ -1,7 +1,7 @@
 {
   "short_name": "DukanSaathi",
-  "name": "DukanSaathi — Bolo, bill banao, stock sambhalo",
-  "description": "AI voice-first stock & billing assistant for local shops.",
+  "name": "DukanSaathi — Fast Stock & Billing Assistant",
+  "description": "AI powered shop management, inventory tracking, and billing for local shops.",
   "icons": [
     { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
     { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },

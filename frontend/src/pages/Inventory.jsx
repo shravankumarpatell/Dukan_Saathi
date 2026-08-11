@@ -6,7 +6,7 @@ import { money, piecesBreakdown } from "@/lib/calc";
 import { searchProducts } from "@/lib/fuzzy";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Upload, X, ChevronRight } from "lucide-react";
+import { Plus, Search, Upload, X, ChevronRight, Package } from "lucide-react";
 
 const empty = { name: "", code: "", company: "", size: "", unit: "box", piecesPerBox: 1, costPrice: 0, sellPrice: 0, stockQty: 0, lowStockThreshold: 10 };
 const NUMERIC = ["piecesPerBox", "costPrice", "sellPrice", "stockQty", "lowStockThreshold"];
@@ -100,7 +100,21 @@ export default function Inventory() {
             </button>
           );
         })}
-        {list.length === 0 && <p className="py-8 text-center text-sm text-slate-400 dark:text-[#6E6E73]">Koi product nahi mila.</p>}
+        {list.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Package className="h-12 w-12 text-slate-300 dark:text-[#3A3A3C] mb-3" />
+            <h3 className="font-semibold text-slate-900 dark:text-[#F5F5F7]">No products found</h3>
+            <p className="text-sm text-slate-500 dark:text-[#A1A1A6] mt-1 mb-4 max-w-sm">
+              {q ? "We couldn't find any products matching your search." : "You haven't added any products to your inventory yet."}
+            </p>
+            {!q && (
+              <div className="flex gap-2">
+                <button onClick={() => setForm({ ...empty })} className="rounded-lg bg-indigo-900 px-4 py-2 text-sm font-semibold text-white dark:bg-[#818CF8]">Add Product</button>
+                <button onClick={() => navigate("/bulk")} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-[#3A3A3C] dark:text-[#A1A1A6]">Bulk Import</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
