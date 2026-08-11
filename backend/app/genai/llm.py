@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Type, AsyncGenerator
 """LLM client — calls Google Gemini API via httpx.
 
 Supports:
