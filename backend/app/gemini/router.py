@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Gemini proxy routes — keeps the API key server-side.
 
 The frontend never touches the Gemini API directly. All AI requests
@@ -27,7 +28,7 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    messages: list[ChatMessage] = Field(..., min_length=1)
+    messages: List[ChatMessage] = Field(..., min_length=1)
     systemContext: str = ""
 
 

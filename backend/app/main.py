@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """FastAPI application — main entry point.
 
 Registers all routers, middleware, and error handlers.

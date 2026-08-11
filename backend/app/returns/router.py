@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Return API routes — process return invoices with stock restoration and settlement."""
 
 from fastapi import APIRouter, Depends

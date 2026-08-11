@@ -6,7 +6,7 @@ but the backend is the final arbiter for all financial and stock calculations.
 
 from __future__ import annotations
 from datetime import datetime, timezone
-from typing import Any
+from typing import List, Optional, Any
 import math
 
 # GST
@@ -86,7 +86,7 @@ def compute_bill_totals(draft: dict) -> dict:
     }
 
 
-def gen_invoice_no(seq: int, gst_enabled: bool, prefix: str | None = None) -> str:
+def gen_invoice_no(seq: int, gst_enabled: bool, prefix: Optional[str] = None) -> str:
     """Generate a deterministic invoice number from a sequence counter.
 
     Format: {PREFIX}{YEAR}{SEQ:04d}

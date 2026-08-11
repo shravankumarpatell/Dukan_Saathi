@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Application configuration loaded from environment variables."""
 
 import os
@@ -19,7 +20,7 @@ class Settings:
     GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
     # CORS
-    CORS_ORIGINS: list[str] = os.environ.get(
+    CORS_ORIGINS: list = os.environ.get(
         "CORS_ORIGINS", "http://localhost:3000"
     ).split(",")
 

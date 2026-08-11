@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Invoice API routes — the most critical endpoint. Server-side commitBill."""
 
 from fastapi import APIRouter, Depends
@@ -33,7 +34,7 @@ def _to_response(doc_id: str, data: dict) -> InvoiceResponse:
     })
 
 
-@router.get("", response_model=list[InvoiceResponse])
+@router.get("", response_model=List[InvoiceResponse])
 async def list_invoices(user: AuthenticatedUser = Depends(get_current_user)):
     """List all invoices for the shop, sorted by date descending."""
     docs = _invoices_ref(user.uid).order_by("date", direction="DESCENDING").stream()

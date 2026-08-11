@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Pydantic models for Customer endpoints."""
 
 from pydantic import BaseModel, Field
@@ -26,5 +27,5 @@ class PaymentAllocationEntry(BaseModel):
 
 
 class AllocatePaymentRequest(BaseModel):
-    allocations: list[PaymentAllocationEntry] = Field(..., min_length=1)
+    allocations: List[PaymentAllocationEntry] = Field(..., min_length=1)
     mode: str = Field(default="cash", pattern="^(cash|online)$")

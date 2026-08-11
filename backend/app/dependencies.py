@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Authentication dependency — verifies Firebase ID tokens on every request."""
 
 from fastapi import Depends, HTTPException, status
@@ -14,9 +15,9 @@ security = HTTPBearer()
 class AuthenticatedUser(BaseModel):
     """Represents a verified Firebase user extracted from the ID token."""
     uid: str
-    email: str | None = None
-    name: str | None = None
-    picture: str | None = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    picture: Optional[str] = None
 
 
 async def get_current_user(

@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Analytics API routes — server-computed dashboard stats."""
 
 from fastapi import APIRouter, Depends

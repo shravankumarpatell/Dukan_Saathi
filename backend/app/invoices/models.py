@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Pydantic models for Invoice endpoints."""
 
 from pydantic import BaseModel, Field
@@ -31,14 +32,14 @@ class CreateBillRequest(BaseModel):
     customer balances. The frontend should NOT send pre-computed totals.
     """
     type: str = Field(..., pattern="^(sale|purchase)$")
-    items: list[BillItemInput] = Field(..., min_length=1)
+    items: List[BillItemInput] = Field(..., min_length=1)
     gstEnabled: bool = True
     gstRate: float = Field(default=18, ge=0)
-    discount: DiscountInput | None = None
-    payments: list[PaymentEntry] = Field(default_factory=list)
+    discount: Optional[DiscountInput] = None
+    payments: List[PaymentEntry] = Field(default_factory=list)
 
     # Customer (optional — blank = Walk-in)
-    customerId: str | None = None
+    customerId: Optional[str] = None
     customerName: str = ""
     customerPhone: str = ""
     isContractor: bool = False
@@ -53,21 +54,21 @@ class InvoiceResponse(BaseModel):
     invoiceNo: str = ""
     date: str = ""
     type: str = ""
-    customerId: str | None = None
+    customerId: Optional[str] = None
     customerName: str = ""
-    items: list[dict] = Field(default_factory=list)
-    discount: dict | None = None
+    items: List[dict] = Field(default_factory=list)
+    discount: Optional[dict] = None
     gstEnabled: bool = False
     gstRate: float = 0
     subtotal: float = 0
     discountOff: float = 0
     gstAmount: float = 0
     grandTotal: float = 0
-    payments: list[dict] = Field(default_factory=list)
+    payments: List[dict] = Field(default_factory=list)
     amountPaid: float = 0
     amountPending: float = 0
     paymentStatus: str = ""
     createdVia: str = "manual"
-    settlement: str | None = None
-    originalInvoiceNo: str | None = None
-    refundTotal: float | None = None
+    settlement: Optional[str] = None
+    originalInvoiceNo: Optional[str] = None
+    refundTotal: Optional[float] = None

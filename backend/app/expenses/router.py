@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Expense API routes."""
 
 from fastapi import APIRouter, Depends
@@ -28,7 +29,7 @@ def _expenses_ref(shop_id: str):
     return get_db().collection("shops").document(shop_id).collection("expenses")
 
 
-@router.get("", response_model=list[ExpenseResponse])
+@router.get("", response_model=List[ExpenseResponse])
 async def list_expenses(user: AuthenticatedUser = Depends(get_current_user)):
     """List all expenses for the shop."""
     docs = _expenses_ref(user.uid).stream()

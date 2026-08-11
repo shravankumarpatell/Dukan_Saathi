@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """GenAI module configuration — loads YAML configs and uses the app-level Gemini settings."""
 
 import yaml
@@ -50,7 +51,7 @@ class RetrievalConfig(BaseModel):
 class PromptConfig(BaseModel):
     system: str
     instructions: str
-    constraints: list[str] = []
+    constraints: List[str] = []
 
 
 class Settings(BaseModel):

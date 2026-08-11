@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """LLM client — calls Google Gemini API via httpx.
 
 Supports:
@@ -162,7 +163,7 @@ class LLMClient:
                 )
 
     @staticmethod
-    async def generate_chat(prompt: str, messages: list[dict]) -> str:
+    async def generate_chat(prompt: str, messages: List[dict]) -> str:
         """Free-form chat via Gemini (no structured output)."""
         _ensure_gemini()
 

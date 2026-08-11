@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Structured error handling for the application."""
 
 from fastapi import HTTPException, status
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 class AppError(Exception):
     """Base application error with status code and user-safe message."""
 
-    def __init__(self, message: str, status_code: int = 400, detail: str | None = None):
+    def __init__(self, message: str, status_code: int = 400, detail: Optional[str] = None):
         self.message = message
         self.status_code = status_code
         self.detail = detail or message

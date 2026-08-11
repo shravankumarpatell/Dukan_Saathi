@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Pydantic models for Shop endpoints."""
 
 from pydantic import BaseModel, Field
@@ -14,9 +15,9 @@ class ShopResponse(BaseModel):
 
 
 class ShopUpdate(BaseModel):
-    name: str | None = None
-    ownerName: str | None = None
-    phone: str | None = None
-    address: str | None = None
-    gstEnabled: bool | None = None
-    gstin: str | None = None
+    name: Optional[str] = None
+    ownerName: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    gstEnabled: Optional[bool] = None
+    gstin: Optional[str] = None

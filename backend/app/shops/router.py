@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Shop API routes."""
 
 from fastapi import APIRouter, Depends

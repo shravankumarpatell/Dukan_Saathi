@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """RAG retrieval service — FAISS index with Gemini embeddings."""
 
 import os
@@ -19,7 +20,7 @@ class RetrievalService:
         self.index = faiss.IndexFlatL2(self.dimension)
         self.documents = []
 
-    async def _get_embeddings(self, texts: list[str]) -> np.ndarray:
+    async def _get_embeddings(self, texts: List[str]) -> np.ndarray:
         """Get embeddings from Gemini's text-embedding API."""
         model = settings.retrieval.embedding_model
         url = f"{GEMINI_EMBED_URL}/{model}:batchEmbedContents?key={app_settings.GEMINI_API_KEY}"
@@ -43,7 +44,7 @@ class RetrievalService:
             embeddings = [e["values"] for e in data["embeddings"]]
             return np.array(embeddings, dtype=np.float32)
 
-    async def index_documents(self, chunks: list[str]):
+    async def index_documents(self, chunks: List[str]):
         if not chunks:
             return
 
@@ -52,7 +53,7 @@ class RetrievalService:
         self.index.add(embeddings)
         self.documents.extend(chunks)
 
-    async def search(self, query: str) -> list[str]:
+    async def search(self, query: str) -> List[str]:
         if self.index.ntotal == 0:
             return []
 

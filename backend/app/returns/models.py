@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Pydantic models for Return endpoints."""
 
 from pydantic import BaseModel, Field
@@ -16,8 +17,8 @@ class ReturnItemInput(BaseModel):
 class CreateReturnRequest(BaseModel):
     """Request body for creating a return invoice."""
     originalInvoiceNo: str = Field(..., min_length=1)
-    items: list[ReturnItemInput] = Field(..., min_length=1)
+    items: List[ReturnItemInput] = Field(..., min_length=1)
     refundTotal: float = Field(..., ge=0)
     settlement: str = Field(..., pattern="^(cash|adjust_udhari|store_credit)$")
-    customerId: str | None = None
+    customerId: Optional[str] = None
     customerName: str = ""

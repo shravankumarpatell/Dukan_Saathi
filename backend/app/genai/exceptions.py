@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 class ApplicationError(Exception):
     """Base exception for application errors."""
     def __init__(self, message: str, details: dict = None):

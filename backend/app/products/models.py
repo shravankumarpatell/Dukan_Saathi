@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Pydantic models for Product endpoints."""
 
 from pydantic import BaseModel, Field
@@ -21,16 +22,16 @@ class ProductCreate(ProductBase):
 
 
 class ProductUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=200)
-    code: str | None = None
-    company: str | None = None
-    size: str | None = None
-    unit: str | None = Field(default=None, pattern="^(box|piece)$")
-    piecesPerBox: int | None = Field(default=None, ge=1)
-    costPrice: float | None = Field(default=None, ge=0)
-    sellPrice: float | None = Field(default=None, ge=0)
-    stockQty: float | None = Field(default=None, ge=0)
-    lowStockThreshold: int | None = Field(default=None, ge=0)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    code: Optional[str] = None
+    company: Optional[str] = None
+    size: Optional[str] = None
+    unit: Optional[str] = Field(default=None, pattern="^(box|piece)$")
+    piecesPerBox: Optional[int] = Field(default=None, ge=1)
+    costPrice: Optional[float] = Field(default=None, ge=0)
+    sellPrice: Optional[float] = Field(default=None, ge=0)
+    stockQty: Optional[float] = Field(default=None, ge=0)
+    lowStockThreshold: Optional[int] = Field(default=None, ge=0)
 
 
 class ProductResponse(BaseModel):
@@ -57,4 +58,4 @@ class BulkProductRow(BaseModel):
 
 
 class BulkImportRequest(BaseModel):
-    rows: list[BulkProductRow] = Field(..., min_length=1)
+    rows: List[BulkProductRow] = Field(..., min_length=1)

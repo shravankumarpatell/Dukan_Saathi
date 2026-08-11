@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Firebase Admin SDK initialization — Firestore + Auth."""
 
 import firebase_admin

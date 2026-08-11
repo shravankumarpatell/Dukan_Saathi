@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 import logging
 from app.genai.config import settings
 

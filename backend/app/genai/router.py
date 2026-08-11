@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """GenAI API endpoints — extraction, chat, and document indexing.
 
 All endpoints use Gemini via the app-level API key (same as gemini/ module).
@@ -67,7 +68,7 @@ async def chat(req: ChatRequest, user: AuthenticatedUser = Depends(get_current_u
 
 
 @router.post("/index-documents")
-async def index_docs(background_tasks: BackgroundTasks, documents: list[str], user: AuthenticatedUser = Depends(get_current_user)):
+async def index_docs(background_tasks: BackgroundTasks, documents: List[str], user: AuthenticatedUser = Depends(get_current_user)):
     """Endpoint to update the FAISS RAG index with new shop data."""
     _ensure_gemini()
     background_tasks.add_task(retrieval_service.index_documents, documents)

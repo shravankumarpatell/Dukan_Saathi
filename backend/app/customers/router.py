@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Customer API routes — CRUD + payment allocation against pending bills."""
 
 from fastapi import APIRouter, Depends
@@ -29,7 +30,7 @@ def _to_response(doc_id: str, data: dict) -> CustomerResponse:
     )
 
 
-@router.get("", response_model=list[CustomerResponse])
+@router.get("", response_model=List[CustomerResponse])
 async def list_customers(user: AuthenticatedUser = Depends(get_current_user)):
     """List all customers for the shop."""
     docs = _customers_ref(user.uid).stream()

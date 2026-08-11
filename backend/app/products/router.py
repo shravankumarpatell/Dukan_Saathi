@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """Product API routes — CRUD, bulk import."""
 
 from fastapi import APIRouter, Depends
@@ -27,7 +28,7 @@ def _to_response(doc_id: str, data: dict) -> ProductResponse:
     })
 
 
-@router.get("", response_model=list[ProductResponse])
+@router.get("", response_model=List[ProductResponse])
 async def list_products(user: AuthenticatedUser = Depends(get_current_user)):
     """List all products for the authenticated shop."""
     docs = _products_ref(user.uid).stream()
@@ -90,7 +91,7 @@ async def delete_product(
     ref.delete()
 
 
-@router.post("/bulk", response_model=list[ProductResponse], status_code=201)
+@router.post("/bulk", response_model=List[ProductResponse], status_code=201)
 async def bulk_import(
     body: BulkImportRequest,
     user: AuthenticatedUser = Depends(get_current_user),

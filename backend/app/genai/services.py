@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict
 """GenAI business services — extraction and chat."""
 
 from app.genai.logger import logger
@@ -29,7 +30,7 @@ class ChatService:
     def __init__(self, retrieval_service: RetrievalService):
         self.retrieval_service = retrieval_service
 
-    async def chat(self, messages: list[ChatMessage]) -> tuple[str, int]:
+    async def chat(self, messages: List[ChatMessage]) -> tuple[str, int]:
         logger.info("Processing chat request")
 
         last_user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "")
