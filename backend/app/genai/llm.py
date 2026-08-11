@@ -25,7 +25,7 @@ def _ensure_gemini():
         raise LLMError("Gemini API key not configured on the server")
 
 
-def _schema_to_json_schema(schema_class: type[BaseModel]) -> dict:
+def _schema_to_json_schema(schema_class: Type[BaseModel]) -> dict:
     """Convert a Pydantic model to a Gemini-compatible JSON schema.
 
     Gemini's responseSchema does NOT support 'title', 'default', '$defs',
@@ -66,7 +66,7 @@ def create_retry_decorator(model_config):
 class LLMClient:
     @staticmethod
     async def _call_gemini_structured(
-        model_config, prompt: str, schema_class: type[BaseModel],
+        model_config, prompt: str, schema_class: Type[BaseModel],
         input_text: str = None, image_base64: str = None, image_mime: str = "image/jpeg",
     ) -> BaseModel:
         """Call Gemini with JSON mode + responseSchema for structured output."""
@@ -123,7 +123,7 @@ class LLMClient:
 
     @staticmethod
     async def generate_structured(
-        prompt: str, schema_class: type[BaseModel],
+        prompt: str, schema_class: Type[BaseModel],
         input_text: str = None, image_base64: str = None, image_mime: str = "image/jpeg",
     ) -> BaseModel:
         """Generate structured output with automatic fallback."""
