@@ -150,9 +150,22 @@ async def extract_stock_sheet(
     """Extract product line items from a supplier stock sheet image using Gemini vision."""
     _ensure_gemini()
 
-    prompt = """Extract every product line from this supplier stock sheet image as a JSON array.
-Each object: { "name": string, "code": string, "company": string, "size": string, "qty": number, "price": number, "lowConfidence": boolean }.
-Set lowConfidence=true if the row is blurry/handwritten/uncertain. Return ONLY the JSON array."""
+    prompt = """Extract every product line from this tiles & sanitaryware supplier stock sheet as a JSON array.
+Each object: {
+  "name": string,
+  "code": string,
+  "company": string,
+  "size": string,
+  "unit": "box" or "piece",
+  "piecesPerBox": number,
+  "qty": number,
+  "lowConfidence": boolean
+}.
+Rules:
+- Tiles / flooring / wall tiles → unit="box", piecesPerBox = pcs in one box if known else 1, qty = number of boxes.
+- Sanitary / fittings / basins / closets / taps → unit="piece", piecesPerBox=1, qty = number of pieces.
+- Never guess selling price. Set lowConfidence=true if blurry/uncertain.
+Return ONLY the JSON array."""
 
     url = f"{GEMINI_BASE}/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
     payload = {

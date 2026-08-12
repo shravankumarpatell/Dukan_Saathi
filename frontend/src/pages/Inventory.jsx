@@ -2,17 +2,20 @@ import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import NumberInput from "@/components/NumberInput";
+import UnitToggle from "@/components/UnitToggle";
 import { money, piecesBreakdown } from "@/lib/calc";
+import {
+  isBoxUnit, formatStockLabel, productMetaLine, normalizeProductUnitFields, UNIT_PIECE,
+} from "@/lib/units";
 import { searchProducts } from "@/lib/fuzzy";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Upload, X, ChevronRight, Package } from "lucide-react";
+import { Search, Upload, X, ChevronRight, Package } from "lucide-react";
 
-const empty = { name: "", code: "", company: "", size: "", unit: "box", piecesPerBox: 1, costPrice: 0, sellPrice: 0, stockQty: 0, lowStockThreshold: 10 };
-const NUMERIC = ["piecesPerBox", "costPrice", "sellPrice", "stockQty", "lowStockThreshold"];
+const NUMERIC = ["piecesPerBox", "sellPrice", "stockQty", "lowStockThreshold"];
 
 export default function Inventory() {
-  const { products, addProduct, updateProduct } = useApp();
+  const { products, updateProduct } = useApp();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
@@ -26,22 +29,25 @@ export default function Inventory() {
   });
 
   const save = async () => {
+    if (!form?.id) return;
     if (!form.name) return toast.error("Product ka naam daaliye");
-    const clean = { ...form };
+    if (isBoxUnit(form) && !(Number(form.piecesPerBox) > 0)) {
+      return toast.error("Tiles ke liye pieces / box daaliye");
+    }
+    let clean = { ...form };
     NUMERIC.forEach((k) => (clean[k] = Number(clean[k]) || 0));
+    clean = normalizeProductUnitFields(clean);
     // If product still has old showroomQty/godownQty fields, merge them into stockQty
     if (clean.showroomQty !== undefined || clean.godownQty !== undefined) {
       clean.stockQty = (Number(clean.stockQty) || 0) + (Number(clean.showroomQty) || 0) + (Number(clean.godownQty) || 0);
       delete clean.showroomQty;
       delete clean.godownQty;
     }
-    if (form.id) await updateProduct(form.id, clean);
-    else await addProduct(clean);
-    toast.success(form.id ? "Product update ho gaya" : "Product add ho gaya");
+    await updateProduct(form.id, clean);
+    toast.success("Product update ho gaya");
     setForm(null);
   };
 
-  // When opening the edit form, merge old showroom+godown into stockQty if present
   const openEdit = (p) => {
     const merged = { ...p };
     if (merged.showroomQty !== undefined || merged.godownQty !== undefined) {
@@ -50,68 +56,69 @@ export default function Inventory() {
     setForm(merged);
   };
 
+  const setUnit = (unit) => {
+    setForm((f) => ({
+      ...f,
+      unit,
+      piecesPerBox: unit === UNIT_PIECE ? 1 : (Number(f.piecesPerBox) > 1 ? f.piecesPerBox : ""),
+    }));
+  };
+
   return (
     <div className="space-y-3 ds-fade" data-testid="inventory-page">
       <div className="flex items-center justify-between">
-        <div><h2 className="font-display text-2xl font-bold text-slate-900 dark:text-[#F5F5F7]">Stock</h2><p className="text-sm text-slate-500 dark:text-[#A1A1A6]">{products.length} products</p></div>
+        <div><h2 className="font-display text-2xl font-bold text-slate-900">Stock</h2><p className="text-sm text-slate-500">{products.length} products</p></div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button data-testid="bulk-upload-btn" onClick={() => navigate("/bulk")} className="flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-800 active:scale-95 dark:border-[#2C2C2E] dark:bg-[#2C2C2E] dark:text-[#818CF8]"><Upload className="h-4 w-4" /> Bulk Upload</button>
-        <button data-testid="add-product-btn" onClick={() => setForm({ ...empty })} className="flex items-center justify-center gap-2 rounded-xl bg-indigo-900 px-3 py-2.5 text-sm font-semibold text-white active:scale-95 dark:bg-[#818CF8] dark:text-[#F5F5F7] hover:dark:bg-[#6366F1]"><Plus className="h-4 w-4" /> Add Product</button>
-      </div>
+      <button data-testid="bulk-upload-btn" onClick={() => navigate("/bulk")} className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-800 active:scale-95"><Upload className="h-4 w-4" /> Add Stock</button>
 
       {lowOnly && (
-        <div className="flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 dark:bg-[#FB7185]/10 dark:text-[#FB7185]" data-testid="low-filter-banner">
+        <div className="flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" data-testid="low-filter-banner">
           Low-stock only ({list.length})
-          <button data-testid="clear-low-filter" onClick={() => setParams({})} className="flex items-center gap-1 text-rose-600 dark:text-[#FB7185]"><X className="h-4 w-4" /> Clear</button>
+          <button data-testid="clear-low-filter" onClick={() => setParams({})} className="flex items-center gap-1 text-rose-600"><X className="h-4 w-4" /> Clear</button>
         </div>
       )}
 
-      <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-[#2C2C2E] dark:bg-[#1C1C1E]">
-        <Search className="h-4 w-4 shrink-0 text-slate-400 dark:text-[#6E6E73]" />
-        <input data-testid="inventory-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name / code / company…" className="w-full bg-transparent outline-none dark:text-[#A1A1A6] dark:placeholder-[#6E6E73]" />
+      <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2">
+        <Search className="h-4 w-4 shrink-0 text-slate-400" />
+        <input data-testid="inventory-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name / code / company…" className="w-full bg-transparent outline-none" />
       </div>
 
-      <div className="divide-y divide-slate-100 dark:divide-[#2C2C2E]" data-testid="stock-list">
+      <div className="divide-y divide-slate-100" data-testid="stock-list">
         {list.map((p) => {
-          const ppb = Number(p.piecesPerBox) || 1;
-          const isBox = p.unit === "box" && ppb > 1;
           const totalStock = (p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0);
+          const ppb = Number(p.piecesPerBox) || 1;
           const bd = piecesBreakdown(totalStock, ppb);
-          const low = bd.totalPieces <= (p.lowStockThreshold || 0) * ppb;
-          const stockLabel = isBox ? `${bd.boxes}b${bd.loose ? `+${bd.loose}p` : ""}` : `${bd.totalPieces}`;
+          const low = bd.totalPieces <= (p.lowStockThreshold || 0) * (isBoxUnit(p) ? ppb : 1);
+          const stockLabel = formatStockLabel(p, piecesBreakdown);
           return (
             <button key={p.id} data-testid={`product-row-${p.id}`} onClick={() => openEdit(p)}
-              className={`flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors ${low ? "bg-rose-50 dark:bg-[#FB7185]/10" : "active:bg-slate-50 dark:active:bg-[#2C2C2E]"}`}>
+              className={`flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors ${low ? "bg-rose-50" : "active:bg-slate-50"}`}>
               <div className="min-w-0 flex-1">
-                <p className={`truncate font-semibold ${low ? "text-rose-800 dark:text-[#FB7185]" : "text-slate-900 dark:text-[#F5F5F7]"}`}>
-                  {p.name}{low && <span className="ml-1.5 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 dark:bg-[#FB7185]/15 dark:text-[#FB7185]">LOW</span>}
+                <p className={`truncate font-semibold ${low ? "text-rose-800" : "text-slate-900"}`}>
+                  {p.name}{low && <span className="ml-1.5 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">LOW</span>}
                 </p>
-                <p className="truncate text-xs text-slate-400 dark:text-[#6E6E73]">{[p.code, p.company, p.size].filter(Boolean).join(" · ")} · {p.unit}{isBox ? ` ${ppb}/box` : ""}</p>
+                <p className="truncate text-xs text-slate-400">{productMetaLine(p)}</p>
               </div>
               <div className="shrink-0 text-right">
-                <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-bold tabular-nums text-indigo-700 dark:bg-[#818CF8]/10 dark:text-[#818CF8]" data-testid={`stock-qty-${p.id}`}>
+                <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-bold tabular-nums text-indigo-700" data-testid={`stock-qty-${p.id}`}>
                   Stock {stockLabel}
                 </span>
-                <p className="mt-1 text-xs font-semibold tabular-nums text-slate-500 dark:text-[#A1A1A6]">{money(p.sellPrice)}</p>
+                <p className="mt-1 text-xs font-semibold tabular-nums text-slate-500">{money(p.sellPrice)}</p>
               </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-[#6E6E73]" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
             </button>
           );
         })}
         {list.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Package className="h-12 w-12 text-slate-300 dark:text-[#3A3A3C] mb-3" />
-            <h3 className="font-semibold text-slate-900 dark:text-[#F5F5F7]">No products found</h3>
-            <p className="text-sm text-slate-500 dark:text-[#A1A1A6] mt-1 mb-4 max-w-sm">
+            <Package className="h-12 w-12 text-slate-300 mb-3" />
+            <h3 className="font-semibold text-slate-900">No products found</h3>
+            <p className="text-sm text-slate-500 mt-1 mb-4 max-w-sm">
               {q ? "We couldn't find any products matching your search." : "You haven't added any products to your inventory yet."}
             </p>
             {!q && (
-              <div className="flex gap-2">
-                <button onClick={() => setForm({ ...empty })} className="rounded-lg bg-indigo-900 px-4 py-2 text-sm font-semibold text-white dark:bg-[#818CF8]">Add Product</button>
-                <button onClick={() => navigate("/bulk")} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-[#3A3A3C] dark:text-[#A1A1A6]">Bulk Import</button>
-              </div>
+              <button onClick={() => navigate("/bulk")} className="rounded-lg bg-indigo-900 px-4 py-2 text-sm font-semibold text-white">Add Stock</button>
             )}
           </div>
         )}
@@ -119,24 +126,27 @@ export default function Inventory() {
 
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
         <DialogContent className="max-h-[90vh] overflow-auto" data-testid="product-form-dialog">
-          <DialogHeader><DialogTitle>{form?.id ? "Edit Product" : "Add Product"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Edit Product</DialogTitle></DialogHeader>
           {form && (
             <div className="grid grid-cols-2 gap-3">
+              <UnitToggle value={form.unit} onChange={setUnit} testId="pf-unit" />
               {[
-                ["name", "Name", "col-span-2"], ["code", "Code"], ["company", "Company"], ["size", "Size (e.g. 2x2 ft)"],
-                ["unit", "Unit (box/piece)"], ["piecesPerBox", "Pieces / box"], ["costPrice", "Cost"], ["sellPrice", "Price"],
-                ["stockQty", "Stock Qty (boxes)", "col-span-2"], ["lowStockThreshold", "Low-stock threshold", "col-span-2"],
+                ["name", "Name", "col-span-2"], ["code", "Code"], ["company", "Company"],
+                ...(isBoxUnit(form) ? [["size", "Size (e.g. 2x2 ft)"], ["piecesPerBox", "Pieces / box"]] : []),
+                ["sellPrice", `Price (${isBoxUnit(form) ? "₹/box" : "₹/pc"})`],
+                ["stockQty", `Stock (${isBoxUnit(form) ? "boxes" : "pcs"})`, "col-span-2"],
+                ["lowStockThreshold", "Low-stock threshold", "col-span-2"],
               ].map(([key, label, cls = ""]) => (
                 <div key={key} className={cls}>
-                  <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-[#A1A1A6]">{label}</label>
+                  <label className="mb-1 block text-xs font-semibold text-slate-600">{label}</label>
                   {NUMERIC.includes(key) ? (
-                    <NumberInput data-testid={`pf-${key}`} value={form[key]} onChange={(v) => setForm({ ...form, [key]: v })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right tabular-nums outline-none focus:ring-2 focus:ring-indigo-500 dark:border-[#2C2C2E] dark:bg-[#2C2C2E] dark:text-[#A1A1A6]" />
+                    <NumberInput data-testid={`pf-${key}`} value={form[key]} onChange={(v) => setForm({ ...form, [key]: v })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right tabular-nums outline-none focus:ring-2 focus:ring-indigo-500" />
                   ) : (
-                    <input data-testid={`pf-${key}`} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 dark:border-[#2C2C2E] dark:bg-[#2C2C2E] dark:text-[#A1A1A6]" />
+                    <input data-testid={`pf-${key}`} value={form[key] ?? ""} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" />
                   )}
                 </div>
               ))}
-              <button data-testid="save-product-btn" onClick={save} className="col-span-2 rounded-xl bg-indigo-900 px-4 py-3 font-semibold text-white active:scale-95 dark:bg-[#818CF8] dark:text-[#F5F5F7] hover:dark:bg-[#6366F1]">Save</button>
+              <button data-testid="save-product-btn" onClick={save} className="col-span-2 rounded-xl bg-indigo-900 px-4 py-3 font-semibold text-white active:scale-95">Save</button>
             </div>
           )}
         </DialogContent>

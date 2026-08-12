@@ -30,17 +30,6 @@
         -->
         <title>DukanSaathi — Bolo, bill banao, stock sambhalo</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
-        <script>
-          // Theme flash prevention — runs before React renders.
-          (function(){
-            var t = localStorage.getItem("ds-theme");
-            var dark = t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches);
-            if (dark) document.documentElement.classList.add("dark");
-            // Update theme-color meta for mobile browsers
-            var m = document.querySelector('meta[name="theme-color"]');
-            if (m) m.setAttribute("content", dark ? "#0f172a" : "#EA580C");
-          })();
-        </script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>

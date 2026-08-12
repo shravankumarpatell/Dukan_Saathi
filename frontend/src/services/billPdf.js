@@ -4,6 +4,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { ToWords } from "to-words";
 import { computeBillTotals, fmtDate, itemAmount, round2 } from "@/lib/calc";
+import { formatQtyLabel } from "@/lib/units";
 
 const toWords = new ToWords({ localeCode: "en-IN", converterOptions: { currency: true, ignoreDecimal: false, ignoreZeroCurrency: false } });
 const words = (n) => { try { return toWords.convert(Math.round(Number(n) || 0), { currency: true }); } catch { return ""; } };
@@ -18,7 +19,7 @@ function emit(doc, output, filename) {
   return doc.output("bloburl");
 }
 
-const qtyLabel = (it) => `${it.qty}${it.unit === "box" ? " box" : " " + (it.unit || "")}${Number(it.pieces) > 0 ? ` + ${it.pieces} pc` : ""}`;
+const qtyLabel = (it) => formatQtyLabel(it);
 
 export function generateBillPDF({ shop, invoice, customer }, output = "bloburl") {
   const draft = invoice;

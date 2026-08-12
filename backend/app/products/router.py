@@ -40,8 +40,13 @@ async def create_product(
     body: ProductCreate,
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    """Create a new product."""
+    """Create a product on the fly — used by the quick-add flow while billing."""
     data = body.model_dump()
+    if data.get("unit") == "piece":
+        data["piecesPerBox"] = 1
+    else:
+        data["unit"] = "box"
+        data["piecesPerBox"] = max(1, int(data.get("piecesPerBox") or 1))
     _, doc_ref = _products_ref(user.uid).add(data)
     return _to_response(doc_ref.id, data)
 
@@ -71,6 +76,10 @@ async def update_product(
         raise NotFoundError("Product", product_id)
 
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    if patch.get("unit") == "piece":
+        patch["piecesPerBox"] = 1
+    elif patch.get("unit") == "box" and "piecesPerBox" in patch:
+        patch["piecesPerBox"] = max(1, int(patch["piecesPerBox"] or 1))
     if patch:
         ref.update(patch)
 
@@ -116,7 +125,7 @@ async def bulk_import(
                 break
 
         if matched_id and matched_data:
-            # Update existing: add to stockQty, update cost price
+            # Update existing: add to stockQty, refresh price if one was given
             current_stock = (
                 (matched_data.get("stockQty", 0) or 0)
                 + (matched_data.get("godownQty", 0) or 0)
@@ -124,8 +133,13 @@ async def bulk_import(
             )
             new_stock = current_stock + (row.qty or 0)
             patch = {"stockQty": round2(new_stock), "godownQty": 0, "showroomQty": 0}
+            # Price is optional on supplier sheets — only overwrite when supplied
             if row.price > 0:
-                patch["costPrice"] = row.price
+                patch["sellPrice"] = row.price
+            # Also refresh unit / pcs-per-box when supplied on the row
+            if row.unit in ("box", "piece"):
+                patch["unit"] = row.unit
+                patch["piecesPerBox"] = 1 if row.unit == "piece" else max(1, int(row.piecesPerBox or matched_data.get("piecesPerBox") or 1))
             products_col.document(matched_id).update(patch)
             updated = products_col.document(matched_id).get().to_dict()
             results.append(_to_response(matched_id, updated))
@@ -136,10 +150,9 @@ async def bulk_import(
                 "code": row.code,
                 "company": row.company,
                 "size": row.size,
-                "unit": "box",
-                "piecesPerBox": 1,
-                "costPrice": row.price,
-                "sellPrice": round2(row.price * 1.4),
+                "unit": row.unit if row.unit in ("box", "piece") else "box",
+                "piecesPerBox": 1 if row.unit == "piece" else max(1, int(row.piecesPerBox or 1)),
+                "sellPrice": row.price,
                 "stockQty": row.qty,
                 "lowStockThreshold": 10,
             }

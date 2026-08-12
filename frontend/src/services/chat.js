@@ -4,7 +4,7 @@ import { geminiConfig, GEMINI_READY } from "@/services/config";
 import { money } from "@/lib/calc";
 
 export function buildShopContext({ shop, products, customers, invoices, expenses }) {
-  const prod = (products || []).map((p) => `- ${p.name}${p.code ? ` (${p.code})` : ""} — ${[p.company, p.size].filter(Boolean).join(" ")} | stock: ${p.stockQty || ((p.showroomQty || 0) + (p.godownQty || 0))} ${p.unit}${(p.piecesPerBox || 1) > 1 ? ` @ ${p.piecesPerBox} pcs/box` : ""} | cost ₹${p.costPrice} sell ₹${p.sellPrice}`).join("\n");
+  const prod = (products || []).map((p) => `- ${p.name}${p.code ? ` (${p.code})` : ""} — ${[p.company, p.size].filter(Boolean).join(" ")} | type: ${p.unit === "piece" ? "sanitary (pcs)" : `tiles (${p.piecesPerBox || 1} pcs/box)`} | stock: ${p.stockQty || ((p.showroomQty || 0) + (p.godownQty || 0))} ${p.unit === "piece" ? "pcs" : "boxes"} | price ₹${p.sellPrice}`).join("\n");
   const custs = (customers || []).map((c) => `- ${c.name || "Walk-in"}${c.phone ? ` (${c.phone})` : ""}${c.isContractor ? " [contractor]" : ""} — udhari ₹${c.totalPending || 0}, store-credit ₹${c.storeCredit || 0}${c.siteNote ? `, site: ${c.siteNote}` : ""}`).join("\n");
   const recent = (invoices || []).slice(0, 30).map((i) => `- ${i.invoiceNo} | ${new Date(i.date).toLocaleDateString("en-IN")} | ${i.type} | ${i.customerName || "Walk-in"} | total ₹${i.grandTotal} | paid ₹${i.amountPaid || 0} | pending ₹${i.amountPending || 0} (${i.paymentStatus})`).join("\n");
   const today = new Date().toDateString();

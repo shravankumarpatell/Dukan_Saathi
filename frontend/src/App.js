@@ -2,7 +2,6 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AppProvider, useApp } from "@/context/AppContext";
-import { ThemeProvider } from "@/context/ThemeContext";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -22,10 +21,10 @@ function Shell() {
   // Wait until auth is resolved AND (if user is logged in) the shop profile is loaded
   if (authLoading || (user && !shop)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-100 dark:bg-[#111113]">
+      <div className="flex min-h-screen items-center justify-center bg-stone-100">
         <div className="text-center">
-          <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-900 dark:border-[#2C2C2E] dark:border-t-[#818CF8]" />
-          <p className="font-display font-bold text-indigo-900 dark:text-[#F5F5F7]">DukanSaathi</p>
+          <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-900" />
+          <p className="font-display font-bold text-indigo-900">DukanSaathi</p>
         </div>
       </div>
     );
@@ -36,7 +35,7 @@ function Shell() {
   // Enforce onboarding for new signups (require at least a phone number)
   if (!shop.phone) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-100 dark:bg-[#111113] px-4">
+      <div className="flex min-h-screen items-center justify-center bg-stone-100 px-4">
         <div className="w-full max-w-xl">
           <Settings isOnboarding={true} />
         </div>
@@ -66,14 +65,12 @@ function Shell() {
 export default function App() {
   return (
     <div className="App">
-      <ThemeProvider>
-        <BrowserRouter>
-          <AppProvider>
-            <Shell />
-            <Toaster position="top-center" richColors />
-          </AppProvider>
-        </BrowserRouter>
-      </ThemeProvider>
+      <BrowserRouter>
+        <AppProvider>
+          <Shell />
+          <Toaster position="top-center" richColors />
+        </AppProvider>
+      </BrowserRouter>
     </div>
   );
 }

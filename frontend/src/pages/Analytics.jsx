@@ -5,7 +5,6 @@ import { generateDailySummaryPDF } from "@/services/billPdf";
 import { toast } from "sonner";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Printer, Plus, TrendingDown } from "lucide-react";
-import { useTheme } from "@/context/ThemeContext";
 
 const RANGES = { this_month: "This Month", last_month: "Last Month", this_year: "This Year" };
 
@@ -13,9 +12,6 @@ export default function Analytics() {
   const { invoices, products, customers, expenses, shop, setDraft } = useApp();
   const [range, setRange] = useState("this_month");
   const [exp, setExp] = useState({ amount: "", note: "", mode: "cash" });
-  const { theme, resolved } = useTheme();
-
-  const isDark = resolved === "dark";
 
   const inRange = useMemo(() => {
     const now = new Date();
@@ -76,49 +72,49 @@ export default function Analytics() {
   return (
     <div className="space-y-5 ds-fade" data-testid="analytics-page">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-[#F5F5F7]">Reports</h2>
+        <h2 className="font-display text-2xl font-bold text-slate-900">Reports</h2>
         <div className="flex items-center gap-2">
-          <select data-testid="range-select" value={range} onChange={(e) => setRange(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-[#2C2C2E] dark:bg-[#2C2C2E] dark:text-[#A1A1A6]">{Object.entries(RANGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+          <select data-testid="range-select" value={range} onChange={(e) => setRange(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">{Object.entries(RANGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2C2C2E] dark:bg-[#1C1C1E]">
-          <h3 className="mb-3 font-display font-bold text-slate-900 dark:text-[#F5F5F7]">Revenue over time</h3>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <h3 className="mb-3 font-display font-bold text-slate-900">Revenue over time</h3>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={revenueSeries}>
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#334155" : "#eee"} />
-              <XAxis dataKey="date" fontSize={11} stroke={isDark ? "#94a3b8" : "#64748b"} />
-              <YAxis fontSize={11} stroke={isDark ? "#94a3b8" : "#64748b"} />
-              <Tooltip formatter={(v) => money(v)} contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", borderColor: isDark ? "#334155" : "#e2e8f0", color: isDark ? "#f1f5f9" : "#0f172a" }} />
-              <Line type="monotone" dataKey="revenue" stroke={isDark ? "#818cf8" : "#312E81"} strokeWidth={2.5} dot={{ r: 3 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis dataKey="date" fontSize={11} stroke="#64748b" />
+              <YAxis fontSize={11} stroke="#64748b" />
+              <Tooltip formatter={(v) => money(v)} contentStyle={{ backgroundColor: "#fff", borderColor: "#e2e8f0", color: "#0f172a" }} />
+              <Line type="monotone" dataKey="revenue" stroke="#312E81" strokeWidth={2.5} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2C2C2E] dark:bg-[#1C1C1E]">
-          <h3 className="mb-3 font-display font-bold text-slate-900 dark:text-[#F5F5F7]">Top products (revenue)</h3>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <h3 className="mb-3 font-display font-bold text-slate-900">Top products (revenue)</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={topProducts}>
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#334155" : "#eee"} />
-              <XAxis dataKey="name" fontSize={9} interval={0} angle={-12} textAnchor="end" height={50} stroke={isDark ? "#94a3b8" : "#64748b"} />
-              <YAxis fontSize={11} stroke={isDark ? "#94a3b8" : "#64748b"} />
-              <Tooltip formatter={(v) => money(v)} contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", borderColor: isDark ? "#334155" : "#e2e8f0", color: isDark ? "#f1f5f9" : "#0f172a" }} />
-              <Bar dataKey="revenue" fill={isDark ? "#f97316" : "#EA580C"} radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis dataKey="name" fontSize={9} interval={0} angle={-12} textAnchor="end" height={50} stroke="#64748b" />
+              <YAxis fontSize={11} stroke="#64748b" />
+              <Tooltip formatter={(v) => money(v)} contentStyle={{ backgroundColor: "#fff", borderColor: "#e2e8f0", color: "#0f172a" }} />
+              <Bar dataKey="revenue" fill="#EA580C" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2C2C2E] dark:bg-[#1C1C1E]">
-          <h3 className="mb-2 font-display font-bold text-slate-900 dark:text-[#F5F5F7]">Top customers</h3>
-          {topCustomers.map((c) => <div key={c.name} className="flex justify-between border-b border-slate-100 py-1.5 text-sm last:border-0 dark:border-[#2C2C2E]"><span className="text-slate-700 dark:text-[#A1A1A6]">{c.name}</span><b className="dark:text-[#A1A1A6]">{money(c.spend)}</b></div>)}
-          {topCustomers.length === 0 && <p className="text-sm text-slate-400 dark:text-[#6E6E73]">No data.</p>}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <h3 className="mb-2 font-display font-bold text-slate-900">Top customers</h3>
+          {topCustomers.map((c) => <div key={c.name} className="flex justify-between border-b border-slate-100 py-1.5 text-sm last:border-0"><span className="text-slate-700">{c.name}</span><b>{money(c.spend)}</b></div>)}
+          {topCustomers.length === 0 && <p className="text-sm text-slate-400">No data.</p>}
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-[#2C2C2E] dark:bg-[#1C1C1E]">
-          <h3 className="mb-2 flex items-center gap-1 font-display font-bold text-slate-900 dark:text-[#F5F5F7]"><TrendingDown className="h-4 w-4 text-rose-500 dark:text-[#FB7185]" /> Slow movers</h3>
-          {slowMovers.map((p) => <div key={p.id} className="flex justify-between border-b border-slate-100 py-1.5 text-sm last:border-0 dark:border-[#2C2C2E]"><span className="text-slate-700 dark:text-[#A1A1A6]">{p.name}</span><span className="text-slate-400 dark:text-[#6E6E73]">{(p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0)} left</span></div>)}
-          {slowMovers.length === 0 && <p className="text-sm text-slate-400 dark:text-[#6E6E73]">Sab bik raha hai! 🎉</p>}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <h3 className="mb-2 flex items-center gap-1 font-display font-bold text-slate-900"><TrendingDown className="h-4 w-4 text-rose-500" /> Slow movers</h3>
+          {slowMovers.map((p) => <div key={p.id} className="flex justify-between border-b border-slate-100 py-1.5 text-sm last:border-0"><span className="text-slate-700">{p.name}</span><span className="text-slate-400">{(p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0)} left</span></div>)}
+          {slowMovers.length === 0 && <p className="text-sm text-slate-400">Sab bik raha hai! 🎉</p>}
         </div>
       </div>
     </div>

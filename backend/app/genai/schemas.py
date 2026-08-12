@@ -8,7 +8,7 @@ class ExtractedProduct(BaseModel):
     company: Optional[str] = Field(default=None, description="The brand or company name")
     unit: str = Field(description="The unit of measurement (e.g., box, piece, kg)")
     qty: int = Field(description="The total quantity in the specified unit")
-    price_per_unit: float = Field(description="The cost price per unit")
+    price_per_unit: float = Field(description="The price per unit shown on the invoice")
 
 class InvoiceExtractionResult(BaseModel):
     supplier_name: Optional[str] = Field(default=None, description="The name of the supplier or vendor")

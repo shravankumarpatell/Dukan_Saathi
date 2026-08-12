@@ -158,14 +158,18 @@ export function AppProvider({ children }) {
           code: r.code || "",
           company: r.company || "",
           size: r.size || "",
+          unit: r.unit === "piece" ? "piece" : "box",
+          piecesPerBox: r.unit === "piece" ? 1 : (Number(r.piecesPerBox) || 1),
           qty: Number(r.qty) || 0,
           price: Number(r.price) || 0,
         }))
       );
     }
 
+    const onCommitted = draft.onCommitted;
     setDraft(null);
     await refresh();
+    if (typeof onCommitted === "function") onCommitted();
     return { ok: true };
   }, [draft, refresh]);
 
@@ -181,15 +185,40 @@ export function AppProvider({ children }) {
     return saved;
   }, [refresh]);
 
-  // ── Product CRUD ──
+  // ── Products ──
+  // Creation happens from Add Stock (bulk) or the quick-add while billing.
   const addProduct = useCallback(async (p) => {
-    await api.createProduct(p);
+    const unit = p.unit === "piece" ? "piece" : "box";
+    const saved = await api.createProduct({
+      name: (p.name || "").trim(),
+      code: p.code || "",
+      company: p.company || "",
+      size: p.size || "",
+      unit,
+      piecesPerBox: unit === "piece" ? 1 : Math.max(1, Number(p.piecesPerBox) || 1),
+      sellPrice: Number(p.sellPrice) || 0,
+      stockQty: Number(p.stockQty) || 0,
+      lowStockThreshold: Number(p.lowStockThreshold) || 0,
+    });
     await refresh();
+    return saved;
   }, [refresh]);
 
   const updateProduct = useCallback(async (id, p) => {
-    await api.updateProduct(id, p);
+    const unit = p.unit === "piece" ? "piece" : "box";
+    await api.updateProduct(id, {
+      ...p,
+      unit,
+      piecesPerBox: unit === "piece" ? 1 : Math.max(1, Number(p.piecesPerBox) || 1),
+    });
     await refresh();
+  }, [refresh]);
+
+  // ── Re-settle an existing return (e.g. store credit → cash payout) ──
+  const updateReturn = useCallback(async (invoiceId, patch) => {
+    const inv = await api.updateReturn(invoiceId, patch);
+    await refresh();
+    return inv;
   }, [refresh]);
 
   // ── Gemini readiness (always true now since it's proxied through backend) ──
@@ -200,7 +229,7 @@ export function AppProvider({ children }) {
     products, customers, invoices, returns, expenses, refresh,
     draft, setDraft, commitDraft, cancelDraft: () => setDraft(null), commitBill, allocatePayment,
     isDemo: false, geminiReady,
-    addProduct, updateProduct, addCustomer, speak,
+    addProduct, updateProduct, updateReturn, addCustomer, speak,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

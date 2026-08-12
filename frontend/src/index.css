@@ -18,9 +18,6 @@ code {
 }
 
 @layer base {
-    /* ─── LIGHT MODE — Clean Ivory ───
-       Inspired by Notion/Linear light: warm off-white bg, pure white cards,
-       soft neutral borders, rich dark text for readability. */
     :root {
         --background: 240 5% 97%;       /* #F8F8FA — warm off-white */
         --foreground: 240 6% 10%;       /* #1C1C1E — Apple primary text */
@@ -48,38 +45,6 @@ code {
         --chart-5: 27 87% 67%;
         --radius: 0.5rem;
     }
-
-    /* ─── DARK MODE — Warm Obsidian ───
-       4-layer luminance system inspired by iOS/Linear:
-       L0 #111113 → L1 #1C1C1E → L2 #2C2C2E → L3 #3A3A3C
-       Text: F5F5F7 / A1A1A6 / 6E6E73  (Apple HIG hierarchy)
-       Accents desaturated ~15% vs light for eye comfort. */
-    .dark {
-        --background: 240 5% 7%;        /* #111113 — warm obsidian */
-        --foreground: 240 3% 97%;       /* #F5F5F7 — Apple primary text */
-        --card: 240 4% 12%;             /* #1C1C1E — elevated surface */
-        --card-foreground: 240 3% 97%;
-        --popover: 240 4% 12%;
-        --popover-foreground: 240 3% 97%;
-        --primary: 235 78% 75%;         /* #818CF8 — indigo-400 */
-        --primary-foreground: 240 5% 7%;
-        --secondary: 240 3% 18%;        /* #2C2C2E */
-        --secondary-foreground: 240 3% 97%;
-        --muted: 240 3% 18%;
-        --muted-foreground: 240 3% 65%; /* #A1A1A6 */
-        --accent: 240 3% 18%;
-        --accent-foreground: 240 3% 97%;
-        --destructive: 350 89% 60%;     /* rose-500 */
-        --destructive-foreground: 240 3% 97%;
-        --border: 240 3% 18%;           /* #2C2C2E — vanishing borders */
-        --input: 240 3% 18%;
-        --ring: 235 78% 75%;
-        --chart-1: 235 78% 75%;         /* Indigo-400 */
-        --chart-2: 160 84% 63%;         /* Emerald-400 */
-        --chart-3: 32 98% 56%;          /* Orange-400 */
-        --chart-4: 272 72% 73%;         /* Violet-400 */
-        --chart-5: 350 89% 60%;         /* Rose-500 */
-    }
 }
 
 @layer base {
@@ -96,30 +61,5 @@ code {
     select,
     textarea {
         font-size: 16px !important;
-    }
-}
-
-/* ─── Theme transition: smooth switching, respects reduced motion ─── */
-@layer base {
-    html {
-        transition-property: background-color, color;
-        transition-duration: 150ms;
-        transition-timing-function: ease;
-    }
-    html *,
-    html *::before,
-    html *::after {
-        transition-property: background-color, border-color, color, fill, stroke, box-shadow;
-        transition-duration: 150ms;
-        transition-timing-function: ease;
-    }
-    /* Respect prefers-reduced-motion */
-    @media (prefers-reduced-motion: reduce) {
-        html,
-        html *,
-        html *::before,
-        html *::after {
-            transition-duration: 0ms !important;
-        }
     }
 }

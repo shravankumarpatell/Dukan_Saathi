@@ -153,6 +153,13 @@ export async function createReturn(data) {
   });
 }
 
+export async function updateReturn(invoiceId, data) {
+  return request(`/returns/${invoiceId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
 // ── Expenses ──
 
 export async function listExpenses() {

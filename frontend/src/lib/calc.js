@@ -9,13 +9,16 @@ export function money(n) {
 }
 export function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 
-// Amount for a line item that may be boxes (qty) + loose pieces.
+// Amount for a line item.
+// Tiles (unit=box): qty = boxes, pieces = loose pcs, rate = per box.
+// Sanitary (unit=piece): qty = pieces, rate = per piece (pieces field ignored).
 export function itemAmount(it) {
   const rate = Number(it.rate) || 0;
   const qty = Number(it.qty) || 0;
+  if (it.unit !== "box") return round2(qty * rate);
   const ppb = Number(it.piecesPerBox) || 1;
   const pieces = Number(it.pieces) || 0;
-  const piecePrice = it.unit === "box" && ppb ? rate / ppb : rate;
+  const piecePrice = ppb ? rate / ppb : rate;
   return round2(qty * rate + pieces * piecePrice);
 }
 

@@ -20,16 +20,18 @@ def round2(n: float) -> float:
 
 
 def item_amount(item: dict) -> float:
-    """Calculate the amount for a single line item (boxes + loose pieces).
+    """Calculate the amount for a single line item.
 
-    For box items: amount = qty * rate + pieces * (rate / piecesPerBox)
-    For piece items: amount = qty * rate
+    Tiles (unit=box): amount = qty * rate + pieces * (rate / piecesPerBox)
+    Sanitary (unit=piece): amount = qty * rate  (pieces ignored)
     """
     rate = float(item.get("rate", 0) or 0)
     qty = float(item.get("qty", 0) or 0)
+    if item.get("unit") != "box":
+        return round2(qty * rate)
     ppb = int(item.get("piecesPerBox", 1) or 1)
     pieces = float(item.get("pieces", 0) or 0)
-    piece_price = rate / ppb if item.get("unit") == "box" and ppb else rate
+    piece_price = rate / ppb if ppb else rate
     return round2(qty * rate + pieces * piece_price)
 
 
@@ -99,7 +101,13 @@ def gen_invoice_no(seq: int, gst_enabled: bool, prefix: Optional[str] = None) ->
 
 
 def calculate_sold_pieces(item: dict) -> int:
-    """Calculate total pieces being sold/returned for a line item."""
+    """Calculate total pieces being sold/returned for a line item.
+
+    Tiles: boxes * piecesPerBox + loose pieces.
+    Sanitary: qty is already in pieces.
+    """
+    if item.get("unit") != "box":
+        return round(float(item.get("qty", 0) or 0))
     ppb = int(item.get("piecesPerBox", 1) or 1)
     qty = float(item.get("qty", 0) or 0)
     pieces = float(item.get("pieces", 0) or 0)
@@ -107,15 +115,20 @@ def calculate_sold_pieces(item: dict) -> int:
 
 
 def _get_total_stock_pieces(product: dict) -> int:
-    """Get total stock in pieces, supporting both old (showroom/godown) and new (stockQty) fields."""
-    ppb = int(product.get("piecesPerBox", 1) or 1)
-    # New unified field
+    """Get total stock in pieces, supporting both old (showroom/godown) and new (stockQty) fields.
+
+    stockQty is stored in the product's selling unit:
+      - tiles (unit=box): boxes (may be fractional)
+      - sanitary (unit=piece): pieces
+    """
     stock_qty = product.get("stockQty", 0) or 0
-    # Legacy fields (for data that hasn't been migrated yet)
     godown_qty = product.get("godownQty", 0) or 0
     showroom_qty = product.get("showroomQty", 0) or 0
-    total_boxes = stock_qty + godown_qty + showroom_qty
-    return round(total_boxes * ppb)
+    total_units = stock_qty + godown_qty + showroom_qty
+    if product.get("unit") != "box":
+        return round(total_units)
+    ppb = int(product.get("piecesPerBox", 1) or 1)
+    return round(total_units * ppb)
 
 
 def validate_stock_availability(product: dict, sold_pieces: int) -> bool:
@@ -126,14 +139,16 @@ def validate_stock_availability(product: dict, sold_pieces: int) -> bool:
 def compute_stock_deduction(product: dict, sold_pieces: int) -> dict:
     """Compute new stockQty after a sale.
 
-    Deducts from the unified stockQty field.
-    Returns the new stockQty value (and zeroes out legacy fields if present).
+    Deducts from the unified stockQty field (in selling units).
     """
     total_pieces = _get_total_stock_pieces(product)
-    ppb = int(product.get("piecesPerBox", 1) or 1)
     remaining_pieces = max(0, total_pieces - sold_pieces)
 
-    result = {"stockQty": round2(remaining_pieces / ppb)}
+    if product.get("unit") != "box":
+        result = {"stockQty": float(remaining_pieces)}
+    else:
+        ppb = int(product.get("piecesPerBox", 1) or 1)
+        result = {"stockQty": round2(remaining_pieces / ppb)}
     # Zero out legacy fields if they exist, consolidating into stockQty
     if product.get("godownQty") or product.get("showroomQty"):
         result["godownQty"] = 0
@@ -144,12 +159,15 @@ def compute_stock_deduction(product: dict, sold_pieces: int) -> dict:
 def compute_stock_addition(product: dict, add_pieces: int) -> dict:
     """Compute new stockQty after a stock-in (purchase/return).
 
-    Adds to the unified stockQty field.
+    Adds to the unified stockQty field (in selling units).
     """
     total_pieces = _get_total_stock_pieces(product) + add_pieces
-    ppb = int(product.get("piecesPerBox", 1) or 1)
 
-    result = {"stockQty": round2(total_pieces / ppb)}
+    if product.get("unit") != "box":
+        result = {"stockQty": float(total_pieces)}
+    else:
+        ppb = int(product.get("piecesPerBox", 1) or 1)
+        result = {"stockQty": round2(total_pieces / ppb)}
     # Zero out legacy fields if they exist
     if product.get("godownQty") or product.get("showroomQty"):
         result["godownQty"] = 0

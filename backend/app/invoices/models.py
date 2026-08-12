@@ -70,5 +70,6 @@ class InvoiceResponse(BaseModel):
     paymentStatus: str = ""
     createdVia: str = "manual"
     settlement: Optional[str] = None
+    settlementDetail: Optional[dict] = None
     originalInvoiceNo: Optional[str] = None
     refundTotal: Optional[float] = None

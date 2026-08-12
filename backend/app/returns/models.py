@@ -22,3 +22,10 @@ class CreateReturnRequest(BaseModel):
     settlement: str = Field(..., pattern="^(cash|adjust_udhari|store_credit)$")
     customerId: Optional[str] = None
     customerName: str = ""
+
+
+class UpdateReturnRequest(BaseModel):
+    """Re-settle an existing return — e.g. a customer who took store credit
+    later wants the cash instead. Items and stock are left untouched."""
+    settlement: str = Field(..., pattern="^(cash|adjust_udhari|store_credit)$")
+    refundTotal: Optional[float] = Field(default=None, ge=0)
