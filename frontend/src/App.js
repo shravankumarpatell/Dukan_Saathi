@@ -2,6 +2,8 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AppProvider, useApp } from "@/context/AppContext";
+import { HotkeyProvider } from "@/context/HotkeyContext";
+import { QuickCreateProvider } from "@/context/QuickCreateContext";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -67,8 +69,12 @@ export default function App() {
     <div className="App">
       <BrowserRouter>
         <AppProvider>
-          <Shell />
-          <Toaster position="top-center" richColors />
+          <HotkeyProvider>
+            <QuickCreateProvider>
+              <Shell />
+              <Toaster position="top-center" richColors />
+            </QuickCreateProvider>
+          </HotkeyProvider>
         </AppProvider>
       </BrowserRouter>
     </div>

@@ -122,8 +122,9 @@ export async function createBill(draft) {
 
 // ── Customers ──
 
-export async function listCustomers() {
-  return request("/customers");
+export async function listCustomers(role) {
+  const q = role && role !== "all" ? `?role=${encodeURIComponent(role)}` : "";
+  return request(`/customers${q}`);
 }
 
 export async function createCustomer(data) {
@@ -144,6 +145,13 @@ export async function allocatePayment(customerId, allocations, mode) {
   });
 }
 
+export async function reconcileCustomer(customerId) {
+  return request(`/customers/${customerId}/reconcile`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 // ── Returns ──
 
 export async function createReturn(data) {
@@ -153,9 +161,9 @@ export async function createReturn(data) {
   });
 }
 
-export async function updateReturn(invoiceId, data) {
-  return request(`/returns/${invoiceId}`, {
-    method: "PUT",
+export async function convertStoreCreditReturn(invoiceId, data) {
+  return request(`/returns/${invoiceId}/convert-store-credit`, {
+    method: "POST",
     body: JSON.stringify(data),
   });
 }

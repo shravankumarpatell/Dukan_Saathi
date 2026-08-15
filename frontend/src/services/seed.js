@@ -11,7 +11,7 @@ export function seedData() {
     { id: "p4", name: "Marble Finish Floor Tile", code: "MF24", company: "Kajaria", size: "2x4 ft", unit: "box", piecesPerBox: 2, sellPrice: 820, stockQty: 85, lowStockThreshold: 15 },
     { id: "p5", name: "Wash Basin Ivory", code: "WB-IV", company: "Cera", size: "", unit: "piece", piecesPerBox: 1, sellPrice: 1400, stockQty: 16, lowStockThreshold: 5 },
     { id: "p6", name: "One Piece Closet", code: "OPC-01", company: "Hindware", size: "", unit: "piece", piecesPerBox: 1, sellPrice: 7200, stockQty: 7, lowStockThreshold: 3 },
-    { id: "p7", name: "Wall Tile Glossy White", code: "WTGW", company: "Nitco", size: "1x1.5 ft", unit: "box", piecesPerBox: 6, sellPrice: 260, stockQty: 140, lowStockThreshold: 20 },
+    { id: "p7", name: "Wall Tile Glossy White", code: "WTGW", company: "Nitco", size: "12x18 in", unit: "box", piecesPerBox: 6, sellPrice: 260, stockQty: 140, lowStockThreshold: 20 },
   ];
 
   const customers = [

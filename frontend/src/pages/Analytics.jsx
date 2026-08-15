@@ -1,122 +1,324 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { money, fmtDate } from "@/lib/calc";
+import { money } from "@/lib/calc";
+import { formatStockLabel } from "@/lib/units";
+import { buildDailyDaybook } from "@/lib/daybook";
 import { generateDailySummaryPDF } from "@/services/billPdf";
-import { toast } from "sonner";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { Printer, Plus, TrendingDown } from "lucide-react";
+import PdfViewerDialog from "@/components/PdfViewerDialog";
+import { usePdfPreview } from "@/hooks/usePdfPreview";
+import Kbd from "@/components/Kbd";
+import DateNav from "@/components/DateNav";
+import SegmentedControl from "@/components/SegmentedControl";
+import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
+import { usePageFocus } from "@/hooks/usePageFocus";
+import { SCOPES, KEYS } from "@/lib/keymap";
+import {
+  addDays,
+  earliestYMD,
+  fmtLongDate,
+  fromYMD,
+  isTodayYmd,
+  isYesterdayYmd,
+  localNoonISO,
+  toYM,
+  toYMD,
+} from "@/lib/dates";
+import { buildShopInsights, pctChange, rangeForGrain } from "@/lib/shopInsights";
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Printer, TrendingDown, TrendingUp } from "lucide-react";
 
-const RANGES = { this_month: "This Month", last_month: "Last Month", this_year: "This Year" };
+const GRAINS = [
+  { value: "day", label: "Daily" },
+  { value: "month", label: "Monthly" },
+  { value: "year", label: "Yearly" },
+];
 
 export default function Analytics() {
-  const { invoices, products, customers, expenses, shop, setDraft } = useApp();
-  const [range, setRange] = useState("this_month");
-  const [exp, setExp] = useState({ amount: "", note: "", mode: "cash" });
+  const { invoices, products, expenses, customers, shop } = useApp();
+  const [grain, setGrain] = useState("day");
+  const [dayYmd, setDayYmd] = useState(() => toYMD(new Date()));
+  const [monthYm, setMonthYm] = useState(() => toYM(new Date()));
+  const [year, setYear] = useState(() => String(new Date().getFullYear()));
+  const grainRef = useRef(null);
+  const { pdfUrl, filename: pdfFilename, showPdf, closePdf } = usePdfPreview();
+  usePageFocus(() => {
+    const el = document.querySelector('[data-testid="analytics-date-input"]');
+    (el || grainRef.current)?.focus();
+  });
 
-  const inRange = useMemo(() => {
-    const now = new Date();
-    return invoices.filter((i) => {
-      const d = new Date(i.date);
-      if (range === "this_month") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      if (range === "last_month") { const m = (now.getMonth() + 11) % 12; return d.getMonth() === m; }
-      return d.getFullYear() === now.getFullYear();
-    }).filter((i) => i.type === "sale");
-  }, [invoices, range]);
+  const minYmd = useMemo(
+    () => earliestYMD([...invoices, ...expenses]) || toYMD(addDays(new Date(), -365)),
+    [invoices, expenses],
+  );
 
-  const topProducts = useMemo(() => {
-    const map = {};
-    inRange.forEach((iv) => iv.items.forEach((it) => {
-      map[it.name] = map[it.name] || { name: it.name, qty: 0, revenue: 0 };
-      map[it.name].qty += Number(it.qty) || 0;
-      map[it.name].revenue += (Number(it.qty) || 0) * (Number(it.rate) || 0);
-    }));
-    return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 6);
-  }, [inRange]);
+  const { start, end } = useMemo(
+    () => rangeForGrain({ grain, dayYmd, monthYm, year }),
+    [grain, dayYmd, monthYm, year],
+  );
 
-  const revenueSeries = useMemo(() => {
-    const map = {};
-    inRange.forEach((iv) => { const k = new Date(iv.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }); map[k] = (map[k] || 0) + (iv.grandTotal || 0); });
-    return Object.entries(map).map(([date, revenue]) => ({ date, revenue }));
-  }, [inRange]);
-
-  const slowMovers = useMemo(() => {
-    const sold = new Set();
-    inRange.forEach((iv) => iv.items.forEach((it) => sold.add(it.productId)));
-    return products.filter((p) => !sold.has(p.id)).slice(0, 6);
-  }, [inRange, products]);
-
-  const topCustomers = useMemo(() => {
-    const map = {};
-    inRange.forEach((iv) => { map[iv.customerName] = (map[iv.customerName] || 0) + (iv.grandTotal || 0); });
-    return Object.entries(map).map(([name, spend]) => ({ name, spend })).sort((a, b) => b.spend - a.spend).slice(0, 5);
-  }, [inRange]);
-
-  const addExpense = () => {
-    if (!(Number(exp.amount) > 0)) return toast.error("Amount daaliye");
-    setDraft({ kind: "expense", amount: Number(exp.amount), note: exp.note, mode: exp.mode, title: "Add Expense", subtitle: exp.note || exp.mode, amount: Number(exp.amount) });
-    setExp({ amount: "", note: "", mode: "cash" });
-  };
+  const insights = useMemo(
+    () => buildShopInsights({
+      invoices, expenses, products, customers, start, end, grain, lookbackDays: 14,
+    }),
+    [invoices, expenses, products, customers, start, end, grain],
+  );
 
   const printSummary = () => {
-    const today = new Date().toDateString();
-    const todaySales = invoices.filter((i) => i.type === "sale" && new Date(i.date).toDateString() === today);
-    const cash = todaySales.reduce((s, i) => s + (i.payments || []).filter((p) => p.mode === "cash").reduce((a, p) => a + p.amount, 0), 0);
-    const online = todaySales.reduce((s, i) => s + (i.payments || []).filter((p) => p.mode === "online").reduce((a, p) => a + p.amount, 0), 0);
-    const udhariAdded = todaySales.reduce((s, i) => s + (i.amountPending || 0), 0);
-    const todayExp = expenses.filter((e) => new Date(e.date).toDateString() === today);
-    const expensesTotal = todayExp.reduce((s, e) => s + (e.amount || 0), 0);
-    const stats = { salesRevenue: todaySales.reduce((s, i) => s + (i.grandTotal || 0), 0), cashCollected: cash, onlineCollected: online, udhariAdded, udhariCollected: 0, expensesTotal, netCash: cash - expensesTotal };
-    generateDailySummaryPDF({ shop, dateISO: new Date().toISOString(), stats, expenses: todayExp }, "newtab");
+    const ymd = grain === "day" ? dayYmd : toYMD(new Date());
+    const day = fromYMD(ymd);
+    const { stats, sales, expenses: dayExp } = buildDailyDaybook({ invoices, expenses, day });
+    showPdf(generateDailySummaryPDF({
+      shop,
+      dateISO: localNoonISO(ymd),
+      stats,
+      sales,
+      expenses: dayExp,
+    }, "bloburl"));
   };
+
+  useHotkeyScope(SCOPES.ANALYTICS);
+  useHotkeys(SCOPES.ANALYTICS, [
+    { keys: "alt+1", label: "Daily analysis", handler: () => setGrain("day") },
+    { keys: "alt+2", label: "Monthly analysis", handler: () => setGrain("month") },
+    { keys: "alt+3", label: "Yearly analysis", handler: () => setGrain("year") },
+    { keys: KEYS.preview, label: "Is din ka summary print karein", handler: printSummary },
+    { keys: KEYS.focusSearch, label: "Date / range par jaayein", handler: () => {
+      document.querySelector('[data-testid="analytics-date-input"]')?.focus();
+    } },
+  ]);
+
+  const periodLabel = grain === "day"
+    ? (isTodayYmd(dayYmd) ? "Aaj" : isYesterdayYmd(dayYmd) ? "Kal" : fmtLongDate(start))
+    : grain === "month"
+      ? start.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+      : String(year);
+
+  const chartTitle = grain === "day"
+    ? "Pichle 14 din — kamai vs karcha"
+    : grain === "month"
+      ? "Is mahine har din"
+      : "Is saal har mahina";
 
   return (
     <div className="space-y-5 ds-fade" data-testid="analytics-page">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-bold text-slate-900">Reports</h2>
-        <div className="flex items-center gap-2">
-          <select data-testid="range-select" value={range} onChange={(e) => setRange(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">{Object.entries(RANGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-2xl font-bold text-slate-900">Reports</h2>
+          <p className="text-sm text-slate-500">Kamai, karcha, udhari — din, mahina, saal. Decision yahin se.</p>
+        </div>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div ref={grainRef} data-testid="range-select">
+            <SegmentedControl
+              value={grain}
+              onChange={setGrain}
+              testPrefix="range"
+              className="grid grid-cols-3 gap-2"
+              showArrowHint={false}
+              options={GRAINS}
+            />
+          </div>
+          <span className="hidden items-center justify-end gap-1 text-xs text-slate-400 sm:flex">
+            <Kbd keys="alt+1" /><Kbd keys="alt+2" /><Kbd keys="alt+3" />
+          </span>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h3 className="mb-3 font-display font-bold text-slate-900">Revenue over time</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={revenueSeries}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="date" fontSize={11} stroke="#64748b" />
-              <YAxis fontSize={11} stroke="#64748b" />
-              <Tooltip formatter={(v) => money(v)} contentStyle={{ backgroundColor: "#fff", borderColor: "#e2e8f0", color: "#0f172a" }} />
-              <Line type="monotone" dataKey="revenue" stroke="#312E81" strokeWidth={2.5} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h3 className="mb-3 font-display font-bold text-slate-900">Top products (revenue)</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={topProducts}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="name" fontSize={9} interval={0} angle={-12} textAnchor="end" height={50} stroke="#64748b" />
-              <YAxis fontSize={11} stroke="#64748b" />
-              <Tooltip formatter={(v) => money(v)} contentStyle={{ backgroundColor: "#fff", borderColor: "#e2e8f0", color: "#0f172a" }} />
-              <Bar dataKey="revenue" fill="#EA580C" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+        <DateNav
+          mode={grain}
+          value={grain === "day" ? dayYmd : grain === "month" ? monthYm : year}
+          onChange={grain === "day" ? setDayYmd : grain === "month" ? setMonthYm : setYear}
+          min={minYmd}
+          testId="analytics-date"
+        />
+        {grain === "day" && (
+          <button
+            type="button"
+            data-testid="analytics-print-summary"
+            onClick={printSummary}
+            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-900 px-4 py-2 text-sm font-semibold text-white active:scale-95"
+          >
+            <Printer className="h-4 w-4" /> Print day-book <Kbd keys={KEYS.preview} tone="dark" />
+          </button>
+        )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h3 className="mb-2 font-display font-bold text-slate-900">Top customers</h3>
-          {topCustomers.map((c) => <div key={c.name} className="flex justify-between border-b border-slate-100 py-1.5 text-sm last:border-0"><span className="text-slate-700">{c.name}</span><b>{money(c.spend)}</b></div>)}
-          {topCustomers.length === 0 && <p className="text-sm text-slate-400">No data.</p>}
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h3 className="mb-2 flex items-center gap-1 font-display font-bold text-slate-900"><TrendingDown className="h-4 w-4 text-rose-500" /> Slow movers</h3>
-          {slowMovers.map((p) => <div key={p.id} className="flex justify-between border-b border-slate-100 py-1.5 text-sm last:border-0"><span className="text-slate-700">{p.name}</span><span className="text-slate-400">{(p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0)} left</span></div>)}
-          {slowMovers.length === 0 && <p className="text-sm text-slate-400">Sab bik raha hai! 🎉</p>}
-        </div>
+      <p className="text-sm font-semibold text-slate-700" data-testid="analytics-period-label">{periodLabel}</p>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi testid="kpi-kamai" label="Kamai" value={money(insights.stats.salesRevenue)} delta={pctChange(insights.stats.salesRevenue, insights.prevStats.salesRevenue)} tone="emerald" />
+        <Kpi testid="kpi-karcha" label="Karcha" value={money(insights.stats.expensesTotal)} delta={pctChange(insights.stats.expensesTotal, insights.prevStats.expensesTotal)} invert tone="orange" />
+        <Kpi testid="kpi-bachat" label="Bachat (kamai − karcha)" value={money(insights.bachat)} delta={pctChange(insights.bachat, insights.prevBachat)} tone="indigo" />
+        <Kpi testid="kpi-bills" label="Bills" value={insights.stats.bills} hint={insights.stats.bills ? `Avg bill ${money(insights.avgBill)}` : "Koi sale nahi"} />
+        <Kpi testid="kpi-cash" label="Cash aaya" value={money(insights.stats.cashCollected)} hint={`Drawer net ${money(insights.stats.netCash)}`} />
+        <Kpi testid="kpi-online" label="Online aaya" value={money(insights.stats.onlineCollected)} hint={`Online net ${money(insights.stats.netOnline)}`} />
+        <Kpi testid="kpi-udhari-out" label="Udhari diya" value={money(insights.stats.udhariAdded)} />
+        <Kpi testid="kpi-udhari-in" label="Udhari vusool" value={money(insights.stats.udhariCollected)} hint={insights.collectionRate != null ? `Collection ${Math.round(insights.collectionRate)}%` : undefined} />
       </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Mini label="Returns (cash)" value={money(insights.stats.returnsTotal)} />
+        <Mini label="Maal kharida" value={money(insights.maalKharida)} />
+        <Mini label="GST on bills" value={money(insights.gst)} />
+        <Mini label="Stock value (sell)" value={money(insights.stockValue)} />
+      </div>
+
+      {insights.notes.length > 0 && (
+        <div className="grid gap-2 md:grid-cols-2" data-testid="analytics-notes">
+          {insights.notes.map((n, i) => (
+            <div
+              key={i}
+              className={`rounded-xl border px-3 py-2 text-sm ${
+                n.tone === "good" ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : n.tone === "bad" ? "border-rose-200 bg-rose-50 text-rose-900"
+                    : n.tone === "warn" ? "border-amber-200 bg-amber-50 text-amber-950"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
+              }`}
+            >
+              {n.text}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <h3 className="mb-3 font-display font-bold text-slate-900">{chartTitle}</h3>
+        {insights.series.some((r) => r.kamai || r.karcha) ? (
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart data={insights.series}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis dataKey="label" fontSize={11} stroke="#64748b" />
+              <YAxis fontSize={11} stroke="#64748b" />
+              <Tooltip formatter={(v, name) => [money(v), name]} contentStyle={{ backgroundColor: "#fff", borderColor: "#e2e8f0", color: "#0f172a" }} />
+              <Legend />
+              <Bar dataKey="kamai" name="Kamai" fill="#312E81" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="karcha" name="Karcha" fill="#EA580C" radius={[4, 4, 0, 0]} />
+              <Line type="monotone" dataKey="bachat" name="Bachat" stroke="#059669" strokeWidth={2} dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-sm text-slate-400">Is period mein sale ya karcha nahi.</p>
+        )}
+      </div>
+
+      {grain !== "day" && insights.best?.value > 0 && (
+        <div className="grid gap-3 md:grid-cols-3">
+          <Mini label="Best kamai" value={insights.best.label} hint={money(insights.best.value)} />
+          <Mini label="Sabse halka din/mahina" value={insights.worst?.label || "—"} hint={money(insights.worst?.value || 0)} />
+          <Mini label="Udhari abhi pending" value={money(insights.udhari.total)} hint={`${insights.lowStockCount} low-stock items`} />
+        </div>
+      )}
+
+      {grain !== "day" && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <h3 className="mb-3 font-display font-bold text-slate-900">Weekday pattern (avg kamai)</h3>
+          <ResponsiveContainer width="100%" height={180}>
+            <ComposedChart data={insights.weekdays}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis dataKey="name" fontSize={11} stroke="#64748b" />
+              <YAxis fontSize={11} stroke="#64748b" />
+              <Tooltip formatter={(v) => money(v)} contentStyle={{ backgroundColor: "#fff", borderColor: "#e2e8f0", color: "#0f172a" }} />
+              <Bar dataKey="kamai" name="Avg kamai" fill="#6366f1" radius={[4, 4, 0, 0]} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <ListCard title="Top products (kamai)">
+          {insights.products.map((p) => (
+            <Row key={p.id} left={p.name} right={money(p.revenue)} hint={`${p.qty} sold`} />
+          ))}
+        </ListCard>
+        <ListCard title="Top customers">
+          {insights.customers.map((c) => (
+            <Row key={c.name} left={c.name} right={money(c.spend)} />
+          ))}
+        </ListCard>
+        <ListCard title="Karcha breakdown">
+          {insights.expenses.map((e) => (
+            <Row key={e.name} left={e.name} right={money(e.amount)} />
+          ))}
+        </ListCard>
+        <ListCard title="Company mix">
+          {insights.companies.map((c) => (
+            <Row key={c.name} left={c.name} right={money(c.revenue)} />
+          ))}
+        </ListCard>
+        <ListCard title="Tiles vs sanitary">
+          <Row left="Tiles" right={money(insights.mix.tiles)} />
+          <Row left="Sanitary" right={money(insights.mix.sanitary)} />
+        </ListCard>
+        <ListCard title="Udhari pending (abhi)">
+          {insights.udhari.top.map((c) => (
+            <Row key={c.name} left={c.name} right={money(c.pending)} />
+          ))}
+        </ListCard>
+        <ListCard title="Slow movers" icon={TrendingDown}>
+          {insights.slowMovers.map((p) => (
+            <Row key={p.id} left={p.name} right={`${formatStockLabel(p)} left`} muted />
+          ))}
+          {insights.slowMovers.length === 0 && <p className="text-sm text-slate-400">Sab bik raha hai! 🎉</p>}
+        </ListCard>
+        <ListCard title="Payment mix is period">
+          <Row left="Cash collected" right={money(insights.stats.cashCollected)} />
+          <Row left="Online collected" right={money(insights.stats.onlineCollected)} />
+          <Row left="Udhari diya" right={money(insights.stats.udhariAdded)} />
+          <Row left="Udhari vusool" right={money(insights.stats.udhariCollected)} />
+        </ListCard>
+      </div>
+
+      <PdfViewerDialog url={pdfUrl} filename={pdfFilename} onClose={closePdf} title="Daily Summary PDF" />
+    </div>
+  );
+}
+
+function Kpi({ label, value, hint, delta, invert, tone = "slate", testid }) {
+  const show = delta != null && Number.isFinite(delta);
+  const good = invert ? delta < 0 : delta > 0;
+  return (
+    <div data-testid={testid} className="rounded-2xl border border-slate-200 bg-white p-3">
+      <p className="text-xs uppercase tracking-widest text-slate-400">{label}</p>
+      <p className={`font-display text-xl font-bold text-slate-900 ${tone === "emerald" ? "text-emerald-800" : tone === "orange" ? "text-orange-800" : ""}`}>{value}</p>
+      {show && (
+        <p className={`mt-0.5 flex items-center gap-0.5 text-xs font-semibold ${good ? "text-emerald-600" : delta === 0 ? "text-slate-400" : "text-rose-600"}`}>
+          {delta > 0 ? <TrendingUp className="h-3 w-3" /> : delta < 0 ? <TrendingDown className="h-3 w-3" /> : null}
+          {delta > 0 ? "+" : ""}{Math.round(delta)}% vs pichla
+        </p>
+      )}
+      {hint && <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>}
+    </div>
+  );
+}
+
+function Mini({ label, value, hint }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+      <p className="text-xs uppercase tracking-widest text-slate-400">{label}</p>
+      <p className="font-display text-lg font-bold text-slate-900">{value}</p>
+      {hint && <p className="text-[11px] text-slate-400">{hint}</p>}
+    </div>
+  );
+}
+
+function ListCard({ title, children, icon: Icon }) {
+  const empty = !React.Children.count(children);
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h3 className="mb-2 flex items-center gap-1 font-display font-bold text-slate-900">
+        {Icon && <Icon className="h-4 w-4 text-rose-500" />}
+        {title}
+      </h3>
+      {empty ? <p className="text-sm text-slate-400">No data.</p> : children}
+    </div>
+  );
+}
+
+function Row({ left, right, hint, muted }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-slate-100 py-1.5 text-sm last:border-0">
+      <span className="min-w-0 truncate text-slate-700">{left}{hint ? <span className="ml-1 text-xs text-slate-400">{hint}</span> : null}</span>
+      <b className={`shrink-0 tabular-nums ${muted ? "font-medium text-slate-400" : "text-slate-900"}`}>{right}</b>
     </div>
   );
 }

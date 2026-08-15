@@ -44,11 +44,14 @@ class ConflictError(AppError):
 class InsufficientStockError(AppError):
     """Stock is insufficient for the requested operation (422)."""
 
-    def __init__(self, product_name: str):
-        super().__init__(
-            f"Insufficient stock for: {product_name}",
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        )
+    def __init__(self, product_name: str, available: int = None, requested: int = None, avail_label: str = None, req_label: str = None):
+        if available is not None and requested is not None:
+            a = avail_label if avail_label is not None else str(available)
+            r = req_label if req_label is not None else str(requested)
+            msg = f"Stock kam hai: {product_name} (available {a}, maanga {r})"
+        else:
+            msg = f"Insufficient stock for: {product_name}"
+        super().__init__(msg, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
 
 class BusinessRuleError(AppError):

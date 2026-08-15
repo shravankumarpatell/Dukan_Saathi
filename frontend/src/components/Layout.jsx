@@ -1,14 +1,17 @@
-import React from "react";
-import { NavLink, Link, useLocation } from "react-router-dom";
+import React, { useCallback, useState } from "react";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import DraftCard from "@/components/DraftCard";
-import {
-  LayoutDashboard, Package, Undo2, Bot, Plus,
-  ReceiptText, Users, Upload, BarChart3, Settings, LogOut,
-} from "lucide-react";
+import CommandPalette from "@/components/CommandPalette";
+import ShortcutHelp from "@/components/ShortcutHelp";
+import Kbd from "@/components/Kbd";
+import { useGlobalHotkeys } from "@/hooks/useHotkeys";
+import { useHotkeyContext } from "@/context/HotkeyContext";
+import { NAV_ITEMS, NAV_BOTTOM, KEYS } from "@/lib/keymap";
+import { LayoutDashboard, Package, Undo2, Bot, Plus, LogOut, Keyboard } from "lucide-react";
 import { signOut as signOutUser } from "@/services/auth";
 
-/* ─── Navigation items ─── */
+/* ─── Mobile nav (a deliberately shorter list than the sidebar) ─── */
 const MOBILE_LEFT = [
   { to: "/", label: "Home", icon: LayoutDashboard, end: true },
   { to: "/inventory", label: "Stock", icon: Package },
@@ -18,23 +21,6 @@ const MOBILE_RIGHT = [
   { to: "/chat", label: "Assistant", icon: Bot },
 ];
 
-const SIDEBAR_NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/bill", label: "New Bill", icon: Plus },
-  { to: "/inventory", label: "Stock", icon: Package },
-  { to: "/customers", label: "Customers", icon: Users },
-  { to: "/returns", label: "Returns", icon: Undo2 },
-  { to: "/history", label: "Bill History", icon: ReceiptText },
-  { to: "/bulk", label: "Add Stock", icon: Upload },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/chat", label: "AI Assistant", icon: Bot },
-];
-
-const SIDEBAR_BOTTOM = [
-  { to: "/settings", label: "Settings", icon: Settings },
-];
-
-/* Reusable nav-link class builder */
 const mobileNavCls = ({ isActive }) =>
   `flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-semibold transition-colors ${isActive ? "text-indigo-900" : "text-slate-400"}`;
 
@@ -48,6 +34,38 @@ const sidebarNavCls = ({ isActive }) =>
 export default function Layout({ children }) {
   const { shop, user } = useApp();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { getActiveBindings } = useHotkeyContext();
+
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpBindings, setHelpBindings] = useState([]);
+
+  // Snapshot the live stack before the help dialog pushes its own scope on top.
+  const openHelp = useCallback(() => {
+    setHelpBindings(getActiveBindings());
+    setHelpOpen(true);
+  }, [getActiveBindings]);
+
+  useGlobalHotkeys([
+    { keys: KEYS.palette, label: "Command palette", handler: () => setPaletteOpen(true), allowInInput: true },
+    { keys: KEYS.help, label: "Shortcut help", handler: openHelp },
+
+    { keys: KEYS.gotoDashboard, label: "Dashboard", handler: () => navigate("/") },
+    { keys: KEYS.gotoBill, label: "New bill", handler: () => navigate("/bill") },
+    { keys: KEYS.gotoStock, label: "Stock", handler: () => navigate("/inventory") },
+    { keys: KEYS.gotoHistory, label: "Bill history", handler: () => navigate("/history") },
+    { keys: KEYS.gotoReturns, label: "Returns", handler: () => navigate("/returns") },
+    { keys: KEYS.gotoBulk, label: "Add stock", handler: () => navigate("/bulk") },
+    { keys: KEYS.gotoCustomers, label: "Udhari & Customers", handler: () => navigate("/customers") },
+    { keys: KEYS.gotoChat, label: "AI assistant", handler: () => navigate("/chat") },
+    { keys: KEYS.gotoAnalytics, label: "Analytics", handler: () => navigate("/analytics") },
+
+    { keys: KEYS.gotoExpense, label: "Add expense", handler: () => navigate("/?focus=expense") },
+    { keys: KEYS.sqftCalc, label: "Sq-ft calculator", handler: () => navigate("/?focus=sqft") },
+    { keys: KEYS.gotoUdhari, label: "Record udhari payment", handler: () => navigate("/customers?tab=udhari&focus=payment") },
+    { keys: KEYS.gotoSettings, label: "Settings", handler: () => navigate("/settings") },
+  ]);
 
   return (
     <div className="relative min-h-screen bg-stone-100">
@@ -65,22 +83,55 @@ export default function Layout({ children }) {
           </Link>
         </div>
 
-        {/* Main nav links */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {SIDEBAR_NAV.map((n) => (
+        {/* Gateway launcher */}
+        <div className="px-3 pt-3">
+          <button
+            data-testid="open-palette-btn"
+            onClick={() => setPaletteOpen(true)}
+            className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 transition-colors hover:border-indigo-300 hover:text-indigo-800"
+          >
+            <span className="flex-1 text-left">Jaayein kahin bhi…</span>
+            <Kbd keys={KEYS.palette} />
+          </button>
+        </div>
+
+        {/* Main nav links — each shows its own key, Tally style */}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+          {NAV_ITEMS.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={sidebarNavCls}>
-              <n.icon className="h-5 w-5 shrink-0" /> {n.label}
+              {({ isActive }) => (
+                <>
+                  <n.icon className="h-5 w-5 shrink-0" />
+                  <span className="flex-1">{n.label}</span>
+                  <Kbd keys={n.keys} tone={isActive ? "dark" : "default"} />
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        {/* Bottom section — settings, user */}
+        {/* Bottom section — settings, help, user */}
         <div className="border-t border-slate-100 px-3 py-3 space-y-2">
-          {SIDEBAR_BOTTOM.map((n) => (
+          {NAV_BOTTOM.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={sidebarNavCls}>
-              <n.icon className="h-5 w-5 shrink-0" /> {n.label}
+              {({ isActive }) => (
+                <>
+                  <n.icon className="h-5 w-5 shrink-0" />
+                  <span className="flex-1">{n.label}</span>
+                  <Kbd keys={n.keys} tone={isActive ? "dark" : "default"} />
+                </>
+              )}
             </NavLink>
           ))}
+          <button
+            data-testid="open-help-btn"
+            onClick={openHelp}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-900"
+          >
+            <Keyboard className="h-5 w-5 shrink-0" />
+            <span className="flex-1 text-left">Shortcuts</span>
+            <Kbd keys={KEYS.help} />
+          </button>
           <div className="flex items-center gap-3 rounded-xl px-3 py-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-900 text-sm font-bold text-white">
               {(user?.name || "S").charAt(0).toUpperCase()}
@@ -118,6 +169,13 @@ export default function Layout({ children }) {
             {getPageTitle(location.pathname)}
           </h2>
           <div className="flex items-center gap-3">
+            <button
+              onClick={openHelp}
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-slate-400 transition-colors hover:text-indigo-800"
+              aria-label="Keyboard shortcuts"
+            >
+              <Keyboard className="h-4 w-4" /> <Kbd keys={KEYS.help} />
+            </button>
             <Link to="/settings" className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-900 text-sm font-bold text-white transition-transform hover:scale-105">
               {(user?.name || "S").charAt(0).toUpperCase()}
             </Link>
@@ -156,6 +214,8 @@ export default function Layout({ children }) {
       </nav>
 
       <DraftCard />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} pageBindings={helpBindings} />
     </div>
   );
 }
@@ -166,7 +226,7 @@ function getPageTitle(pathname) {
     "/": "Dashboard",
     "/inventory": "Stock Management",
     "/bill": "New Bill",
-    "/customers": "Customers & Udhari",
+    "/customers": "Udhari & Customers",
     "/returns": "Returns",
     "/chat": "AI Assistant",
     "/bulk": "Add Stock",

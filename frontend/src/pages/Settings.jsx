@@ -1,87 +1,206 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { usePWA } from "@/hooks/usePWA";
+import Kbd from "@/components/Kbd";
+import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
+import { useFormFlow } from "@/hooks/useFormFlow";
+import { usePageFocus } from "@/hooks/usePageFocus";
+import { SCOPES, KEYS } from "@/lib/keymap";
+import { validateGstin } from "@/lib/gstin";
 import { toast } from "sonner";
-import { Store, Download } from "lucide-react";
+import { Store, Pencil } from "lucide-react";
+
+function shopToForm(shop) {
+  return {
+    name: shop?.name || "",
+    ownerName: shop?.ownerName || "",
+    phone: shop?.phone || "",
+    address: shop?.address || "",
+    gstEnabled: shop?.gstEnabled ?? true,
+    gstin: shop?.gstin || "",
+  };
+}
 
 export default function Settings({ isOnboarding = false }) {
   const { shop, saveShop } = useApp();
-  const { isInstallable, isInstalled, installApp } = usePWA();
-  const [form, setForm] = useState({ 
-    name: shop?.name || "", 
-    ownerName: shop?.ownerName || "", 
-    phone: shop?.phone || "", 
-    address: shop?.address || "", 
-    gstEnabled: shop?.gstEnabled ?? true, 
-    gstin: shop?.gstin || "" 
-  });
+  const [form, setForm] = useState(() => shopToForm(shop));
+  const [editing, setEditing] = useState(!!isOnboarding);
+  const editBtnRef = useRef(null);
+  const cancelEditRef = useRef(() => {});
 
-  const save = async () => { 
+  const startEdit = useCallback(() => {
+    setForm(shopToForm(shop));
+    setEditing(true);
+  }, [shop]);
+
+  const cancelEdit = useCallback(() => {
+    setForm(shopToForm(shop));
+    setEditing(false);
+    setTimeout(() => editBtnRef.current?.focus(), 60);
+  }, [shop]);
+  cancelEditRef.current = cancelEdit;
+
+  const save = useCallback(async () => {
+    if (!editing) return;
     if (!form.name.trim() || !form.phone.trim()) {
       return toast.error("Please enter your shop name and phone number");
     }
-    await saveShop(form); 
-    toast.success(isOnboarding ? "Shop setup complete!" : "Shop details saved"); 
-  };
+    const gstCheck = validateGstin(form.gstin, { required: !!form.gstEnabled });
+    if (!gstCheck.ok) return toast.error(gstCheck.error);
+
+    await saveShop({
+      ...form,
+      gstin: form.gstEnabled ? gstCheck.gstin : gstCheck.gstin,
+    });
+    toast.success(isOnboarding ? "Shop setup complete!" : "Shop details saved");
+    if (!isOnboarding) {
+      setEditing(false);
+      setTimeout(() => editBtnRef.current?.focus(), 60);
+    }
+  }, [form, saveShop, isOnboarding, editing]);
+
+  const flow = useFormFlow({
+    onCancel: editing && !isOnboarding ? () => cancelEditRef.current() : undefined,
+  });
+
+  const focusStart = useCallback(() => {
+    if (editing || isOnboarding) flow.focusFirst();
+    else editBtnRef.current?.focus();
+  }, [editing, isOnboarding, flow]);
+
+  usePageFocus(focusStart);
+
+  useEffect(() => {
+    if (!(editing || isOnboarding)) return undefined;
+    const t = setTimeout(() => flow.focusFirst(), 60);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, isOnboarding]);
+
+  useHotkeyScope(SCOPES.SETTINGS);
+  useHotkeys(SCOPES.SETTINGS, [
+    { keys: KEYS.save, label: "Shop details save karein", handler: save, disabled: !editing },
+    { keys: KEYS.saveAlt, label: "Shop details save karein", handler: save, disabled: !editing, hidden: true },
+    { keys: KEYS.cancel, label: "Edit cancel", handler: cancelEdit, disabled: !editing || isOnboarding },
+    { keys: KEYS.focusSearch, label: "Start field par jaayein", handler: () => focusStart() },
+  ]);
+
+  const gstinRequired = !!form.gstEnabled;
+  const gstinEditable = editing && form.gstEnabled;
 
   return (
     <div className="mx-auto max-w-xl space-y-4 ds-fade" data-testid="settings-page">
-      <div className="flex items-center gap-2">
-        <Store className="h-5 w-5 text-indigo-900" />
-        <h2 className="font-display text-2xl font-bold text-slate-900">
-          {isOnboarding ? "Welcome! Setup your shop" : "Shop Settings"}
-        </h2>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Store className="h-5 w-5 text-indigo-900" />
+          <h2 className="font-display text-2xl font-bold text-slate-900">
+            {isOnboarding ? "Welcome! Setup your shop" : "Shop Settings"}
+          </h2>
+        </div>
+        {!isOnboarding && !editing && (
+          <button
+            ref={editBtnRef}
+            type="button"
+            data-testid="edit-settings-btn"
+            onClick={startEdit}
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-800 active:scale-95"
+          >
+            <Pencil className="h-4 w-4" /> Edit
+          </button>
+        )}
       </div>
 
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+      <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
         {[
-          ["name", "Shop name *"], 
-          ["ownerName", "Owner name"], 
-          ["phone", "Phone *"], 
-          ["address", "Address"], 
-          ["gstin", "GSTIN"]
+          ["name", "Shop name *"],
+          ["ownerName", "Owner name"],
+          ["phone", "Phone *"],
+          ["address", "Address"],
         ].map(([k, l]) => (
           <div key={k}>
             <label className="text-xs font-semibold text-slate-600">{l}</label>
-            <input 
-              data-testid={`set-${k}`} 
-              value={form[k]} 
-              onChange={(e) => setForm({ ...form, [k]: e.target.value })} 
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" 
+            <input
+              data-testid={`set-${k}`}
+              value={form[k]}
+              readOnly={!editing}
+              onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+              className={`w-full rounded-lg border px-3 py-2 text-sm ${
+                editing
+                  ? "border-slate-300 bg-white"
+                  : "border-slate-200 bg-slate-50 text-slate-600"
+              }`}
               placeholder={k === "phone" ? "e.g. 9876543210" : ""}
             />
           </div>
         ))}
-        <label className="flex items-center gap-2 text-sm">
-          <input data-testid="set-gst" type="checkbox" checked={form.gstEnabled} onChange={(e) => setForm({ ...form, gstEnabled: e.target.checked })} /> 
-          GST invoicing enabled (default 18%)
-        </label>
-        <button data-testid="save-settings-btn" onClick={save} className="w-full rounded-xl bg-indigo-900 px-4 py-3 font-semibold text-white active:scale-95">
-          {isOnboarding ? "Continue to Dashboard" : "Save"}
-        </button>
-      </div>
 
-      {!isOnboarding && (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
-          <h3 className="font-semibold text-slate-900">App Installation</h3>
-          <p className="text-sm text-slate-500">
-            {isInstalled ? "DukanSaathi is already installed on your device." : "Install DukanSaathi on your home screen for quick access and offline capabilities."}
-          </p>
-          {!isInstalled && isInstallable && (
-            <button 
-              onClick={installApp} 
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 font-semibold text-indigo-800 active:scale-95"
-            >
-              <Download className="h-4 w-4" /> Download App
-            </button>
-          )}
-          {!isInstalled && !isInstallable && (
-            <p className="text-xs text-amber-600 mt-2">
-              (To install on iOS, tap the Share icon in Safari and select "Add to Home Screen")
+        <label className={`flex items-center gap-2 text-sm ${editing ? "text-slate-700" : "text-slate-500"}`}>
+          <input
+            data-testid="set-gst"
+            type="checkbox"
+            checked={form.gstEnabled}
+            disabled={!editing}
+            onChange={(e) => setForm({ ...form, gstEnabled: e.target.checked })}
+          />
+          GST invoicing enabled (default 18%)
+          {editing && <Kbd keys={KEYS.toggleCheckbox} />}
+        </label>
+
+        <div>
+          <label className={`text-xs font-semibold ${gstinEditable ? "text-slate-600" : "text-slate-400"}`}>
+            GSTIN{gstinRequired ? " *" : ""}
+          </label>
+          <input
+            data-testid="set-gstin"
+            value={form.gstin}
+            disabled={!gstinEditable}
+            readOnly={!gstinEditable}
+            required={gstinRequired}
+            aria-required={gstinRequired}
+            onChange={(e) => setForm({ ...form, gstin: e.target.value.toUpperCase() })}
+            className={`w-full rounded-lg border px-3 py-2 text-sm uppercase tracking-wide ${
+              gstinEditable
+                ? "border-slate-300 bg-white text-slate-900"
+                : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+            }`}
+            placeholder={gstinRequired ? "15-character GSTIN required" : "GST off — GSTIN locked"}
+            maxLength={15}
+          />
+          {editing && (
+            <p className="mt-1 text-[11px] text-slate-400">
+              {gstinRequired
+                ? "Format + check digit validate hota hai. Live GST portal lookup alag API se hota hai."
+                : "GST uncheck — GSTIN field band hai."}
             </p>
           )}
         </div>
-      )}
+
+        {editing ? (
+          <div className="flex gap-2">
+            {!isOnboarding && (
+              <button
+                type="button"
+                data-flow-skip
+                data-testid="cancel-settings-btn"
+                onClick={cancelEdit}
+                className="flex-1 rounded-xl border border-slate-300 px-4 py-3 font-semibold text-slate-700 active:scale-95"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              type="button"
+              data-flow-skip
+              data-testid="save-settings-btn"
+              onClick={save}
+              className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-indigo-900 px-4 py-3 font-semibold text-white active:scale-95"
+            >
+              {isOnboarding ? "Continue to Dashboard" : "Save"} <Kbd keys={KEYS.save} tone="dark" />
+            </button>
+          </div>
+        ) : (
+          <p className="text-center text-xs text-slate-400">Details locked. Edit dabakar badlein.</p>
+        )}
+      </div>
     </div>
   );
 }

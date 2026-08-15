@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { money, fmtDate } from "@/lib/calc";
+import { money, fmtDate, fmtTime } from "@/lib/calc";
 
 // Printable daily summary (F6): sales, cash/online collected, udhari, expenses, net cash.
 export function buildDailySummaryPdf({ shop, dateISO, stats, expenses }) {
@@ -31,10 +31,12 @@ export function buildDailySummaryPdf({ shop, dateISO, stats, expenses }) {
       ["Sales Revenue", money(stats.salesRevenue)],
       ["Cash Collected", money(stats.cashCollected)],
       ["Online Collected", money(stats.onlineCollected)],
-      ["Udhari Added Today", money(stats.udhariAdded)],
+      ["Udhari Given Today", money(stats.udhariAdded)],
       ["Udhari Collected Today", money(stats.udhariCollected)],
-      ["Expenses", money(stats.expensesTotal)],
+      ["Cash Expenses", money(stats.cashExpenses ?? 0)],
+      ["Online Expenses", money(stats.onlineExpenses ?? 0)],
       ["Net Cash Position", money(stats.netCash)],
+      ["Net Online Position", money(stats.netOnline ?? 0)],
     ],
     margin: { left: M, right: M },
   });
@@ -46,10 +48,10 @@ export function buildDailySummaryPdf({ shop, dateISO, stats, expenses }) {
     autoTable(doc, {
       startY: y + 8,
       theme: "striped",
-      head: [["Note", "Mode", "Amount"]],
+      head: [["Time", "Note", "Mode", "Amount"]],
       headStyles: { fillColor: [234, 88, 12], textColor: 255 },
-      body: expenses.map((e) => [e.note || "-", e.mode, money(e.amount)]),
-      columnStyles: { 2: { halign: "right" } },
+      body: expenses.map((e) => [fmtTime(e.date), e.note || "-", e.mode, money(e.amount)]),
+      columnStyles: { 0: { cellWidth: 70 }, 3: { halign: "right" } },
       margin: { left: M, right: M },
     });
   }

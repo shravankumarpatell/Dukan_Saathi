@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import * as api from "@/services/api";
+import Kbd from "@/components/Kbd";
+import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
+import { usePageFocus } from "@/hooks/usePageFocus";
+import { SCOPES, KEYS } from "@/lib/keymap";
+import { formatStockLabel, unitKindLabel, rateSuffix } from "@/lib/units";
 import { Send, Bot, User, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,6 +19,9 @@ export default function Chat() {
   const [busy, setBusy] = useState(false);
   const endRef = useRef(null);
   const idleRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const focusStart = usePageFocus(() => inputRef.current?.focus());
 
   const resetIdle = () => { if (idleRef.current) clearTimeout(idleRef.current); idleRef.current = setTimeout(() => setMessages([]), IDLE_MS); };
   useEffect(() => { resetIdle(); return () => idleRef.current && clearTimeout(idleRef.current); }, [messages]);
@@ -26,7 +34,7 @@ export default function Chat() {
     lines.push(`Customers: ${app.customers.length}`);
     
     // Sort products by sales volume (rough approximation using highest pending/sold invoices if we had them, for now just use standard data)
-    const topProducts = app.products.slice(0, 30).map((p) => `- ${p.name} (Code: ${p.code || "-"}, Stock: ${(p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0)} ${p.unit || 'pcs'}, Price: ₹${p.sellPrice})`);
+    const topProducts = app.products.slice(0, 30).map((p) => `- ${p.name} (Code: ${p.code || "-"}, Type: ${unitKindLabel(p)}, Stock: ${formatStockLabel(p)}, Price: ₹${p.sellPrice}${rateSuffix(p)})`);
     lines.push(`Product inventory details:\n${topProducts.join("\n")}`);
     
     const totalUdhari = app.customers.reduce((s, c) => s + (c.totalPending || 0), 0);
@@ -61,15 +69,27 @@ Never use plain text lists when a table would be better. Do not apologize, just 
       setMessages((m) => { const c = [...m]; c[c.length - 1] = { role: "assistant", content: "Sorry, could not get a response. Please try again." }; return c; });
     }
     setBusy(false);
+    focusStart(0);
   };
 
   const suggestions = ["Which products are low on stock?", "What is my total udhari?", "Show me today's sales summary", "Which items should I restock?"];
+
+  useHotkeyScope(SCOPES.CHAT);
+  useHotkeys(SCOPES.CHAT, [
+    { keys: KEYS.focusSearch, label: "Sawal likhne par jaayein", handler: () => focusStart(0) },
+    { keys: "alt+k", label: "Baat-cheet saaf karein", handler: () => { setMessages([]); focusStart(0); } },
+  ]);
 
   return (
     <div className="flex h-[calc(100vh-160px)] lg:h-[calc(100vh-100px)] flex-col ds-fade" data-testid="chat-page">
       <div className="mb-2 flex items-center gap-2">
         <div className="rounded-lg bg-indigo-900 p-2 text-white"><Bot className="h-4 w-4" /></div>
-        <div><h2 className="font-display text-xl font-bold text-slate-900">Business Intelligence</h2><p className="text-xs text-slate-400">AI powered · analyzes your stock, udhari & sales</p></div>
+        <div className="flex-1"><h2 className="font-display text-xl font-bold text-slate-900">Business Intelligence</h2><p className="text-xs text-slate-400">AI powered · analyzes your stock, udhari &amp; sales</p></div>
+        {messages.length > 0 && (
+          <button onClick={() => setMessages([])} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-slate-400 hover:text-indigo-800">
+            Clear <Kbd keys="alt+k" />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto rounded-2xl bg-white p-3 md:p-6" data-testid="chat-messages">
@@ -120,7 +140,7 @@ Never use plain text lists when a table would be better. Do not apologize, just 
       </div>
 
       <div className="mt-3 flex items-center gap-2">
-        <input data-testid="chat-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Ask a question about your business..." className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" />
+        <input ref={inputRef} data-testid="chat-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }} placeholder="Ask a question about your business..." className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" />
         <button data-testid="chat-send" onClick={send} disabled={busy} className="flex h-[52px] w-[52px] items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md active:scale-95 disabled:opacity-50 hover:bg-indigo-700 transition-all"><Send className="h-5 w-5 ml-1" /></button>
       </div>
     </div>

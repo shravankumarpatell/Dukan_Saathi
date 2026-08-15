@@ -1,12 +1,34 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { money } from "@/lib/calc";
+import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
+import { SCOPES, KEYS } from "@/lib/keymap";
+import Kbd from "@/components/Kbd";
 import { Check, X } from "lucide-react";
 
 // Generic old->new draft confirmation card (for stock/payment/return/transfer/expense).
 export default function DraftCard() {
   const { draft, commitDraft, cancelDraft } = useApp();
-  if (!draft || draft.kind === "sale" || draft.kind === "purchase") return null;
+  const active = !!draft && draft.kind !== "sale" && draft.kind !== "purchase";
+
+  // Exclusive so page form-flow / F9 cannot steal Esc or Ctrl+Enter while a
+  // draft is waiting for Confirm.
+  useHotkeyScope(SCOPES.DRAFT, { exclusive: true, enabled: active });
+  useHotkeys(SCOPES.DRAFT, [
+    { keys: KEYS.confirmDraft, label: "Confirm this draft", handler: commitDraft, allowInInput: true },
+    { keys: KEYS.cancel, label: "Cancel this draft", handler: cancelDraft },
+  ]);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    // Park focus on Confirm so the caret isn't left in the page form behind.
+    const t = setTimeout(() => {
+      document.querySelector('[data-testid="draft-confirm-btn"]')?.focus();
+    }, 40);
+    return () => clearTimeout(t);
+  }, [active, draft?.kind, draft?.amount, draft?.title]);
+
+  if (!active) return null;
 
   const rows = draft.summaryRows || [];
 
@@ -47,14 +69,14 @@ export default function DraftCard() {
             onClick={cancelDraft}
             className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-700 transition-transform active:scale-95"
           >
-            <X className="h-4 w-4" /> Cancel
+            <X className="h-4 w-4" /> Cancel <Kbd keys={KEYS.cancel} />
           </button>
           <button
             data-testid="draft-confirm-btn"
             onClick={commitDraft}
             className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white shadow-md transition-transform active:scale-95 hover:bg-emerald-700"
           >
-            <Check className="h-4 w-4" /> Confirm
+            <Check className="h-4 w-4" /> Confirm <Kbd keys={KEYS.confirmDraft} tone="dark" />
           </button>
         </div>
       </div>

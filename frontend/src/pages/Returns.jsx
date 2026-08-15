@@ -1,12 +1,25 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useApp } from "@/context/AppContext";
 import InvoiceSearch from "@/components/InvoiceSearch";
 import NumberInput from "@/components/NumberInput";
-import { generateBillPDF } from "@/services/billPdf";
+import Kbd from "@/components/Kbd";
+import SegmentedControl from "@/components/SegmentedControl";
+import { generateBillPDF, generateStoreCreditCashReceiptPDF } from "@/services/billPdf";
+import PdfViewerDialog from "@/components/PdfViewerDialog";
+import { usePdfPreview } from "@/hooks/usePdfPreview";
 import { money, itemAmount, round2, fmtDate } from "@/lib/calc";
-import { isBoxUnit, qtyFieldLabel, formatQtyLabel } from "@/lib/units";
+import {
+  isBoxUnit, qtyFieldLabel, formatQtyLabel, formatAvailLabel,
+  lineSoldPieces, remainingReturnableByProduct, priorReturnsForSale,
+  remainingReturnableAmount, clampSaleQtyFields,
+} from "@/lib/units";
+import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
+import { useFormFlow } from "@/hooks/useFormFlow";
+import { useListNavigation } from "@/hooks/useListNavigation";
+import { usePageFocus } from "@/hooks/usePageFocus";
+import { SCOPES, KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
-import { Undo2, Eye, Save, Search, Pencil, AlertTriangle } from "lucide-react";
+import { Undo2, Eye, Save, Search, Pencil, AlertTriangle, ReceiptText } from "lucide-react";
 
 // Persist returns form state across navigation
 const STORAGE_KEY = "ds_returns_draft";
@@ -15,6 +28,23 @@ function saveDraft(state) { try { sessionStorage.setItem(STORAGE_KEY, JSON.strin
 function clearDraft() { try { sessionStorage.removeItem(STORAGE_KEY); } catch {} }
 
 const SETTLEMENTS = [["cash", "Cash refund"], ["adjust_udhari", "Adjust udhari"], ["store_credit", "Store credit"]];
+const CONVERT_TARGETS = [["cash", "Cash refund"], ["adjust_udhari", "Adjust udhari"]];
+
+function isStoreCreditReturn(inv) {
+  if ((inv?.settlement || "") === "store_credit") return true;
+  return Number(inv?.settlementDetail?.storeCredit) > 0.01;
+}
+
+function heldStoreCredit(inv) {
+  const detail = inv?.settlementDetail;
+  if (detail && typeof detail.storeCredit === "number" && detail.storeCredit > 0) {
+    return round2(detail.storeCredit);
+  }
+  if ((inv?.settlement || "") === "store_credit") {
+    return round2(Number(inv.refundTotal) || Number(inv.grandTotal) || 0);
+  }
+  return 0;
+}
 
 // A settlement is only offered when the customer can actually absorb it:
 // udhari needs a pending balance, store credit needs a saved customer.
@@ -25,24 +55,28 @@ function settlementBlocker(mode, customer) {
   return null;
 }
 
+/**
+ * Settlement choice as a proper radio group: it sits in the Enter chain, and
+ * ←/→ move between the options without ever needing the mouse.
+ */
 function SettlementPicker({ value, onChange, customer, testPrefix = "settle" }) {
+  const options = SETTLEMENTS.map(([v, l]) => ({
+    value: v,
+    label: l,
+    disabled: !!settlementBlocker(v, customer),
+    title: settlementBlocker(v, customer) || l,
+  }));
+
   return (
     <div>
-      <label className="mb-1 block text-xs font-semibold text-slate-600">Settlement</label>
-      <div className="grid grid-cols-3 gap-2">
-        {SETTLEMENTS.map(([v, l]) => {
-          const blocked = settlementBlocker(v, customer);
-          return (
-            <button key={v} data-testid={`${testPrefix}-${v}`} disabled={!!blocked} title={blocked || l}
-              onClick={() => onChange(v)}
-              className={`rounded-lg border px-2 py-2 text-xs font-semibold ${
-                blocked ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300"
-                  : value === v ? "border-indigo-900 bg-indigo-900 text-white" : "border-slate-300 text-slate-600"}`}>
-              {l}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedControl
+        label="Settlement"
+        value={value}
+        onChange={onChange}
+        testPrefix={testPrefix}
+        className="grid grid-cols-3 gap-2"
+        options={options}
+      />
       {customer ? (
         <p className="mt-1 text-xs text-slate-500">
           Udhari {money(customer.totalPending || 0)} · Store credit {money(customer.storeCredit || 0)}
@@ -55,9 +89,13 @@ function SettlementPicker({ value, onChange, customer, testPrefix = "settle" }) 
 }
 
 export default function Returns() {
-  const { invoices, customers, shop, commitBill, updateReturn } = useApp();
+  const { invoices, customers, shop, commitBill, convertStoreCreditReturn } = useApp();
   const saved = useRef(loadDraft());
   const s = saved.current;
+  const invSearchRef = useRef(null);
+  const pageRef = useRef(null);
+  /** Last focused control on this page (data-testid) — used to restore after PDF. */
+  const lastFocusTestIdRef = useRef(null);
 
   const [tab, setTab] = useState("new");
   const [invNo, setInvNo] = useState(s?.invNo || "");
@@ -66,6 +104,65 @@ export default function Returns() {
   const [settlement, setSettlement] = useState(s?.settlement || "cash");
   const [refund, setRefund] = useState(s?.refund || "");
   const [saving, setSaving] = useState(false);
+  const { pdfUrl, filename: pdfFilename, showPdf, closePdf } = usePdfPreview();
+  const [pdfTitle, setPdfTitle] = useState("Return PDF");
+
+  // Track caret by test id so PDF close can restore even if the old DOM node remounted.
+  useEffect(() => {
+    const root = pageRef.current;
+    if (!root) return undefined;
+    const onFocusIn = (e) => {
+      const el = e.target?.closest?.("[data-testid]");
+      if (!el || !root.contains(el)) return;
+      const id = el.getAttribute("data-testid");
+      if (!id || id === "returns-page" || id === "return-detail" || id === "pdf-viewer-frame") return;
+      lastFocusTestIdRef.current = id;
+    };
+    root.addEventListener("focusin", onFocusIn);
+    return () => root.removeEventListener("focusin", onFocusIn);
+  }, []);
+
+  const restoreFocusAfterPdf = useCallback(() => {
+    const id = lastFocusTestIdRef.current;
+    if (id) {
+      const el = document.querySelector(`[data-testid="${CSS.escape(id)}"]`);
+      if (el && typeof el.focus === "function") {
+        el.focus();
+        return;
+      }
+    }
+    if (src) {
+      const refundEl = document.querySelector('[data-testid="return-refund"]');
+      if (refundEl && typeof refundEl.focus === "function") {
+        refundEl.focus();
+        return;
+      }
+      document.querySelector('[data-testid="return-qty-0"]')?.focus();
+      return;
+    }
+    invSearchRef.current?.focus();
+  }, [src]);
+
+  const openPdf = useCallback((result, title) => {
+    // Snapshot again at open time (Enter on last field may not have fired focusin lately,
+    // but activeElement is still the refund input).
+    const active = document.activeElement;
+    const el = active?.closest?.("[data-testid]");
+    if (el && pageRef.current?.contains(el)) {
+      const id = el.getAttribute("data-testid");
+      if (id && id !== "returns-page" && id !== "return-detail") {
+        lastFocusTestIdRef.current = id;
+      }
+    }
+    if (title) setPdfTitle(title);
+    showPdf(result);
+  }, [showPdf]);
+
+  const handleClosePdf = useCallback(() => {
+    closePdf();
+    // After Radix Dialog focus-restore settles, put caret back on the field we left.
+    setTimeout(restoreFocusAfterPdf, 100);
+  }, [closePdf, restoreFocusAfterPdf]);
 
   // Persist form state
   useEffect(() => {
@@ -89,13 +186,49 @@ export default function Returns() {
     setRefund(""); setSettlement("cash");
   };
 
+  const remainingByProduct = useMemo(() => {
+    if (!src) return {};
+    const priorItems = priorReturnsForSale(src, invoices).flatMap((r) => r.items || []);
+    return remainingReturnableByProduct(src.items || [], priorItems);
+  }, [src, invoices]);
+
+  const maxRefund = useMemo(
+    () => (src ? remainingReturnableAmount(src, invoices) : 0),
+    [src, invoices]
+  );
+
   const updRow = (i, patch) => {
     setRows((prev) => {
-      const next = prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it));
-      const total = next.reduce((s, it) => s + itemAmount({ ...it, qty: it.retQty, pieces: it.retPieces }), 0);
-      setRefund(total ? String(round2(total)) : "");
+      const cur = prev[i];
+      if (!cur) return prev;
+      let nextPatch = { ...patch };
+      // Clamp return qty/pcs to remaining returnable pieces.
+      if ("retQty" in patch || "retPieces" in patch) {
+        const avail = remainingByProduct[cur.productId] ?? lineSoldPieces(cur);
+        const field = "retQty" in patch ? "qty" : "pieces";
+        const raw = "retQty" in patch ? patch.retQty : patch.retPieces;
+        const clamped = clampSaleQtyFields({
+          product: cur,
+          qty: "retQty" in patch ? patch.retQty : cur.retQty,
+          pieces: "retPieces" in patch ? patch.retPieces : cur.retPieces,
+          field,
+          raw,
+          availPieces: avail,
+        });
+        nextPatch = { retQty: clamped.qty, retPieces: clamped.pieces };
+      }
+      const next = prev.map((it, idx) => (idx === i ? { ...it, ...nextPatch } : it));
+      let total = next.reduce((s, it) => s + itemAmount({ ...it, qty: it.retQty, pieces: it.retPieces }), 0);
+      total = round2(Math.min(total, maxRefund));
+      setRefund(total ? String(total) : "");
       return next;
     });
+  };
+
+  const setRefundCapped = (v) => {
+    const n = Number(v);
+    if (v === "" || v === "." || !Number.isFinite(n)) return setRefund(v);
+    setRefund(String(Math.min(Math.max(0, n), maxRefund)));
   };
 
   const returned = rows.map((it) => ({
@@ -113,43 +246,119 @@ export default function Returns() {
     gstEnabled: false,
   });
 
-  const preview = () => {
+  const preview = useCallback(() => {
+    if (!src) return toast.error("Pehle invoice chunein");
     if (returned.length === 0) return toast.error("Kam se kam ek item return karein");
     const inv = { ...buildDraft(), invoiceNo: "RET-PREVIEW", date: new Date().toISOString() };
-    generateBillPDF({ shop, invoice: inv, customer: { name: src.customerName || "Walk-in" } }, "newtab");
-  };
+    openPdf(
+      generateBillPDF({ shop, invoice: inv, customer: { name: src.customerName || "Walk-in" } }, "bloburl"),
+      "Return PDF"
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, returned, refund, settlement, shop, openPdf]);
 
-  const save = async () => {
+  const openOriginal = useCallback(() => {
+    if (!src) return toast.error("Pehle invoice chunein");
+    const cust = customer || { name: src.customerName || "Walk-in" };
+    openPdf(generateBillPDF({ shop, invoice: src, customer: cust }, "bloburl"), "Original Invoice");
+  }, [src, customer, shop, openPdf]);
+
+  const save = useCallback(async () => {
+    if (!src) return toast.error("Pehle invoice chunein");
     if (returned.length === 0) return toast.error("Kam se kam ek item return karein");
     if (settlementBlocker(settlement, customer)) return toast.error("Ye settlement is customer par nahi ho sakta");
+    const refundAmt = round2(Number(refund) || 0);
+    if (refundAmt <= 0) return toast.error("Refund amount daaliye");
+    if (refundAmt > maxRefund + 0.01) return toast.error(`Refund max ${money(maxRefund)} ho sakta hai`);
     if (saving) return;
     setSaving(true);
     try {
-      const { invoice, customer: cust } = await commitBill(buildDraft());
-      generateBillPDF({ shop, invoice, customer: cust || { name: invoice.customerName } }, "newtab");
+      const { invoice, customer: cust } = await commitBill({ ...buildDraft(), refundTotal: refundAmt });
+      openPdf(
+        generateBillPDF({ shop, invoice, customer: cust || { name: invoice.customerName } }, "bloburl"),
+        "Return PDF"
+      );
       toast.success(`Return ${invoice.invoiceNo} ho gaya`);
       reset();
+      setTimeout(() => invSearchRef.current?.focus(), 60);
     } catch (e) { toast.error(e.message || "Return save nahi hua"); } finally { setSaving(false); }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, returned, settlement, customer, saving, refund, maxRefund, shop, commitBill, openPdf]);
+
+  /* ── Keyboard ── */
+  useHotkeyScope(SCOPES.RETURNS, { enabled: !pdfUrl });
+  const flow = useFormFlow({ onSave: preview, enabled: !pdfUrl });
+
+  usePageFocus(
+    () => {
+      if (tab === "new") invSearchRef.current?.focus();
+    },
+    { enabled: tab === "new" && !src && !pdfUrl }
+  );
+
+  // After picking an invoice, park the caret on the first return qty field
+  // (not invoice search — that is first in the Enter chain).
+  useEffect(() => {
+    if (!src || tab !== "new") return undefined;
+    const t = setTimeout(() => {
+      document.querySelector('[data-testid="return-qty-0"]')?.focus();
+    }, 60);
+    return () => clearTimeout(t);
+  }, [src?.id, tab]);
+
+  useHotkeys(SCOPES.RETURNS, [
+    { keys: KEYS.save, label: "Return save karein", handler: save, disabled: tab !== "new" || saving },
+    { keys: KEYS.saveAlt, label: "Return save karein", handler: save, disabled: tab !== "new" || saving, hidden: true },
+    { keys: KEYS.preview, label: "Preview PDF", handler: preview, disabled: tab !== "new" },
+    { keys: KEYS.openOriginal, label: "Original invoice kholein", handler: openOriginal, disabled: tab !== "new" || !src },
+    { keys: KEYS.focusSearch, label: "Invoice search par jaayein", handler: () => invSearchRef.current?.focus(), disabled: tab !== "new" },
+    { keys: "alt+1", label: "New return tab", handler: () => setTab("new") },
+    { keys: "alt+2", label: "Store-credit convert tab", handler: () => setTab("edit") },
+  ]);
 
   return (
-    <div className="mx-auto max-w-xl space-y-4 ds-fade" data-testid="returns-page">
+    <div ref={pageRef} className="mx-auto max-w-xl space-y-4 ds-fade" data-testid="returns-page">
       <div className="flex items-center gap-2"><Undo2 className="h-5 w-5 text-indigo-900" /><h2 className="font-display text-2xl font-bold text-slate-900">Return Invoice</h2></div>
 
       <div className="flex rounded-xl border border-slate-300 bg-white p-1">
-        {[["new", "New Return"], ["edit", "Edit Return"]].map(([v, l]) => (
+        {[["new", "New Return", "alt+1"], ["edit", "Store-credit convert", "alt+2"]].map(([v, l, k]) => (
           <button key={v} data-testid={`returns-tab-${v}`} onClick={() => setTab(v)}
-            className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold ${tab === v ? "bg-indigo-900 text-white" : "text-slate-600"}`}>{l}</button>
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${tab === v ? "bg-indigo-900 text-white" : "text-slate-600"}`}>
+            {l} <Kbd keys={k} tone={tab === v ? "dark" : "default"} />
+          </button>
         ))}
       </div>
 
       {tab === "edit" ? (
-        <EditReturns invoices={invoices} customers={customers} updateReturn={updateReturn} />
+        <ConvertStoreCredit
+          invoices={invoices}
+          customers={customers}
+          shop={shop}
+          convertStoreCreditReturn={convertStoreCreditReturn}
+          openPdf={openPdf}
+        />
       ) : (
-        <>
+        <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className="space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <label className="mb-1 block text-sm font-semibold text-slate-700">Original invoice (search & select)</label>
-            <InvoiceSearch invoices={invoices} value={invNo} onChangeText={(t) => { setInvNo(t); setSrc(null); }} onPick={selectInvoice} />
+            <label className="mb-1 flex items-center justify-between gap-2 text-sm font-semibold text-slate-700">
+              <span className="flex items-center gap-2">
+                Original invoice (search &amp; select) <Kbd keys={KEYS.focusSearch} />
+              </span>
+              {src && (
+                <button
+                  type="button"
+                  data-testid="open-original-invoice"
+                  data-flow-skip
+                  onClick={openOriginal}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-800 active:scale-95"
+                >
+                  <ReceiptText className="h-3.5 w-3.5" />
+                  Open bill
+                  <Kbd keys={KEYS.openOriginal} />
+                </button>
+              )}
+            </label>
+            <InvoiceSearch ref={invSearchRef} invoices={invoices} value={invNo} onChangeText={(t) => { setInvNo(t); setSrc(null); }} onPick={selectInvoice} />
           </div>
 
           {src && (
@@ -163,11 +372,14 @@ export default function Returns() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Select items to return</p>
                 {rows.map((it, i) => {
                   const tile = isBoxUnit(it);
+                  const left = remainingByProduct[it.productId] ?? lineSoldPieces(it);
                   return (
                     <div key={i} data-testid={`return-row-${i}`} className="rounded-xl border border-slate-200 p-3">
                       <div className="flex items-center justify-between">
                         <p className="font-semibold text-slate-900">{it.name}</p>
-                        <span className="text-xs text-slate-400">sold {formatQtyLabel(it)}</span>
+                        <span className="text-xs text-slate-400">
+                          sold {formatQtyLabel(it)} · left {formatAvailLabel(it, left)}
+                        </span>
                       </div>
                       <div className={`mt-2 grid gap-2 ${tile ? "grid-cols-3" : "grid-cols-2"}`}>
                         <div>
@@ -193,8 +405,8 @@ export default function Returns() {
               <SettlementPicker value={settlement} onChange={setSettlement} customer={customer} />
 
               <div className="flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm">
-                <span className="font-semibold text-slate-700">Refund amount (editable)</span>
-                <NumberInput data-testid="return-refund" value={refund} onChange={(v) => setRefund(v)} className="w-32 rounded-lg border border-indigo-300 bg-white px-2 py-1.5 text-right text-sm font-bold tabular-nums" />
+                <span className="font-semibold text-slate-700">Refund amount (editable, max {money(maxRefund)})</span>
+                <NumberInput data-testid="return-refund" value={refund} onChange={setRefundCapped} className="w-32 rounded-lg border border-indigo-300 bg-white px-2 py-1.5 text-right text-sm font-bold tabular-nums" />
               </div>
 
               {settlement === "adjust_udhari" && Number(refund) > (customer?.totalPending || 0) && (
@@ -205,121 +417,294 @@ export default function Returns() {
               )}
 
               <div className="grid grid-cols-2 gap-2">
-                <button data-testid="preview-return-btn" onClick={preview} className="flex items-center justify-center gap-2 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3 font-bold text-indigo-800 active:scale-95"><Eye className="h-5 w-5" /> Preview</button>
-                <button data-testid="submit-return-btn" onClick={save} disabled={saving} className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-bold text-white active:scale-95 disabled:opacity-60"><Save className="h-5 w-5" /> {saving ? "…" : "Confirm & Save"}</button>
+                <button data-testid="preview-return-btn" data-flow-skip onClick={preview} className="flex items-center justify-center gap-2 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3 font-bold text-indigo-800 active:scale-95"><Eye className="h-5 w-5" /> Preview <Kbd keys={KEYS.preview} /></button>
+                <button data-testid="submit-return-btn" data-flow-skip onClick={save} disabled={saving} className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-bold text-white active:scale-95 disabled:opacity-60"><Save className="h-5 w-5" /> {saving ? "…" : "Save"} <Kbd keys={KEYS.save} tone="dark" /></button>
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
+
+      <PdfViewerDialog url={pdfUrl} filename={pdfFilename} onClose={handleClosePdf} title={pdfTitle} />
     </div>
   );
 }
 
-// Re-settle a past return — e.g. a customer who took store credit comes back
-// weeks later wanting the cash instead. Balances are corrected server-side.
-function EditReturns({ invoices, customers, updateReturn }) {
+// Convert a store-credit return to cash refund or adjust-udhari.
+function ConvertStoreCredit({ invoices, customers, shop, convertStoreCreditReturn, openPdf }) {
   const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [settlement, setSettlement] = useState("cash");
-  const [refund, setRefund] = useState("");
+  const [target, setTarget] = useState("cash");
   const [saving, setSaving] = useState(false);
+  const searchRef = useRef(null);
+  const wrapperRef = useRef(null);
 
-  const returns = useMemo(() => invoices.filter((i) => i.type === "return"), [invoices]);
+  const creditReturns = useMemo(
+    () => invoices.filter((i) => i.type === "return" && isStoreCreditReturn(i)),
+    [invoices]
+  );
+  const typed = q.trim().toLowerCase();
   const list = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    const filtered = !t ? returns : returns.filter((i) =>
-      (i.invoiceNo || "").toLowerCase().includes(t) ||
-      (i.customerName || "").toLowerCase().includes(t) ||
-      (i.originalInvoiceNo || "").toLowerCase().includes(t));
-    return filtered.slice(0, 25);
-  }, [returns, q]);
+    const filtered = !typed
+      ? creditReturns
+      : creditReturns.filter((i) =>
+          (i.invoiceNo || "").toLowerCase().includes(typed) ||
+          (i.customerName || "").toLowerCase().includes(typed) ||
+          (i.originalInvoiceNo || "").toLowerCase().includes(typed));
+    return filtered.slice(0, 20);
+  }, [creditReturns, typed]);
 
-  const inv = useMemo(() => returns.find((i) => i.id === editId) || null, [returns, editId]);
+  const inv = useMemo(() => creditReturns.find((i) => i.id === editId) || null, [creditReturns, editId]);
   const customer = useMemo(
     () => (inv?.customerId ? customers.find((c) => c.id === inv.customerId) || null : null),
     [customers, inv]
   );
+  const creditAmt = heldStoreCredit(inv);
+  const blocked = settlementBlocker(target, customer);
+
+  const pickReturn = useCallback((r) => {
+    if (!r) return;
+    setEditId(r.id);
+    setQ(r.invoiceNo || "");
+    setTarget("cash");
+    setOpen(false);
+  }, []);
 
   useEffect(() => {
-    if (!inv) return;
-    setSettlement(inv.settlement || "cash");
-    setRefund(String(inv.refundTotal ?? inv.grandTotal ?? ""));
-  }, [inv]);
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [open]);
 
-  const blocked = settlementBlocker(settlement, customer);
-  const heldCredit = Number(inv?.settlementDetail?.storeCredit) || (inv?.settlement === "store_credit" ? Number(inv?.refundTotal) || 0 : 0);
-  const changed = !!inv && (settlement !== (inv.settlement || "cash") || Number(refund) !== Number(inv.refundTotal ?? 0));
+  // Never leave adjust_udhari selected when it is impossible.
+  useEffect(() => {
+    if (settlementBlocker(target, customer)) setTarget("cash");
+  }, [target, customer]);
 
-  const save = async () => {
+  const focusStart = usePageFocus(() => {
+    searchRef.current?.focus();
+    setOpen(true);
+  }, { enabled: !editId });
+
+  const save = useCallback(async () => {
     if (!inv || saving) return;
     if (blocked) return toast.error("Ye settlement is customer par nahi ho sakta");
     setSaving(true);
     try {
-      await updateReturn(inv.id, { settlement, refundTotal: Number(refund) || 0 });
-      toast.success(`${inv.invoiceNo} update ho gaya`);
-    } catch (e) { toast.error(e.message || "Update nahi hua"); } finally { setSaving(false); }
-  };
+      const updated = await convertStoreCreditReturn(inv.id, { targetSettlement: target });
+      toast.success(
+        target === "cash"
+          ? `${inv.invoiceNo} — store credit cash me de diya`
+          : `${inv.invoiceNo} — store credit udhari me adjust ho gaya`
+      );
+      if (target === "cash") {
+        openPdf(
+          generateStoreCreditCashReceiptPDF({
+            shop,
+            customer: customer || { name: updated.customerName || inv.customerName },
+            returnInvoice: updated,
+            amount: Number(updated?.settlementDetail?.cash) || creditAmt || updated.refundTotal,
+            at: updated.settlementConvertedAt || new Date().toISOString(),
+          }, "bloburl"),
+          "Store credit → Cash"
+        );
+      }
+      setEditId(null);
+      setQ("");
+      focusStart();
+    } catch (e) {
+      toast.error(e.message || "Convert nahi hua");
+    } finally {
+      setSaving(false);
+    }
+  }, [inv, saving, blocked, target, convertStoreCreditReturn, openPdf, shop, customer, creditAmt, focusStart]);
+
+  const nav = useListNavigation({
+    count: list.length,
+    enabled: open,
+    onSelect: (i) => pickReturn(list[i]),
+    onEscape: () => setOpen(false),
+  });
+  const { activeIndex, setActiveIndex, hover } = nav;
+  useEffect(() => { setActiveIndex(0); }, [q, setActiveIndex]);
+
+  useHotkeyScope("page:returns-convert");
+  useHotkeys("page:returns-convert", [
+    { keys: KEYS.save, label: "Store credit convert karein", handler: save, disabled: saving || !inv || !!blocked },
+    { keys: KEYS.saveAlt, label: "Store credit convert karein", handler: save, disabled: saving || !inv || !!blocked, hidden: true },
+    { keys: KEYS.focusSearch, label: "Return search par jaayein", handler: () => focusStart(0) },
+  ]);
+
+  const flow = useFormFlow({ onSave: () => { if (inv && !blocked) save(); } });
+
+  useEffect(() => {
+    if (!editId) return undefined;
+    const t = setTimeout(() => {
+      const selected = document.querySelector('[data-testid^="convert-settle-"][aria-checked="true"]');
+      if (selected && typeof selected.focus === "function") selected.focus();
+    }, 80);
+    return () => clearTimeout(t);
+  }, [editId]);
+
+  const convertOptions = CONVERT_TARGETS.map(([v, l]) => ({
+    value: v,
+    label: l,
+    disabled: !!settlementBlocker(v, customer),
+    title: settlementBlocker(v, customer) || l,
+  }));
 
   return (
-    <div className="space-y-4" data-testid="edit-returns">
+    <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className="space-y-4" data-testid="convert-store-credit">
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <label className="mb-1 block text-sm font-semibold text-slate-700">Purana return dhundhein</label>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2">
-          <Search className="h-4 w-4 shrink-0 text-slate-400" />
-          <input data-testid="edit-return-search" value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="RET number ya customer…" className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
-        </div>
+        <label className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-700">
+          Store-credit return (search &amp; select) <Kbd keys={KEYS.focusSearch} />
+        </label>
+        <div className="relative" ref={wrapperRef}>
+          <div className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500">
+            <Search className="h-4 w-4 shrink-0 text-slate-400" />
+            <input
+              ref={searchRef}
+              data-testid="convert-return-search"
+              role="combobox"
+              aria-expanded={open}
+              aria-controls="convert-return-search-list"
+              aria-activedescendant={open ? `sc-ret-opt-${activeIndex}` : undefined}
+              autoComplete="off"
+              value={q}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setEditId(null);
+                setOpen(true);
+              }}
+              onFocus={() => {
+                if (!(q || "").trim()) setOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (open) setOpen(false);
+                  return;
+                }
+                if (!open) {
+                  if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); }
+                  return;
+                }
+                nav.handleKeyDown(e);
+              }}
+              placeholder="RET number ya customer…"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+            />
+          </div>
 
-        <div className="mt-2 divide-y divide-slate-100">
-          {list.length === 0 && <p className="py-6 text-center text-sm text-slate-400">Koi return invoice nahi mila.</p>}
-          {list.map((r) => (
-            <button key={r.id} data-testid={`edit-return-option-${r.id}`} onClick={() => setEditId(r.id)}
-              className={`flex w-full items-center justify-between gap-2 px-1 py-2.5 text-left ${editId === r.id ? "bg-indigo-50" : "hover:bg-slate-50"}`}>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">{r.customerName || "Walk-in"}</p>
-                <p className="truncate text-xs text-slate-500">{r.invoiceNo} · {fmtDate(r.date)} · {SETTLEMENTS.find(([v]) => v === r.settlement)?.[1] || r.settlement}</p>
-              </div>
-              <p className="shrink-0 text-sm font-bold text-slate-700">{money(r.refundTotal ?? r.grandTotal)}</p>
-            </button>
-          ))}
+          {open && (
+            <div
+              id="convert-return-search-list"
+              role="listbox"
+              ref={nav.listRef}
+              className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+            >
+              {list.length === 0 && (
+                <div className="px-3 py-4 text-sm text-slate-500">Koi store-credit return nahi mila.</div>
+              )}
+              {list.map((r, i) => {
+                const active = i === activeIndex;
+                return (
+                  <button
+                    key={r.id}
+                    id={`sc-ret-opt-${i}`}
+                    role="option"
+                    aria-selected={active}
+                    data-list-index={i}
+                    type="button"
+                    data-testid={`convert-return-option-${r.id}`}
+                    onMouseEnter={() => hover(i)}
+                    onMouseDown={(e) => { e.preventDefault(); pickReturn(r); }}
+                    className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left ${active ? "bg-indigo-50" : ""}`}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <ReceiptText className="h-4 w-4 shrink-0 text-indigo-600" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{r.customerName || "Walk-in"}</p>
+                        <p className="truncate text-xs text-slate-500">
+                          {r.invoiceNo} · {fmtDate(r.date)}
+                          {r.originalInvoiceNo ? ` · against ${r.originalInvoiceNo}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="shrink-0 text-sm font-bold text-slate-700">{money(heldStoreCredit(r))}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {inv && (
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4" data-testid="edit-return-panel">
-          <div className="flex items-center gap-2"><Pencil className="h-4 w-4 text-indigo-900" /><h3 className="font-display font-bold text-slate-900">{inv.invoiceNo}</h3></div>
+        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4" data-testid="convert-return-panel">
+          <div className="flex items-center gap-2">
+            <Pencil className="h-4 w-4 text-indigo-900" />
+            <h3 className="font-display font-bold text-slate-900">{inv.invoiceNo}</h3>
+          </div>
           <p className="-mt-2 text-xs text-slate-500">
             {inv.customerName || "Walk-in"} · {fmtDate(inv.date)}
             {inv.originalInvoiceNo ? ` · against ${inv.originalInvoiceNo}` : ""}
           </p>
 
           <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
-            Abhi: <b>{SETTLEMENTS.find(([v]) => v === inv.settlement)?.[1] || inv.settlement}</b> · {money(inv.refundTotal ?? 0)}
-            {heldCredit > 0 && <span className="ml-1">(store credit {money(heldCredit)})</span>}
+            Store credit held: <b>{money(creditAmt)}</b>
+            {customer ? (
+              <span className="ml-2 text-slate-500">
+                · Udhari {money(customer.totalPending || 0)} · Credit {money(customer.storeCredit || 0)}
+              </span>
+            ) : null}
           </div>
 
-          <SettlementPicker value={settlement} onChange={setSettlement} customer={customer} testPrefix="edit-settle" />
+          <SegmentedControl
+            label="Convert to"
+            value={target}
+            onChange={setTarget}
+            testPrefix="convert-settle"
+            className="grid grid-cols-2 gap-2"
+            options={convertOptions}
+          />
 
-          <div className="flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm">
-            <span className="font-semibold text-slate-700">Refund amount</span>
-            <NumberInput data-testid="edit-return-refund" value={refund} onChange={setRefund}
-              className="w-32 rounded-lg border border-indigo-300 bg-white px-2 py-1.5 text-right text-sm font-bold tabular-nums" />
-          </div>
-
-          {inv.settlement === "store_credit" && settlement === "cash" && (
+          {target === "cash" && (
             <p className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              {money(heldCredit)} store credit customer ke account se hat jayega — utna cash aapko dena hoga.
+              {money(creditAmt)} store credit hata kar cash dena hoga — chhota receipt banega.
+            </p>
+          )}
+          {target === "adjust_udhari" && (
+            <p className="flex items-start gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-800">
+              Store credit hata kar udhari adjust hogi. Return invoice settlement update hoga.
             </p>
           )}
 
-          <button data-testid="edit-return-save" onClick={save} disabled={saving || !changed}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-bold text-white active:scale-95 disabled:opacity-50">
-            <Save className="h-5 w-5" /> {saving ? "…" : changed ? "Update settlement" : "Koi change nahi"}
+          <button
+            data-flow-skip
+            data-testid="convert-return-save"
+            onClick={save}
+            disabled={saving || !!blocked}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-bold text-white active:scale-95 disabled:opacity-50"
+          >
+            <Save className="h-5 w-5" />
+            {saving ? "…" : target === "cash" ? "Convert & print receipt" : "Convert to udhari"}
+            <Kbd keys={KEYS.save} tone="dark" />
           </button>
         </div>
       )}
     </div>
   );
 }
+

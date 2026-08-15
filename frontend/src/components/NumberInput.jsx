@@ -1,4 +1,4 @@
-import React from "react";
+import React, { forwardRef } from "react";
 
 /** Strip everything except digits and at most one decimal point. */
 export function sanitizeNumber(raw) {
@@ -10,7 +10,8 @@ export function sanitizeNumber(raw) {
 
 // Numeric text field: digits/decimal only, empty by default (no stuck "0"),
 // no spinner / scroll-to-change. Stores raw string.
-export default function NumberInput({ value, onChange, className = "", ...props }) {
+// Forwards its ref so keyboard shortcuts can drop focus straight onto it.
+const NumberInput = forwardRef(function NumberInput({ value, onChange, className = "", ...props }, ref) {
   const handleFocus = (e) => {
     const el = e.target;
     const val = el.value;
@@ -30,6 +31,7 @@ export default function NumberInput({ value, onChange, className = "", ...props 
   return (
     <input
       {...props}
+      ref={ref}
       type="text"
       inputMode="decimal"
       pattern="[0-9]*[.]?[0-9]*"
@@ -41,4 +43,6 @@ export default function NumberInput({ value, onChange, className = "", ...props 
       className={className}
     />
   );
-}
+});
+
+export default NumberInput;

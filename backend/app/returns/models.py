@@ -1,5 +1,6 @@
-from typing import Optional, List, Dict
 """Pydantic models for Return endpoints."""
+
+from typing import Optional, List, Literal
 
 from pydantic import BaseModel, Field
 
@@ -24,8 +25,7 @@ class CreateReturnRequest(BaseModel):
     customerName: str = ""
 
 
-class UpdateReturnRequest(BaseModel):
-    """Re-settle an existing return — e.g. a customer who took store credit
-    later wants the cash instead. Items and stock are left untouched."""
-    settlement: str = Field(..., pattern="^(cash|adjust_udhari|store_credit)$")
-    refundTotal: Optional[float] = Field(default=None, ge=0)
+class ConvertStoreCreditRequest(BaseModel):
+    """Convert a store-credit return to cash refund or adjust-udhari.
+    Amount is taken from the return itself — not client-chosen."""
+    targetSettlement: Literal["cash", "adjust_udhari"]

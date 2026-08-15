@@ -56,6 +56,9 @@ class InvoiceResponse(BaseModel):
     type: str = ""
     customerId: Optional[str] = None
     customerName: str = ""
+    customerPhone: str = ""
+    isContractor: bool = False
+    siteNote: str = ""
     items: List[dict] = Field(default_factory=list)
     discount: Optional[dict] = None
     gstEnabled: bool = False
@@ -71,5 +74,6 @@ class InvoiceResponse(BaseModel):
     createdVia: str = "manual"
     settlement: Optional[str] = None
     settlementDetail: Optional[dict] = None
+    settlementConvertedAt: Optional[str] = None
     originalInvoiceNo: Optional[str] = None
     refundTotal: Optional[float] = None

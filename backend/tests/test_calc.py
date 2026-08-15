@@ -9,7 +9,12 @@ from app.common.calc import (
     round2, item_amount, compute_bill_totals, gen_invoice_no,
     calculate_sold_pieces, validate_stock_availability,
     compute_stock_deduction, compute_stock_addition, sqft_calc,
+    validate_payment_split, cash_online_total, format_stock_pieces_label,
+    payment_status, apply_payment_to_invoice, remove_return_adjust_payments,
+    remaining_returnable_by_product, remaining_returnable_amount,
+    recompute_customer_total_pending, allocate_return_across_invoices,
 )
+from app.common.errors import ValidationError
 
 
 class TestRound2:
@@ -45,6 +50,11 @@ class TestItemAmount:
     def test_zero_qty(self):
         item = {"qty": 0, "pieces": 0, "rate": 100, "unit": "box"}
         assert item_amount(item) == 0
+
+    def test_missing_unit_defaults_to_tiles(self):
+        """Missing unit is tiles — loose pieces must count, matching frontend normalizer."""
+        item = {"qty": 1, "pieces": 2, "rate": 400, "piecesPerBox": 4}
+        assert item_amount(item) == 600.0
 
     def test_missing_fields(self):
         """Should handle missing/None fields gracefully."""
@@ -205,6 +215,21 @@ class TestStockOperations:
         assert result["stockQty"] == 12.0
         assert result["godownQty"] == 0
 
+    def test_format_stock_pieces_label_tiles(self):
+        product = {"piecesPerBox": 4}
+        assert format_stock_pieces_label(product, 13) == "3b+1p"
+        assert format_stock_pieces_label(product, 12) == "3b"
+
+    def test_format_stock_pieces_label_sanitary(self):
+        product = {"unit": "piece"}
+        assert format_stock_pieces_label(product, 7) == "7 pcs"
+
+    def test_piece_unit_stock(self):
+        product = {"unit": "piece", "stockQty": 16}
+        assert validate_stock_availability(product, 16) is True
+        assert validate_stock_availability(product, 17) is False
+        assert compute_stock_deduction(product, 5)["stockQty"] == 11.0
+
 
 class TestSqftCalc:
     def test_basic(self):
@@ -229,3 +254,168 @@ class TestSqftCalc:
     def test_zero_tile_area(self):
         result = sqft_calc(room_area=100, tile_len_inch=0, tile_wid_inch=0)
         assert result["tilesNeeded"] == 0
+
+
+class TestPaymentSplit:
+    def test_cash_online_sum(self):
+        assert cash_online_total([
+            {"mode": "cash", "amount": 100},
+            {"mode": "online", "amount": 50},
+            {"mode": "credit", "amount": 20},
+        ]) == 150
+
+    def test_overpay_cash_online_rejected(self):
+        with pytest.raises(ValidationError):
+            validate_payment_split(1000, [
+                {"mode": "cash", "amount": 700},
+                {"mode": "online", "amount": 400},
+            ])
+
+    def test_exact_total_allowed(self):
+        validate_payment_split(1000, [
+            {"mode": "cash", "amount": 600},
+            {"mode": "online", "amount": 400},
+        ])
+
+    def test_total_with_credit_over_rejected(self):
+        with pytest.raises(ValidationError):
+            validate_payment_split(1000, [
+                {"mode": "cash", "amount": 800},
+                {"mode": "credit", "amount": 300},
+            ])
+
+    def test_compute_clamps_negative_pending(self):
+        t = compute_bill_totals({
+            "items": [{"qty": 1, "rate": 100, "unit": "box", "piecesPerBox": 1}],
+            "gstEnabled": False,
+            "payments": [{"mode": "cash", "amount": 500}],
+        })
+        assert t["grandTotal"] == 100
+        assert t["amountPending"] == 0
+        assert t["paymentStatus"] == "paid"
+
+
+class TestLedgerHelpers:
+    def test_payment_status_thresholds(self):
+        assert payment_status(0, 100) == "pending"
+        assert payment_status(40, 60) == "partial"
+        assert payment_status(100, 0) == "paid"
+        assert payment_status(100, 0.4) == "paid"
+
+    def test_apply_payment_caps_at_pending(self):
+        inv = {
+            "grandTotal": 1000,
+            "amountPaid": 200,
+            "amountPending": 800,
+            "payments": [{"mode": "cash", "amount": 200}],
+        }
+        fields = apply_payment_to_invoice(inv, 9999, {"mode": "return_adjust", "returnInvoiceNo": "RET1"})
+        assert fields["_applied"] == 800
+        assert fields["amountPending"] == 0
+        assert fields["paymentStatus"] == "paid"
+        assert fields["payments"][-1]["mode"] == "return_adjust"
+
+    def test_remove_return_adjust_payments(self):
+        inv = {
+            "grandTotal": 1000,
+            "amountPaid": 1000,
+            "amountPending": 0,
+            "payments": [
+                {"mode": "cash", "amount": 200},
+                {"mode": "return_adjust", "amount": 800, "returnInvoiceNo": "RET1"},
+            ],
+        }
+        fields = remove_return_adjust_payments(inv, "RET1")
+        assert fields["amountPaid"] == 200
+        assert fields["amountPending"] == 800
+        assert fields["paymentStatus"] == "partial"
+        assert len(fields["payments"]) == 1
+
+    def test_remaining_returnable_by_product(self):
+        original = [
+            {"productId": "a", "qty": 2, "pieces": 0, "piecesPerBox": 4, "unit": "box"},
+            {"productId": "b", "qty": 5, "unit": "piece"},
+        ]
+        prior = [
+            {"productId": "a", "qty": 1, "pieces": 1, "piecesPerBox": 4, "unit": "box"},
+        ]
+        rem = remaining_returnable_by_product(original, prior)
+        assert rem["a"] == 3  # 8 - 5
+        assert rem["b"] == 5
+
+    def test_remaining_returnable_amount(self):
+        original = {"grandTotal": 1000}
+        prior = [{"refundTotal": 300}, {"refundTotal": 200}]
+        assert remaining_returnable_amount(original, prior) == 500
+
+    def test_recompute_customer_total_pending(self):
+        sales = [
+            {"type": "sale", "amountPending": 100},
+            {"type": "sale", "amountPending": 50.5},
+            {"type": "return", "amountPending": 999},
+        ]
+        assert recompute_customer_total_pending(sales) == 150.5
+
+    def test_allocate_clears_original_then_store_credit(self):
+        original = {
+            "id": "s1",
+            "invoiceNo": "INV1",
+            "grandTotal": 1000,
+            "amountPaid": 0,
+            "amountPending": 1000,
+            "payments": [],
+        }
+        patches, detail, leftover = allocate_return_across_invoices(
+            1000, original, [], return_invoice_no="RET1", settlement="store_credit",
+        )
+        assert leftover == 0
+        assert detail["udhariAdjusted"] == 1000
+        assert detail["storeCredit"] == 0  # fully unpaid → no leftover credit
+        assert patches[0]["fields"]["amountPending"] == 0
+        assert patches[0]["fields"]["paymentStatus"] == "paid"
+
+    def test_allocate_adjust_fifo_and_excess_credit(self):
+        original = {
+            "id": "s1",
+            "invoiceNo": "INV1",
+            "grandTotal": 500,
+            "amountPaid": 0,
+            "amountPending": 500,
+            "payments": [],
+        }
+        other = {
+            "id": "s2",
+            "invoiceNo": "INV2",
+            "grandTotal": 300,
+            "amountPaid": 0,
+            "amountPending": 300,
+            "payments": [],
+        }
+        patches, detail, leftover = allocate_return_across_invoices(
+            900, original, [other], return_invoice_no="RET2", settlement="adjust_udhari",
+        )
+        assert leftover == 0
+        assert detail["udhariAdjusted"] == 800
+        assert detail["storeCredit"] == 100
+        assert len(patches) == 2
+        assert original["amountPending"] == 0
+        assert other["amountPending"] == 0
+
+    def test_allocate_cash_leftover_after_clearing_partial(self):
+        # Paid 400 of 1000; return full 1000 → clear 600 pending, cash leftover 400
+        original = {
+            "id": "s1",
+            "invoiceNo": "INV1",
+            "grandTotal": 1000,
+            "amountPaid": 400,
+            "amountPending": 600,
+            "payments": [{"mode": "cash", "amount": 400}],
+        }
+        patches, detail, leftover = allocate_return_across_invoices(
+            1000, original, [], return_invoice_no="RET3", settlement="cash",
+        )
+        assert leftover == 0
+        assert detail["udhariAdjusted"] == 600
+        assert detail["cash"] == 400
+        assert patches[0]["fields"]["amountPending"] == 0
+

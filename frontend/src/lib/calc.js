@@ -1,5 +1,7 @@
 // Core business math: GST, sq-ft calculator (area or L×W, box+pieces),
 // money-in-words, formatting, and per-item amount (boxes + loose pieces).
+import { isPieceUnit } from "./units";
+
 export const GST_DEFAULT = 18;
 export const GST_SLABS = [0, 5, 12, 18, 28, 40];
 
@@ -10,16 +12,32 @@ export function money(n) {
 export function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 
 // Amount for a line item.
-// Tiles (unit=box): qty = boxes, pieces = loose pcs, rate = per box.
+// Tiles (unit=box or missing): qty = boxes, pieces = loose pcs, rate = per box.
 // Sanitary (unit=piece): qty = pieces, rate = per piece (pieces field ignored).
 export function itemAmount(it) {
   const rate = Number(it.rate) || 0;
   const qty = Number(it.qty) || 0;
-  if (it.unit !== "box") return round2(qty * rate);
+  if (isPieceUnit(it)) return round2(qty * rate);
   const ppb = Number(it.piecesPerBox) || 1;
   const pieces = Number(it.pieces) || 0;
   const piecePrice = ppb ? rate / ppb : rate;
   return round2(qty * rate + pieces * piecePrice);
+}
+
+/** Effective box-units for a line (boxes + loose pieces / ppb). Piece lines = qty. */
+export function lineUnits(it) {
+  const qty = Number(it.qty) || 0;
+  if (isPieceUnit(it)) return qty;
+  const ppb = Number(it.piecesPerBox) || 1;
+  const pieces = Number(it.pieces) || 0;
+  return qty + (ppb ? pieces / ppb : 0);
+}
+
+/** Back-calculate per-box / per-piece rate from a target line amount. */
+export function rateFromAmount(it, amount) {
+  const units = lineUnits(it);
+  if (units <= 0) return 0;
+  return round2((Number(amount) || 0) / units);
 }
 
 // Breakdown a (possibly fractional) box quantity into whole boxes + loose pieces.
@@ -76,15 +94,20 @@ export function computeBillTotals(draft) {
   const subtotal = round2(items.reduce((s, it) => s + itemAmount(it), 0));
   let discountOff = 0;
   if (draft.discount && Number(draft.discount.value) > 0) {
-    discountOff = draft.discount.type === "percent" ? round2(subtotal * (Number(draft.discount.value) / 100)) : round2(Number(draft.discount.value));
+    if (draft.discount.type === "percent") {
+      const pct = Math.min(100, Math.max(0, Number(draft.discount.value) || 0));
+      discountOff = round2(subtotal * (pct / 100));
+    } else {
+      discountOff = round2(Number(draft.discount.value));
+    }
   }
-  const taxable = round2(subtotal - discountOff);
+  const taxable = round2(Math.max(0, subtotal - discountOff));
   const gstRate = draft.gstEnabled ? (Number(draft.gstRate) || GST_DEFAULT) : 0;
   const gstAmount = round2(taxable * (gstRate / 100));
   const grandTotal = round2(taxable + gstAmount);
   const payments = draft.payments || [];
   const amountPaid = round2(payments.reduce((s, p) => s + (Number(p.amount) || 0), 0));
-  const amountPending = round2(grandTotal - amountPaid);
+  const amountPending = round2(Math.max(0, grandTotal - amountPaid));
   let paymentStatus = "paid";
   if (amountPending > 0.5 && amountPaid > 0.5) paymentStatus = "partial";
   else if (amountPending > 0.5) paymentStatus = "pending";
@@ -93,3 +116,12 @@ export function computeBillTotals(draft) {
 
 export function todayISO() { return new Date().toISOString(); }
 export function fmtDate(iso) { try { return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); } catch { return iso; } }
+/** Local time for day-book rows, e.g. "08:42 pm". */
+export function fmtTime(iso) {
+  try {
+    if (!iso) return "-";
+    return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  } catch {
+    return "-";
+  }
+}

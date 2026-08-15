@@ -5,7 +5,11 @@ from pydantic import BaseModel, Field
 
 
 class ProductCreate(BaseModel):
-    """Quick-add payload — used when billing a product that isn't in the catalog yet."""
+    """Quick-add payload — used when billing a product that isn't in the catalog yet.
+
+    Tiles (unit=box): size + piecesPerBox required in practice.
+    Sanitary (unit=piece): size empty, piecesPerBox always 1.
+    """
     name: str = Field(..., min_length=1, max_length=200)
     code: str = ""
     company: str = ""
@@ -47,7 +51,7 @@ class BulkProductRow(BaseModel):
     code: str = ""
     company: str = ""
     size: str = ""
-    # "box" = tiles (boxes + pcs), "piece" = sanitary (pcs only)
+    # "box" = tiles (size + pcs/box). "piece" = sanitary (no size, pcs/box = 1).
     unit: str = Field(default="box", pattern="^(box|piece)$")
     piecesPerBox: int = Field(default=1, ge=1)
     qty: float = Field(default=0, ge=0)

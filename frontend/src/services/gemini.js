@@ -2,6 +2,7 @@
 // otherwise falls back to the local heuristic parser so voice works in DEMO mode.
 import { geminiConfig, GEMINI_READY } from "@/services/config";
 import { localParse } from "@/services/localNlu";
+import { TILE_SIZE_PROMPT_VALUES } from "@/lib/tileSizes";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -57,13 +58,15 @@ export async function extractStockSheet(base64, mimeType) {
   if (!GEMINI_READY) {
     // Demo extraction sample with a flagged low-confidence row.
     return [
-      { name: "2130 Highlight", code: "2130", company: "Kajaria", size: "2x2 ft", qty: 50, price: 320, lowConfidence: false },
-      { name: "Wall Tile Glossy White", code: "WTGW", company: "Nitco", size: "1x1.5 ft", qty: 30, price: 180, lowConfidence: false },
-      { name: "Basin Pedestal (?)", code: "", company: "Cera", size: "", qty: 8, price: 650, lowConfidence: true },
+      { name: "2130 Highlight", code: "2130", company: "Kajaria", size: "2x2 ft", unit: "box", piecesPerBox: 4, qty: 50, price: 320, lowConfidence: false },
+      { name: "Wall Tile Glossy White", code: "WTGW", company: "Nitco", size: "12x18 in", unit: "box", piecesPerBox: 6, qty: 30, price: 180, lowConfidence: false },
+      { name: "Basin Pedestal (?)", code: "", company: "Cera", size: "", unit: "piece", piecesPerBox: 1, qty: 8, price: 650, lowConfidence: true },
     ];
   }
-  const prompt = `Extract every product line from this supplier stock sheet image as a JSON array.
-Each object: { "name": string, "code": string, "company": string, "size": string, "qty": number, "price": number, "lowConfidence": boolean }.
+  const prompt = `Extract every product line from this tiles & sanitaryware supplier stock sheet as a JSON array.
+Each object: { "name": string, "code": string, "company": string, "size": string, "unit": "box"|"piece", "piecesPerBox": number, "qty": number, "price": number, "lowConfidence": boolean }.
+Tiles / flooring → unit="box". size MUST be one of: ${TILE_SIZE_PROMPT_VALUES}. Never write bare 2x2 or 12x18; 2x2/600x600 → "2x2 ft", 12x18/300x450 → "12x18 in". qty is boxes.
+Sanitary / basins / closets / taps → unit="piece", size="", piecesPerBox=1, qty is pieces.
 Set lowConfidence=true if the row is blurry/handwritten/uncertain. Return ONLY the JSON array.`;
   try {
     const text = await callGemini([

@@ -4,12 +4,14 @@ from typing import Optional, List, Dict
 from fastapi import APIRouter, Depends
 from app.dependencies import get_current_user, AuthenticatedUser
 from app.database import get_db
-from app.common.errors import NotFoundError, InsufficientStockError, ValidationError
 from app.common.calc import (
     compute_bill_totals, gen_invoice_no, calculate_sold_pieces,
-    validate_stock_availability, compute_stock_deduction, compute_stock_addition,
-    round2, today_iso,
+    compute_stock_deduction, compute_stock_addition,
+    round2, today_iso, validate_payment_split, get_total_stock_pieces,
+    format_stock_pieces_label,
 )
+from app.common.errors import NotFoundError, InsufficientStockError, ValidationError
+
 from app.invoices.models import CreateBillRequest, InvoiceResponse
 from google.cloud.firestore_v1 import Increment
 import logging
@@ -86,13 +88,23 @@ async def create_bill(
             raise NotFoundError("Product", item.productId)
         product_docs[item.productId] = snap.to_dict()
 
-    # ── 2. For sales, validate stock availability ──
+    # ── 2. For sales, validate stock availability (aggregate per product) ──
     if body.type == "sale":
+        needed = {}
         for item in body.items:
-            product = product_docs[item.productId]
-            sold_pieces = calculate_sold_pieces(item.model_dump())
-            if not validate_stock_availability(product, sold_pieces):
-                raise InsufficientStockError(product.get("name", item.productId))
+            needed[item.productId] = needed.get(item.productId, 0) + calculate_sold_pieces(item.model_dump())
+        for product_id, sold_pieces in needed.items():
+            product = product_docs[product_id]
+            available = get_total_stock_pieces(product)
+            if sold_pieces > available:
+                name = product.get("name", product_id)
+                raise InsufficientStockError(
+                    name,
+                    available=available,
+                    requested=sold_pieces,
+                    avail_label=format_stock_pieces_label(product, available),
+                    req_label=format_stock_pieces_label(product, sold_pieces),
+                )
 
     # ── 3. Compute totals (server is authoritative) ──
     draft = {
@@ -103,6 +115,13 @@ async def create_bill(
         "payments": [p.model_dump() for p in body.payments],
     }
     totals = compute_bill_totals(draft)
+
+    # Cash + Online (and any credit) must not exceed the bill total.
+    validate_payment_split(totals["grandTotal"], body.payments)
+
+    credit_used = round2(sum(
+        p.amount for p in body.payments if p.mode == "credit"
+    ))
 
     # ── 4. Generate invoice number (atomic increment) ──
     shop_snap = shop_ref.get()
@@ -150,13 +169,33 @@ async def create_bill(
             customer_id = cust_ref.id
             customer_doc = new_cust
 
+    if body.type == "sale" and credit_used > 0:
+        current_credit = round2((customer_doc or {}).get("storeCredit", 0) or 0)
+        if credit_used > current_credit + 0.01:
+            raise ValidationError(
+                f"Store credit ₹{credit_used:.2f} available ₹{current_credit:.2f} se zyada nahi ho sakta"
+            )
+
+    # Snap the party role onto the invoice itself so reprints stay correct even
+    # if the customer master is edited later (or for walk-in contractors).
+    is_contractor = bool(body.isContractor)
+    site_note = (body.siteNote or "").strip()
+
     # ── 6. Build invoice document ──
+    now = today_iso()
+    payments_data = [
+        {**p.model_dump(), "date": now}
+        for p in body.payments
+    ]
     inv = {
         "invoiceNo": invoice_no,
-        "date": today_iso(),
+        "date": now,
         "type": body.type,
         "customerId": customer_id,
         "customerName": customer_name,
+        "customerPhone": body.customerPhone or (customer_doc or {}).get("phone", "") or "",
+        "isContractor": is_contractor,
+        "siteNote": site_note,
         "items": [it.model_dump() for it in body.items],
         "discount": body.discount.model_dump() if body.discount else None,
         "gstEnabled": body.gstEnabled,
@@ -165,7 +204,7 @@ async def create_bill(
         "discountOff": totals["discountOff"],
         "gstAmount": totals["gstAmount"],
         "grandTotal": totals["grandTotal"],
-        "payments": [p.model_dump() for p in body.payments],
+        "payments": payments_data,
         "amountPaid": totals["amountPaid"],
         "amountPending": totals["amountPending"],
         "paymentStatus": totals["paymentStatus"],
@@ -179,7 +218,6 @@ async def create_bill(
     batch.set(inv_ref, inv)
 
     # ── 8. Stock operations ──
-    now = today_iso()
     for item in body.items:
         product = product_docs[item.productId]
         sold_pieces = calculate_sold_pieces(item.model_dump())
@@ -208,7 +246,7 @@ async def create_bill(
                 "timestamp": now,
             })
 
-    # ── 9. Customer balance updates ──
+    # ── 9. Customer balance + role sync ──
     if customer_id and customer_doc:
         cust_ref = customers_col.document(customer_id)
         cust_updates = {}
@@ -218,12 +256,17 @@ async def create_bill(
                 (customer_doc.get("totalPending", 0) or 0) + totals["amountPending"]
             )
 
-        credit_used = sum(
-            p.amount for p in body.payments if p.mode == "credit"
-        )
         if body.type == "sale" and credit_used > 0:
             current_credit = customer_doc.get("storeCredit", 0) or 0
             cust_updates["storeCredit"] = max(0, round2(current_credit - credit_used))
+
+        # Keep the master in sync with whatever the cashier ticked on this bill.
+        if bool(customer_doc.get("isContractor", False)) != is_contractor:
+            cust_updates["isContractor"] = is_contractor
+        if site_note and (customer_doc.get("siteNote") or "") != site_note:
+            cust_updates["siteNote"] = site_note
+        if body.customerPhone and (customer_doc.get("phone") or "") != body.customerPhone:
+            cust_updates["phone"] = body.customerPhone
 
         if cust_updates:
             batch.update(cust_ref, cust_updates)

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import * as api from "@/services/api";
 import { onAuth, signOut as authSignOut } from "@/services/auth";
 import { speak } from "@/hooks/useSpeech";
+import { normalizeTileSize } from "@/lib/tileSizes";
 
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -112,7 +113,7 @@ export function AppProvider({ children }) {
         unit: it.unit || "box",
         rate: Number(it.rate) || 0,
         piecesPerBox: Number(it.piecesPerBox) || 1,
-        size: it.size || "",
+        size: it.unit === "piece" ? "" : (it.size || ""),
       })),
       gstEnabled: !!d.gstEnabled,
       gstRate: Number(d.gstRate) || 18,
@@ -139,6 +140,12 @@ export function AppProvider({ children }) {
     return result.totalPaid;
   }, [refresh]);
 
+  const reconcileCustomer = useCallback(async (customerId) => {
+    const result = await api.reconcileCustomer(customerId);
+    await refresh();
+    return result;
+  }, [refresh]);
+
   // ── Generic draft commit for expense / stock transfer / bulk ──
   const commitDraft = useCallback(async () => {
     if (!draft) return;
@@ -157,7 +164,7 @@ export function AppProvider({ children }) {
           name: r.name || "",
           code: r.code || "",
           company: r.company || "",
-          size: r.size || "",
+          size: r.unit === "piece" ? "" : (normalizeTileSize(r.size) || r.size || ""),
           unit: r.unit === "piece" ? "piece" : "box",
           piecesPerBox: r.unit === "piece" ? 1 : (Number(r.piecesPerBox) || 1),
           qty: Number(r.qty) || 0,
@@ -193,7 +200,7 @@ export function AppProvider({ children }) {
       name: (p.name || "").trim(),
       code: p.code || "",
       company: p.company || "",
-      size: p.size || "",
+      size: unit === "piece" ? "" : (normalizeTileSize(p.size) || p.size || ""),
       unit,
       piecesPerBox: unit === "piece" ? 1 : Math.max(1, Number(p.piecesPerBox) || 1),
       sellPrice: Number(p.sellPrice) || 0,
@@ -209,14 +216,15 @@ export function AppProvider({ children }) {
     await api.updateProduct(id, {
       ...p,
       unit,
+      size: unit === "piece" ? "" : (normalizeTileSize(p.size) || p.size || ""),
       piecesPerBox: unit === "piece" ? 1 : Math.max(1, Number(p.piecesPerBox) || 1),
     });
     await refresh();
   }, [refresh]);
 
-  // ── Re-settle an existing return (e.g. store credit → cash payout) ──
-  const updateReturn = useCallback(async (invoiceId, patch) => {
-    const inv = await api.updateReturn(invoiceId, patch);
+  // ── Convert store-credit return → cash / adjust udhari ──
+  const convertStoreCreditReturn = useCallback(async (invoiceId, patch) => {
+    const inv = await api.convertStoreCreditReturn(invoiceId, patch);
     await refresh();
     return inv;
   }, [refresh]);
@@ -227,9 +235,9 @@ export function AppProvider({ children }) {
   const value = {
     user, authLoading, shop, saveShop, logout,
     products, customers, invoices, returns, expenses, refresh,
-    draft, setDraft, commitDraft, cancelDraft: () => setDraft(null), commitBill, allocatePayment,
+    draft, setDraft, commitDraft, cancelDraft: () => setDraft(null), commitBill, allocatePayment, reconcileCustomer,
     isDemo: false, geminiReady,
-    addProduct, updateProduct, updateReturn, addCustomer, speak,
+    addProduct, updateProduct, convertStoreCreditReturn, addCustomer, speak,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

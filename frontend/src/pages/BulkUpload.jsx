@@ -1,17 +1,30 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import * as api from "@/services/api";
 import { toast } from "sonner";
 import { Upload, AlertTriangle, Loader2, Check, FileText, TableProperties } from "lucide-react";
-import BulkGrid from "@/components/BulkGrid";
-import { UNIT_BOX, UNIT_PIECE, unitOptionLabel, normalizeUnit } from "@/lib/units";
+import BulkGrid, { emptyRow } from "@/components/BulkGrid";
+import Kbd from "@/components/Kbd";
+import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
+import { SCOPES, KEYS } from "@/lib/keymap";
+import { UNIT_BOX, UNIT_PIECE, unitOptionLabel, normalizeUnit, applyCatalogUnitChange, isPieceUnit } from "@/lib/units";
+import TileSizeSelect from "@/components/TileSizeSelect";
+import { normalizeTileSize } from "@/lib/tileSizes";
 
 export default function BulkUpload() {
-  const { setDraft } = useApp();
-  const [rows, setRows] = useState([]);
+  const { setDraft, draft } = useApp();
+  const [rows, setRows] = useState(() => [emptyRow(Date.now())]);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null);
   const [activeTab, setActiveTab] = useState("grid"); // "grid" | "photo"
+  const [gridKey, setGridKey] = useState(0);
+
+  // After draft confirm/cancel, remount the grid so Type cell gets autofocus again.
+  const prevDraft = useRef(draft);
+  useEffect(() => {
+    if (prevDraft.current && !draft) setGridKey((k) => k + 1);
+    prevDraft.current = draft;
+  }, [draft]);
 
   const onFile = async (e) => {
     const file = e.target.files?.[0];
@@ -22,13 +35,18 @@ export default function BulkUpload() {
       const base64 = await toBase64(file);
       const result = await api.extractStockSheet(base64.split(",")[1], file.type);
       const extracted = result.rows || [];
-      setRows(extracted.map((r, i) => ({
-        id: i,
-        ...r,
-        unit: normalizeUnit(r.unit),
-        piecesPerBox: normalizeUnit(r.unit) === UNIT_PIECE ? 1 : (r.piecesPerBox || ""),
-        price: r.price ?? "",
-      })));
+      setRows(extracted.map((r, i) => {
+        const unit = normalizeUnit(r.unit);
+        const tile = unit === UNIT_BOX;
+        return {
+          id: i,
+          ...r,
+          unit,
+          size: tile ? (normalizeTileSize(r.size) || "") : "",
+          piecesPerBox: tile ? (r.piecesPerBox || "") : 1,
+          price: r.price ?? "",
+        };
+      }));
       toast.success(`${extracted.length} items extracted`);
     } catch (err) {
       toast.error("Extraction failed. Check your Gemini key or try a clearer photo.");
@@ -40,13 +58,14 @@ export default function BulkUpload() {
   const del = (id) => setRows((prev) => prev.filter((r) => r.id !== id));
 
   const resetPage = () => {
-    setRows([]);
+    setRows([emptyRow(Date.now())]);
     setPreview(null);
     setBusy(false);
     setActiveTab("grid");
+    setGridKey((k) => k + 1);
   };
 
-  const confirmBatch = () => {
+  const confirmBatch = useCallback(() => {
     // Filter out completely empty rows (manual entry might have blanks)
     const validRows = rows.filter(r => r.name?.trim() || r.code?.trim() || r.qty?.toString().trim());
     
@@ -55,6 +74,11 @@ export default function BulkUpload() {
     // Check for missing mandatory fields in the valid rows
     const hasErrors = validRows.some(r => !r.name?.trim() || !r.qty?.toString().trim());
     if (hasErrors) return toast.error("Name and Qty are required for all entered products");
+
+    const tileMissingSize = validRows.some(
+      (r) => normalizeUnit(r.unit) === UNIT_BOX && !String(r.size || "").trim()
+    );
+    if (tileMissingSize) return toast.error("Tiles ke liye size choose karein");
 
     const tileMissingPpb = validRows.some(
       (r) => normalizeUnit(r.unit) === UNIT_BOX && !(Number(r.piecesPerBox) > 0)
@@ -65,6 +89,7 @@ export default function BulkUpload() {
       kind: "bulk_stock", rows: validRows.map((r) => ({
         ...r,
         unit: normalizeUnit(r.unit),
+        size: normalizeUnit(r.unit) === UNIT_PIECE ? "" : (normalizeTileSize(r.size) || r.size || ""),
         piecesPerBox: normalizeUnit(r.unit) === UNIT_PIECE ? 1 : (Number(r.piecesPerBox) || 1),
       })),
       title: "Confirm Bulk Stock Intake", subtitle: `${validRows.length} products stock me add honge`,
@@ -74,7 +99,15 @@ export default function BulkUpload() {
       })),
       onCommitted: resetPage,
     });
-  };
+  }, [rows, setDraft]);
+
+  useHotkeyScope(SCOPES.BULK);
+  useHotkeys(SCOPES.BULK, [
+    { keys: KEYS.save, label: "Batch confirm karein", handler: confirmBatch, disabled: rows.length === 0 },
+    { keys: KEYS.saveAlt, label: "Batch confirm karein", handler: confirmBatch, disabled: rows.length === 0, hidden: true },
+    { keys: "alt+1", label: "Manual entry tab", handler: () => setActiveTab("grid") },
+    { keys: "alt+2", label: "Smart entry tab", handler: () => setActiveTab("photo") },
+  ]);
 
   return (
     <div className="space-y-4 ds-fade" data-testid="bulk-upload-page">
@@ -93,7 +126,7 @@ export default function BulkUpload() {
               : "text-slate-500 hover:text-slate-700"
           }`}
         >
-          <TableProperties className="h-4 w-4" /> Manual Entry
+          <TableProperties className="h-4 w-4" /> Manual Entry <Kbd keys="alt+1" />
         </button>
         <button
           onClick={() => setActiveTab("photo")}
@@ -103,7 +136,7 @@ export default function BulkUpload() {
               : "text-slate-500 hover:text-slate-700"
           }`}
         >
-          <FileText className="h-4 w-4" /> Smart Entry
+          <FileText className="h-4 w-4" /> Smart Entry <Kbd keys="alt+2" />
         </button>
       </div>
 
@@ -117,7 +150,7 @@ export default function BulkUpload() {
       )}
 
       {activeTab === "grid" && (
-        <BulkGrid rows={rows} setRows={setRows} />
+        <BulkGrid key={gridKey} rows={rows} setRows={setRows} />
       )}
 
       {rows.length > 0 && (
@@ -132,12 +165,25 @@ export default function BulkUpload() {
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id} data-testid={`bulk-row-${r.id}`} className={`border-t border-slate-100 ${r.lowConfidence ? "bg-amber-50" : ""}`}>
-                      {["name", "code", "company", "size"].map((k) => (
+                      {["name", "code", "company"].map((k) => (
                         <td key={k} className="p-1"><input data-testid={`bulk-${k}-${r.id}`} value={r[k] ?? ""} onChange={(e) => upd(r.id, { [k]: e.target.value })} className="w-full rounded border border-transparent bg-transparent px-1.5 py-1 focus:border-slate-300 focus:bg-white" /></td>
                       ))}
                       <td className="p-1">
+                        {isPieceUnit(r)
+                          ? <span className="px-1.5 text-xs text-slate-300">—</span>
+                          : (
+                            <TileSizeSelect
+                              testId={`bulk-size-${r.id}`}
+                              value={r.size ?? ""}
+                              onChange={(v) => upd(r.id, { size: v })}
+                              className="flex min-w-[150px] items-center gap-1 rounded border border-transparent bg-transparent px-1 py-1 focus-within:border-slate-300 focus-within:bg-white"
+                              inputClassName="w-full bg-transparent text-xs outline-none"
+                            />
+                          )}
+                      </td>
+                      <td className="p-1">
                         <select data-testid={`bulk-unit-${r.id}`} value={normalizeUnit(r.unit)}
-                          onChange={(e) => upd(r.id, { unit: e.target.value, piecesPerBox: e.target.value === UNIT_PIECE ? 1 : (r.piecesPerBox || "") })}
+                          onChange={(e) => upd(r.id, applyCatalogUnitChange(r, e.target.value))}
                           className="w-full rounded border border-transparent bg-transparent px-1 py-1 text-xs font-semibold focus:border-slate-300 focus:bg-white">
                           <option value={UNIT_BOX}>{unitOptionLabel(UNIT_BOX)}</option>
                           <option value={UNIT_PIECE}>{unitOptionLabel(UNIT_PIECE)}</option>
@@ -161,7 +207,7 @@ export default function BulkUpload() {
               </table>
             </div>
           )}
-          <button data-testid="bulk-confirm-btn" onClick={confirmBatch} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-bold text-white active:scale-95"><Check className="h-4 w-4" /> Review &amp; Confirm Batch</button>
+          <button data-testid="bulk-confirm-btn" onClick={confirmBatch} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-bold text-white active:scale-95"><Check className="h-4 w-4" /> Review &amp; Confirm Batch <Kbd keys={KEYS.save} tone="dark" /></button>
         </div>
       )}
     </div>

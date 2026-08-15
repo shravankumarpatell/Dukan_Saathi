@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends
 from app.dependencies import get_current_user, AuthenticatedUser
 from app.database import get_db
 from app.common.errors import NotFoundError, ValidationError
-from app.common.calc import round2, today_iso
+from app.common.calc import round2
+from app.common.tile_sizes import normalize_tile_size
 from app.products.models import (
     ProductCreate, ProductUpdate, ProductResponse,
     BulkImportRequest,
@@ -16,6 +17,26 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 def _products_ref(shop_id: str):
     return get_db().collection("shops").document(shop_id).collection("products")
+
+
+def _normalize_unit_fields(data: dict, existing: Optional[dict] = None) -> dict:
+    """Tiles keep size + pcs/box; sanitary has no size and pcs/box = 1."""
+    unit = data.get("unit")
+    if unit is None and existing is not None:
+        unit = existing.get("unit", "box")
+    if unit == "piece":
+        data["unit"] = "piece"
+        data["piecesPerBox"] = 1
+        data["size"] = ""
+    else:
+        if "unit" in data or existing is None:
+            data["unit"] = "box"
+        if "piecesPerBox" in data or existing is None:
+            data["piecesPerBox"] = max(1, int(data.get("piecesPerBox") or (existing or {}).get("piecesPerBox") or 1))
+        if "size" in data or existing is None:
+            mapped = normalize_tile_size(data.get("size") or "")
+            data["size"] = mapped or str(data.get("size") or "").strip()
+    return data
 
 
 def _to_response(doc_id: str, data: dict) -> ProductResponse:
@@ -42,11 +63,7 @@ async def create_product(
 ):
     """Create a product on the fly — used by the quick-add flow while billing."""
     data = body.model_dump()
-    if data.get("unit") == "piece":
-        data["piecesPerBox"] = 1
-    else:
-        data["unit"] = "box"
-        data["piecesPerBox"] = max(1, int(data.get("piecesPerBox") or 1))
+    _normalize_unit_fields(data)
     _, doc_ref = _products_ref(user.uid).add(data)
     return _to_response(doc_ref.id, data)
 
@@ -76,10 +93,8 @@ async def update_product(
         raise NotFoundError("Product", product_id)
 
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
-    if patch.get("unit") == "piece":
-        patch["piecesPerBox"] = 1
-    elif patch.get("unit") == "box" and "piecesPerBox" in patch:
-        patch["piecesPerBox"] = max(1, int(patch["piecesPerBox"] or 1))
+    existing = snap.to_dict() or {}
+    _normalize_unit_fields(patch, existing)
     if patch:
         ref.update(patch)
 
@@ -139,7 +154,9 @@ async def bulk_import(
             # Also refresh unit / pcs-per-box when supplied on the row
             if row.unit in ("box", "piece"):
                 patch["unit"] = row.unit
-                patch["piecesPerBox"] = 1 if row.unit == "piece" else max(1, int(row.piecesPerBox or matched_data.get("piecesPerBox") or 1))
+                patch["piecesPerBox"] = row.piecesPerBox
+                patch["size"] = row.size
+                _normalize_unit_fields(patch, matched_data)
             products_col.document(matched_id).update(patch)
             updated = products_col.document(matched_id).get().to_dict()
             results.append(_to_response(matched_id, updated))
@@ -151,11 +168,12 @@ async def bulk_import(
                 "company": row.company,
                 "size": row.size,
                 "unit": row.unit if row.unit in ("box", "piece") else "box",
-                "piecesPerBox": 1 if row.unit == "piece" else max(1, int(row.piecesPerBox or 1)),
+                "piecesPerBox": row.piecesPerBox,
                 "sellPrice": row.price,
                 "stockQty": row.qty,
                 "lowStockThreshold": 10,
             }
+            _normalize_unit_fields(new_data)
             _, doc_ref = products_col.add(new_data)
             results.append(_to_response(doc_ref.id, new_data))
 

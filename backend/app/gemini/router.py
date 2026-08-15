@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from app.dependencies import get_current_user, AuthenticatedUser
 from app.config import settings
 from app.common.errors import ValidationError
+from app.common.tile_sizes import normalize_tile_size, TILE_SIZE_PROMPT
 import httpx
 import json
 import logging
@@ -150,8 +151,8 @@ async def extract_stock_sheet(
     """Extract product line items from a supplier stock sheet image using Gemini vision."""
     _ensure_gemini()
 
-    prompt = """Extract every product line from this tiles & sanitaryware supplier stock sheet as a JSON array.
-Each object: {
+    prompt = f"""Extract every product line from this tiles & sanitaryware supplier stock sheet as a JSON array.
+Each object: {{
   "name": string,
   "code": string,
   "company": string,
@@ -160,10 +161,13 @@ Each object: {
   "piecesPerBox": number,
   "qty": number,
   "lowConfidence": boolean
-}.
+}}.
 Rules:
-- Tiles / flooring / wall tiles → unit="box", piecesPerBox = pcs in one box if known else 1, qty = number of boxes.
-- Sanitary / fittings / basins / closets / taps → unit="piece", piecesPerBox=1, qty = number of pieces.
+- Tiles / flooring / wall tiles → unit="box". size MUST be one of: {TILE_SIZE_PROMPT}.
+  Never write a bare 2x2 or 12x18 without ft/in. 2x2 / 600x600 → "2x2 ft". 12x18 / 300x450 → "12x18 in".
+  If size is unreadable, use "".
+  piecesPerBox = pcs in one box if known else 1. qty = number of boxes.
+- Sanitary / fittings / basins / closets / taps → unit="piece", size="", piecesPerBox=1, qty = number of pieces.
 - Never guess selling price. Set lowConfidence=true if blurry/uncertain.
 Return ONLY the JSON array."""
 
@@ -192,6 +196,20 @@ Return ONLY the JSON array."""
         try:
             cleaned = text.replace("```json", "").replace("```", "").strip()
             rows = json.loads(cleaned)
-            return {"rows": rows if isinstance(rows, list) else []}
+            if not isinstance(rows, list):
+                return {"rows": []}
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                unit = str(row.get("unit") or "").lower()
+                if unit in ("piece", "pcs", "pc", "sanitary"):
+                    row["unit"] = "piece"
+                    row["piecesPerBox"] = 1
+                    row["size"] = ""
+                else:
+                    row["unit"] = "box"
+                    mapped = normalize_tile_size(row.get("size"))
+                    row["size"] = mapped or ""
+            return {"rows": rows}
         except json.JSONDecodeError:
             return {"rows": [], "error": "Failed to parse extraction"}
