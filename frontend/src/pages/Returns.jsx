@@ -299,7 +299,7 @@ export default function Returns() {
   // After picking an invoice, park the caret on the first return qty field
   // (not invoice search — that is first in the Enter chain).
   useEffect(() => {
-    if (!src || tab !== "new") return undefined;
+    if (!src?.id || tab !== "new") return undefined;
     const t = setTimeout(() => {
       document.querySelector('[data-testid="return-qty-0"]')?.focus();
     }, 60);

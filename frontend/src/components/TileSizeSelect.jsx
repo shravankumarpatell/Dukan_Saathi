@@ -28,14 +28,13 @@ export default function TileSizeSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [rev, setRev] = useState(0);
+  const [catalog, setCatalog] = useState(() => allTileSizes());
   const inputRef = useRef(null);
   const wrapperRef = useRef(null);
   const skipBlurRef = useRef(false);
 
-  const catalog = useMemo(() => allTileSizes(), [rev]);
   const matches = useMemo(() => filterTileSizes(q, catalog), [q, catalog]);
-  const proposal = useMemo(() => proposeCustomTileSize(q), [q, rev]);
+  const proposal = useMemo(() => proposeCustomTileSize(q), [q]);
 
   const rows = useMemo(() => [
     ...matches.map((s) => ({ kind: "size", size: s })),
@@ -51,7 +50,7 @@ export default function TileSizeSelect({
 
   const addSize = (size) => {
     saveCustomTileSize(size);
-    setRev((n) => n + 1);
+    setCatalog(allTileSizes());
     pick(size);
   };
 
