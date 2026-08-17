@@ -628,7 +628,7 @@ export default function NewBill() {
             <button data-testid="preview-bill-btn" onClick={preview} className="flex items-center justify-center gap-2 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3.5 font-bold text-indigo-800 transition-transform active:scale-95"><Eye className="h-5 w-5" /> Preview <Kbd keys={KEYS.preview} /></button>
             <button data-testid="confirm-save-btn" onClick={save} disabled={saving} className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3.5 font-bold text-white shadow-md transition-transform active:scale-95 hover:bg-orange-500 disabled:opacity-60"><Save className="h-5 w-5" /> {saving ? "…" : "Save"} <Kbd keys={KEYS.save} tone="dark" /></button>
           </div>
-          <p className="text-center text-xs text-slate-400">Last field par Enter = Preview. Save sirf <Kbd keys={KEYS.save} /> se.</p>
+          <p className="hidden text-center text-xs text-slate-400 lg:block">Last field par Enter = Preview. Save sirf <Kbd keys={KEYS.save} /> se.</p>
         </div>
       </div>
 

@@ -132,7 +132,7 @@ export default function BillHistory() {
       </div>
 
       {list.length > 0 && (
-        <p className="text-center text-[11px] text-slate-400">
+        <p className="hidden text-center text-[11px] text-slate-400 lg:block">
           <Kbd keys="arrowup" /> <Kbd keys="arrowdown" /> chunein · <Kbd keys="enter" /> PDF kholein
         </p>
       )}

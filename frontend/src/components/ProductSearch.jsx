@@ -45,6 +45,13 @@ const ProductSearch = forwardRef(function ProductSearch(
     pick(row.product);
   };
 
+  // Pointer-down (not click): on phones the input blurs first and unmounts the
+  // list before click fires. preventDefault keeps focus so the tap counts.
+  const chooseRow = (e, i) => {
+    e.preventDefault();
+    selectRow(i);
+  };
+
   const nav = useListNavigation({
     count: rows.length,
     enabled: open,
@@ -118,13 +125,18 @@ const ProductSearch = forwardRef(function ProductSearch(
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onBlur={(e) => {
-            if (!wrapperRef.current?.contains(e.relatedTarget)) setOpen(false);
+            if (wrapperRef.current?.contains(e.relatedTarget)) return;
+            // Delay close: iOS blurs before the row's pointer event, with
+            // relatedTarget null. A short wait lets the tap still land.
+            window.setTimeout(() => {
+              if (!wrapperRef.current?.contains(document.activeElement)) setOpen(false);
+            }, 180);
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
         />
-        <Kbd keys={KEYS.quickCreate} className="hidden sm:inline-flex" />
+        <Kbd keys={KEYS.quickCreate} />
       </div>
 
       {open && (
@@ -132,7 +144,7 @@ const ProductSearch = forwardRef(function ProductSearch(
           id="product-search-list"
           role="listbox"
           ref={nav.listRef}
-          className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+          className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
         >
           {rows.length === 0 && <div className="px-3 py-4 text-sm text-slate-500">No products found.</div>}
 
@@ -153,7 +165,7 @@ const ProductSearch = forwardRef(function ProductSearch(
                   {...common}
                   type="button"
                   data-testid="product-add-new"
-                  onClick={createNew}
+                  onPointerDown={(e) => chooseRow(e, i)}
                   className={`flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2.5 text-left font-semibold text-emerald-800 ${active ? "bg-emerald-100" : "bg-emerald-50"}`}
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
@@ -173,7 +185,7 @@ const ProductSearch = forwardRef(function ProductSearch(
                 type="button"
                 data-testid={`product-option-${p.id}`}
                 disabled={row.disabled}
-                onClick={() => selectRow(i)}
+                onPointerDown={(e) => chooseRow(e, i)}
                 className={`flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left transition-colors ${
                   row.disabled ? "cursor-not-allowed opacity-40" : active ? "bg-indigo-50" : ""
                 }`}

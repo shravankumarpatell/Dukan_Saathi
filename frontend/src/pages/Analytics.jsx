@@ -117,7 +117,7 @@ export default function Analytics() {
               options={GRAINS}
             />
           </div>
-          <span className="hidden items-center justify-end gap-1 text-xs text-slate-400 sm:flex">
+          <span className="hidden items-center justify-end gap-1 text-xs text-slate-400 lg:flex">
             <Kbd keys="alt+1" /><Kbd keys="alt+2" /><Kbd keys="alt+3" />
           </span>
         </div>

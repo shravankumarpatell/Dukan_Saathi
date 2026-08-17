@@ -125,7 +125,7 @@ const CustomerSearch = forwardRef(function CustomerSearch(
           id="customer-search-list"
           role="listbox"
           ref={nav.listRef}
-          className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+          className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
         >
           {rows.map((row, i) => {
             const active = i === activeIndex;

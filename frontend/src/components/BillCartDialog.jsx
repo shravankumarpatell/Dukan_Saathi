@@ -322,7 +322,7 @@ export default function BillCartDialog({
           </div>
 
           {items.length > 0 && (
-            <p className="text-center text-[11px] text-slate-400">
+            <p className="hidden text-center text-[11px] text-slate-400 lg:block">
               <Kbd keys="arrowup" /> <Kbd keys="arrowdown" /> line · <Kbd keys="enter" /> agla field ·{" "}
               <Kbd keys={KEYS.sqftCalc} /> sq-ft · <Kbd keys={KEYS.deleteRow} /> hataayein
             </p>

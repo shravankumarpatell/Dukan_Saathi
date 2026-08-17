@@ -298,7 +298,7 @@ export default function Customers() {
       )}
 
       {shown.length > 0 && (
-        <p className="text-center text-[11px] text-slate-400">
+        <p className="hidden text-center text-[11px] text-slate-400 lg:block">
           <Kbd keys="arrowup" /> <Kbd keys="arrowdown" /> chunein{tab === "udhari" && <> · <Kbd keys="enter" /> payment lein</>}
         </p>
       )}

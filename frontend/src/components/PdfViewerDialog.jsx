@@ -155,7 +155,7 @@ export default function PdfViewerDialog({
           />
         )}
         <div className="flex items-center justify-between gap-2 px-2 pb-1">
-          <p className="text-[11px] text-slate-400">
+          <p className="hidden text-[11px] text-slate-400 lg:block">
             <Kbd keys={KEYS.cancel} /> se band
           </p>
           <button

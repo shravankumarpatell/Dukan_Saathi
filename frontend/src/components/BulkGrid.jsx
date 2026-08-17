@@ -260,7 +260,7 @@ export default function BulkGrid({ rows, setRows }) {
         >
           <Plus className="h-4 w-4" /> Add Row
         </button>
-        <p className="text-center text-[11px] text-slate-400">
+        <p className="hidden text-center text-[11px] text-slate-400 lg:block">
           Type pe ←/→ · <Kbd keys="enter" /> agla cell · <Kbd keys="shift+enter" /> pichla · <Kbd keys="arrowup" /> <Kbd keys="arrowdown" /> line ·{" "}
           <Kbd keys="alt+x" /> line hataayein · aakhri cell par <Kbd keys="enter" /> se nayi line
         </p>

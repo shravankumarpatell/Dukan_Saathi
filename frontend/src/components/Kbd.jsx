@@ -16,7 +16,7 @@ export default function Kbd({ keys, className, tone = "default" }) {
   return (
     <kbd
       className={cn(
-        "inline-flex select-none items-center rounded border px-1.5 py-0.5 font-sans text-[10px] font-bold leading-none tracking-wide whitespace-nowrap",
+        "hidden lg:inline-flex select-none items-center rounded border px-1.5 py-0.5 font-sans text-[10px] font-bold leading-none tracking-wide whitespace-nowrap",
         tones[tone] || tones.default,
         className
       )}
