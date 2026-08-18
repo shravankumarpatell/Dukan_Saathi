@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import NumberInput from "@/components/NumberInput";
 import UnitToggle from "@/components/UnitToggle";
 import TileSizeSelect from "@/components/TileSizeSelect";
@@ -16,7 +16,9 @@ import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { useFormFlow } from "@/hooks/useFormFlow";
 import { useListNavigation } from "@/hooks/useListNavigation";
 import { usePageFocus } from "@/hooks/usePageFocus";
+import { useOwnedSearchParams } from "@/hooks/useOwnedSearchParams";
 import { useQuickCreate } from "@/context/QuickCreateContext";
+import { useIsPageActive } from "@/context/PageKeepAliveContext";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,7 +28,8 @@ const NUMERIC = ["piecesPerBox", "sellPrice", "stockQty", "lowStockThreshold"];
 
 export default function Inventory() {
   const { products, updateProduct } = useApp();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useOwnedSearchParams();
+  const pageActive = useIsPageActive();
   const navigate = useNavigate();
   const quickCreate = useQuickCreate();
   const [q, setQ] = useState(params.get("q") || "");
@@ -92,9 +95,10 @@ export default function Inventory() {
 
   // The palette hands over a product name as ?q=
   useEffect(() => {
+    if (!pageActive) return;
     const incoming = params.get("q");
     if (incoming) { setQ(incoming); searchRef.current?.focus(); }
-  }, [params]);
+  }, [params, pageActive]);
 
   useHotkeyScope(SCOPES.INVENTORY);
   useHotkeys(SCOPES.INVENTORY, [

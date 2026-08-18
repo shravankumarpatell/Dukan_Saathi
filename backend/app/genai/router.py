@@ -1,19 +1,16 @@
 from typing import Optional, List, Dict
-"""GenAI API endpoints — extraction, chat, and document indexing.
-
-All endpoints use Gemini via the app-level API key (same as gemini/ module).
-"""
+"""GenAI API endpoints — extraction, chat, and document indexing via OpenRouter."""
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 import time
 
 from app.dependencies import get_current_user, AuthenticatedUser
-from app.config import settings as app_settings
 from app.genai.schemas import ExtractRequest, ExtractResponse, ChatRequest, ChatResponse
 from app.genai.services import ExtractionService, ChatService
 from app.genai.retrieval import RetrievalService
 from app.genai.exceptions import ApplicationError
 from app.genai.logger import logger
+from app.ai.openrouter import ensure_configured
 
 router = APIRouter(prefix="/genai", tags=["GenAI"])
 
@@ -21,15 +18,16 @@ retrieval_service = RetrievalService()
 chat_service = ChatService(retrieval_service)
 
 
-def _ensure_gemini():
-    """Fail fast if Gemini is not configured."""
-    if not app_settings.GEMINI_API_KEY:
-        raise HTTPException(status_code=503, detail="Gemini API key not configured on the server")
+def _ensure_ai():
+    try:
+        ensure_configured()
+    except Exception:
+        raise HTTPException(status_code=503, detail="OpenRouter API key not configured on the server")
 
 
 @router.post("/extract", response_model=ExtractResponse)
 async def extract_invoice(req: ExtractRequest, user: AuthenticatedUser = Depends(get_current_user)):
-    _ensure_gemini()
+    _ensure_ai()
     start_time = time.time()
     try:
         result = await ExtractionService.extract_invoice(req.image_base64)
@@ -51,7 +49,7 @@ async def extract_invoice(req: ExtractRequest, user: AuthenticatedUser = Depends
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest, user: AuthenticatedUser = Depends(get_current_user)):
-    _ensure_gemini()
+    _ensure_ai()
     start_time = time.time()
     try:
         response, chunks_used = await chat_service.chat(req.messages)
@@ -70,6 +68,6 @@ async def chat(req: ChatRequest, user: AuthenticatedUser = Depends(get_current_u
 @router.post("/index-documents")
 async def index_docs(background_tasks: BackgroundTasks, documents: List[str], user: AuthenticatedUser = Depends(get_current_user)):
     """Endpoint to update the FAISS RAG index with new shop data."""
-    _ensure_gemini()
+    _ensure_ai()
     background_tasks.add_task(retrieval_service.index_documents, documents)
     return {"status": "indexing_started", "document_count": len(documents)}

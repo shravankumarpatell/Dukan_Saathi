@@ -15,9 +15,13 @@ class Settings:
         "FIREBASE_CREDENTIALS_PATH", str(ROOT_DIR / "firebase-service-account.json")
     )
 
-    # Gemini
-    GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    # OpenRouter (Nemotron VL) — chat, NLU, smart stock extract
+    OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
+    OPENROUTER_MODEL: str = os.environ.get(
+        "OPENROUTER_MODEL", "nvidia/nemotron-nano-12b-v2-vl:free"
+    )
+    OPENROUTER_SITE_URL: str = os.environ.get("OPENROUTER_SITE_URL", "https://dukansaathi.app")
+    OPENROUTER_APP_NAME: str = os.environ.get("OPENROUTER_APP_NAME", "DukanSaathi")
 
     # CORS
     CORS_ORIGINS: list = os.environ.get(

@@ -1,20 +1,12 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AppProvider, useApp } from "@/context/AppContext";
 import { HotkeyProvider } from "@/context/HotkeyContext";
 import { QuickCreateProvider } from "@/context/QuickCreateContext";
 import Layout from "@/components/Layout";
+import KeepAliveRoutes from "@/components/KeepAliveRoutes";
 import Login from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
-import Inventory from "@/pages/Inventory";
-import NewBill from "@/pages/NewBill";
-import Customers from "@/pages/Customers";
-import Returns from "@/pages/Returns";
-import Chat from "@/pages/Chat";
-import BulkUpload from "@/pages/BulkUpload";
-import Analytics from "@/pages/Analytics";
-import BillHistory from "@/pages/BillHistory";
 import Settings from "@/pages/Settings";
 
 function Shell() {
@@ -47,19 +39,7 @@ function Shell() {
 
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/bill" element={<NewBill />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/returns" element={<Returns />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/bulk" element={<BulkUpload />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/history" element={<BillHistory />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <KeepAliveRoutes />
     </Layout>
   );
 }

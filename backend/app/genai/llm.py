@@ -1,54 +1,19 @@
-from typing import Optional, List, Dict, Type, AsyncGenerator
-"""LLM client — calls Google Gemini API via httpx.
+"""LLM client — OpenRouter chat completions (Nemotron VL).
 
-Supports:
-- Structured extraction (image → JSON via Pydantic schema)
-- Free-form chat
-- Retry with fallback model
+Supports structured extraction (image → JSON) and free-form chat, with retry + fallback.
 """
 
 import json
+from typing import List, Type
+
 import httpx
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
 
-from app.config import settings as app_settings
+from app.ai import openrouter
 from app.genai.config import settings
 from app.genai.logger import logger
 from app.genai.exceptions import LLMError, FallbackError
-
-GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-
-
-def _ensure_gemini():
-    if not app_settings.GEMINI_API_KEY:
-        raise LLMError("Gemini API key not configured on the server")
-
-
-def _schema_to_json_schema(schema_class: Type[BaseModel]) -> dict:
-    """Convert a Pydantic model to a Gemini-compatible JSON schema.
-
-    Gemini's responseSchema does NOT support 'title', 'default', '$defs',
-    or 'anyOf' fields — strip them out recursively.
-    """
-    raw = schema_class.model_json_schema()
-    return _clean_schema(raw)
-
-
-def _clean_schema(schema: dict) -> dict:
-    """Recursively remove unsupported keys for Gemini's responseSchema."""
-    disallowed = {"title", "default", "$defs", "anyOf", "allOf", "oneOf", "discriminator"}
-    cleaned = {}
-    for k, v in schema.items():
-        if k in disallowed:
-            continue
-        if isinstance(v, dict):
-            cleaned[k] = _clean_schema(v)
-        elif isinstance(v, list):
-            cleaned[k] = [_clean_schema(i) if isinstance(i, dict) else i for i in v]
-        else:
-            cleaned[k] = v
-    return cleaned
 
 
 def create_retry_decorator(model_config):
@@ -58,68 +23,60 @@ def create_retry_decorator(model_config):
             multiplier=settings.models.retry_policy.wait_exponential_multiplier,
             max=settings.models.retry_policy.wait_exponential_max,
         ),
-        retry=retry_if_exception_type((httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout)),
+        retry=retry_if_exception_type((httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout, LLMError)),
         reraise=True,
     )
 
 
+def _messages_for_structured(
+    prompt: str,
+    input_text: str = None,
+    image_base64: str = None,
+    image_mime: str = "image/jpeg",
+    schema_class: Type[BaseModel] = None,
+) -> list:
+    schema_hint = ""
+    if schema_class is not None:
+        schema_hint = (
+            "\nRespond with a single JSON object that matches this schema:\n"
+            + json.dumps(schema_class.model_json_schema(), indent=2)
+            + "\nReturn ONLY JSON, no markdown."
+        )
+    user_text = (input_text or "Extract information from the image/context.") + schema_hint
+    if image_base64:
+        return [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": openrouter.vision_content_parts(user_text, image_base64, image_mime)},
+        ]
+    return [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": user_text},
+    ]
+
+
 class LLMClient:
     @staticmethod
-    async def _call_gemini_structured(
+    async def _call_structured(
         model_config, prompt: str, schema_class: Type[BaseModel],
         input_text: str = None, image_base64: str = None, image_mime: str = "image/jpeg",
     ) -> BaseModel:
-        """Call Gemini with JSON mode + responseSchema for structured output."""
-        _ensure_gemini()
-
-        url = f"{GEMINI_BASE}/{model_config.model}:generateContent?key={app_settings.GEMINI_API_KEY}"
-
-        # Build user parts
-        user_parts = []
-        if input_text:
-            user_parts.append({"text": input_text})
-        if image_base64:
-            # Strip data-URI prefix if present
-            b64 = image_base64
-            if b64.startswith("data:"):
-                b64 = b64.split(",", 1)[1]
-            user_parts.append({"inline_data": {"mime_type": image_mime, "data": b64}})
-        if not user_parts:
-            user_parts.append({"text": "Extract information from the context."})
-
-        payload = {
-            "contents": [{"role": "user", "parts": user_parts}],
-            "systemInstruction": {"parts": [{"text": prompt}]},
-            "generationConfig": {
-                "responseMimeType": "application/json",
-                "responseSchema": _schema_to_json_schema(schema_class),
-                "temperature": model_config.temperature,
-            },
-        }
-
+        openrouter.ensure_configured()
+        messages = _messages_for_structured(prompt, input_text, image_base64, image_mime, schema_class)
         logger.info("LLM call start: model=%s schema=%s", model_config.model, schema_class.__name__)
+        try:
+            text = await openrouter.chat_complete(
+                messages,
+                temperature=model_config.temperature,
+                max_tokens=4096,
+                timeout=float(model_config.timeout_seconds),
+                extra={"model": model_config.model},
+            )
+        except httpx.HTTPError as e:
+            raise LLMError(f"OpenRouter API error: {e}") from e
 
-        async with httpx.AsyncClient(timeout=model_config.timeout_seconds) as client:
-            resp = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
-
-            if resp.status_code != 200:
-                body = resp.text[:500]
-                logger.error("Gemini API error %d: %s", resp.status_code, body)
-                raise LLMError(f"Gemini API error {resp.status_code}", details={"body": body})
-
-            data = resp.json()
-            text = ""
-            candidates = data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                text = "".join(p.get("text", "") for p in parts)
-
-            logger.info("LLM call success: model=%s", model_config.model)
-
-            # Parse JSON into Pydantic model
-            cleaned = text.replace("```json", "").replace("```", "").strip()
-            parsed = json.loads(cleaned)
-            return schema_class.model_validate(parsed)
+        logger.info("LLM call success: model=%s", model_config.model)
+        parsed = openrouter.parse_json_payload(text)
+        return schema_class.model_validate(parsed)
 
     @staticmethod
     async def generate_structured(
@@ -129,14 +86,14 @@ class LLMClient:
         """Generate structured output with automatic fallback."""
         @create_retry_decorator(settings.models.primary)
         async def call_primary():
-            return await LLMClient._call_gemini_structured(
+            return await LLMClient._call_structured(
                 settings.models.primary, prompt, schema_class, input_text, image_base64, image_mime,
             )
 
         @create_retry_decorator(settings.models.fallback)
         async def call_fallback():
             logger.warning("Triggering fallback model: %s", settings.models.fallback.model)
-            return await LLMClient._call_gemini_structured(
+            return await LLMClient._call_structured(
                 settings.models.fallback, prompt, schema_class, input_text, image_base64, image_mime,
             )
 
@@ -164,36 +121,23 @@ class LLMClient:
 
     @staticmethod
     async def generate_chat(prompt: str, messages: List[dict]) -> str:
-        """Free-form chat via Gemini (no structured output)."""
-        _ensure_gemini()
-
-        model = settings.models.primary.model
-        url = f"{GEMINI_BASE}/{model}:generateContent?key={app_settings.GEMINI_API_KEY}"
-
-        # Convert OpenAI-style messages to Gemini format
-        contents = []
+        """Free-form chat via OpenRouter."""
+        openrouter.ensure_configured()
+        api_messages = [{"role": "system", "content": prompt}]
         for msg in messages:
-            role = "model" if msg.get("role") == "assistant" else "user"
-            contents.append({"role": role, "parts": [{"text": msg["content"]}]})
-
-        payload = {
-            "contents": contents,
-            "systemInstruction": {"parts": [{"text": prompt}]},
-            "generationConfig": {"temperature": settings.models.primary.temperature},
-        }
+            role = msg.get("role") if msg.get("role") in ("user", "assistant") else "user"
+            api_messages.append({"role": role, "content": msg["content"]})
 
         @create_retry_decorator(settings.models.primary)
         async def call():
-            async with httpx.AsyncClient(timeout=settings.models.primary.timeout_seconds) as client:
-                resp = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
-                if resp.status_code != 200:
-                    raise LLMError(f"Gemini chat error {resp.status_code}")
-                data = resp.json()
-                text = ""
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    text = "".join(p.get("text", "") for p in parts)
-                return text
+            try:
+                return await openrouter.chat_complete(
+                    api_messages,
+                    temperature=settings.models.primary.temperature,
+                    timeout=float(settings.models.primary.timeout_seconds),
+                    extra={"model": settings.models.primary.model},
+                )
+            except httpx.HTTPError as e:
+                raise LLMError(f"OpenRouter chat error: {e}") from e
 
         return await call()

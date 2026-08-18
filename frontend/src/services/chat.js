@@ -1,6 +1,5 @@
-// Chat assistant service: builds compact shop knowledge, streams from Gemini when a key is
-// present, else answers locally from shop data. Context = recent messages only (not saved).
-import { geminiConfig, GEMINI_READY } from "@/services/config";
+// Shop knowledge helpers for the assistant. Live chat streams via the backend
+// OpenRouter proxy (`api.streamChat`). localAnswer is an offline fallback.
 import { money } from "@/lib/calc";
 import { formatStockLabel, unitKindLabel, isBoxUnit, piecesPerBoxOf } from "@/lib/units";
 
@@ -33,30 +32,7 @@ RECENT INVOICES (latest ${Math.min(30, (invoices || []).length)}):
 ${recent || "none"}`;
 }
 
-export async function* streamChat(messages, sysContext) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiConfig.model}:streamGenerateContent?alt=sse&key=${geminiConfig.apiKey}`;
-  const contents = messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
-  const body = { systemInstruction: { parts: [{ text: sysContext }] }, contents };
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!res.ok || !res.body) throw new Error("gemini " + res.status);
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split("\n");
-    buf = lines.pop();
-    for (const line of lines) {
-      const t = line.trim();
-      if (!t.startsWith("data:")) continue;
-      try { const j = JSON.parse(t.slice(5)); const txt = j?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") || ""; if (txt) yield txt; } catch {}
-    }
-  }
-}
-
-// Local, offline answer engine using shop data (demo mode).
+// Local, offline answer engine using shop data.
 export function localAnswer(text, { products, customers, invoices }) {
   const q = text.toLowerCase();
   const findP = () => products.find((p) => q.includes((p.code || "").toLowerCase()) || (p.name && q.includes(p.name.toLowerCase().split(" ")[0])));
@@ -85,5 +61,3 @@ export function localAnswer(text, { products, customers, invoices }) {
   }
   return "Main shop ke stock, udhari, sale aur top-sellers ke sawaalon me madad kar sakta hoon. Poochiye — jaise '2130 highlight ka stock kitna hai?'";
 }
-
-export { GEMINI_READY };

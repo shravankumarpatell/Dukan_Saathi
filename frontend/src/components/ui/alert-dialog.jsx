@@ -3,8 +3,21 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { useIsPageActive } from "@/context/PageKeepAliveContext"
 
-const AlertDialog = AlertDialogPrimitive.Root
+function AlertDialog({ open, onOpenChange, ...props }) {
+  const pageActive = useIsPageActive()
+  const visible = open === undefined ? undefined : !!open && pageActive
+  return (
+    <AlertDialogPrimitive.Root
+      open={visible}
+      onOpenChange={(next) => {
+        if (!pageActive && next === false) return
+        onOpenChange?.(next)
+      }}
+      {...props} />
+  )
+}
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 

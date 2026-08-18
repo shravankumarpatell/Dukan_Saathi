@@ -12,10 +12,12 @@ import DateNav from "@/components/DateNav";
 import Kbd from "@/components/Kbd";
 import SegmentedControl from "@/components/SegmentedControl";
 import { addDays, earliestYMD, fromYMD, localNoonISO, toYMD } from "@/lib/dates";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { useFormFlow } from "@/hooks/useFormFlow";
 import { usePageFocus } from "@/hooks/usePageFocus";
+import { useOwnedSearchParams } from "@/hooks/useOwnedSearchParams";
+import { useIsPageActive } from "@/context/PageKeepAliveContext";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
 import { AlertTriangle, IndianRupee, Wallet, ReceiptText, Printer, Plus, Calculator } from "lucide-react";
@@ -33,7 +35,8 @@ const Stat = ({ icon: Icon, label, value, tone = "indigo", testid, onClick }) =>
 export default function Dashboard() {
   const { products, invoices, customers, expenses, shop, setDraft, draft } = useApp();
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useOwnedSearchParams();
+  const pageActive = useIsPageActive();
   const [exp, setExp] = useState(EMPTY_EXP);
   const [summaryDate, setSummaryDate] = useState(() => toYMD(new Date()));
   const expAmountRef = useRef(null);
@@ -107,6 +110,7 @@ export default function Dashboard() {
   ]);
 
   useEffect(() => {
+    if (!pageActive) return;
     if (params.get("focus") === "expense") {
       focusStart(0);
       setParams({}, { replace: true });
@@ -122,7 +126,7 @@ export default function Dashboard() {
       setTimeout(() => sqftFocusRef.current?.(), 60);
       setParams({}, { replace: true });
     }
-  }, [params, setParams, focusStart]);
+  }, [params, setParams, focusStart, pageActive]);
 
   return (
     <div className="space-y-6 ds-fade" data-testid="dashboard-page">

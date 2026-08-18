@@ -1,4 +1,4 @@
-// Local heuristic NLU used in DEMO mode (no Gemini key). Handles bilingual Hindi/English
+// Local heuristic NLU used when the AI proxy is unavailable. Handles bilingual Hindi/English
 // (usually typed in Latin script by Web Speech) commands for the core action set.
 // Returns { intent, entities, language, reply } — a DRAFT plan, never a direct write.
 

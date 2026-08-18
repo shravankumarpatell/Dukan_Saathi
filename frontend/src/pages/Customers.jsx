@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { useSearchParams } from "react-router-dom";
+import { useOwnedSearchParams } from "@/hooks/useOwnedSearchParams";
 import NumberInput from "@/components/NumberInput";
 import Kbd from "@/components/Kbd";
 import { money, fmtDate, round2 } from "@/lib/calc";
@@ -10,6 +10,7 @@ import { useFormFlow } from "@/hooks/useFormFlow";
 import { useListNavigation } from "@/hooks/useListNavigation";
 import { usePageFocus } from "@/hooks/usePageFocus";
 import { useQuickCreate } from "@/context/QuickCreateContext";
+import { useIsPageActive } from "@/context/PageKeepAliveContext";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,7 +19,8 @@ import SegmentedControl from "@/components/SegmentedControl";
 
 export default function Customers() {
   const { customers, invoices, allocatePayment, reconcileCustomer } = useApp();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useOwnedSearchParams();
+  const pageActive = useIsPageActive();
   const quickCreate = useQuickCreate();
   const [tab, setTab] = useState(params.get("tab") === "customers" ? "customers" : "udhari");
   const [q, setQ] = useState(params.get("q") || "");
@@ -97,6 +99,7 @@ export default function Customers() {
   // effect rather than initial state because the palette can jump to a customer
   // while this screen is already mounted.
   useEffect(() => {
+    if (!pageActive) return;
     const incomingTab = params.get("tab");
     if (incomingTab === "customers" || incomingTab === "udhari") setTab(incomingTab);
     const incomingQ = params.get("q");
@@ -113,7 +116,7 @@ export default function Customers() {
       searchRef.current?.focus();
       setParams({ tab: "udhari" }, { replace: true });
     }
-  }, [params, setParams]);
+  }, [params, setParams, pageActive]);
 
   useHotkeyScope(SCOPES.CUSTOMERS);
   useHotkeys(SCOPES.CUSTOMERS, [

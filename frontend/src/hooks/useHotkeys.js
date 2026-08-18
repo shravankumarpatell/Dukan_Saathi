@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useHotkeyContext, GLOBAL_SCOPE } from "@/context/HotkeyContext";
+import { useIsPageActive } from "@/context/PageKeepAliveContext";
 
 /**
  * Push a scope onto the stack while this component is mounted.
@@ -12,10 +13,11 @@ import { useHotkeyContext, GLOBAL_SCOPE } from "@/context/HotkeyContext";
  */
 export function useHotkeyScope(scopeId, { exclusive = false, enabled = true } = {}) {
   const { pushScope } = useHotkeyContext();
+  const pageActive = useIsPageActive();
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled || !pageActive) return undefined;
     return pushScope(scopeId, { exclusive });
-  }, [pushScope, scopeId, exclusive, enabled]);
+  }, [pushScope, scopeId, exclusive, enabled, pageActive]);
 }
 
 /**

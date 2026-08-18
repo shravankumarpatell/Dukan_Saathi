@@ -5,7 +5,8 @@ import Kbd from "@/components/Kbd";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { usePageFocus } from "@/hooks/usePageFocus";
 import { SCOPES, KEYS } from "@/lib/keymap";
-import { formatStockLabel, unitKindLabel, rateSuffix } from "@/lib/units";
+import { buildShopContext } from "@/services/chat";
+import { useIsPageActive } from "@/context/PageKeepAliveContext";
 import { Send, Bot, User, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,6 +15,7 @@ const IDLE_MS = 60 * 60 * 1000; // clear after 1 hour inactivity
 
 export default function Chat() {
   const app = useApp();
+  const pageActive = useIsPageActive();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -24,30 +26,30 @@ export default function Chat() {
   const focusStart = usePageFocus(() => inputRef.current?.focus());
 
   const resetIdle = () => { if (idleRef.current) clearTimeout(idleRef.current); idleRef.current = setTimeout(() => setMessages([]), IDLE_MS); };
-  useEffect(() => { resetIdle(); return () => idleRef.current && clearTimeout(idleRef.current); }, [messages]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
+  useEffect(() => {
+    if (!pageActive) {
+      if (idleRef.current) clearTimeout(idleRef.current);
+      return undefined;
+    }
+    resetIdle();
+    return () => idleRef.current && clearTimeout(idleRef.current);
+  }, [messages, pageActive]);
+  useEffect(() => {
+    if (!pageActive) return;
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, busy, pageActive]);
 
   const buildContext = () => {
-    const lines = [];
-    lines.push(`Shop: ${app.shop?.name || "DukanSaathi"}`);
-    lines.push(`Products: ${app.products.length}`);
-    lines.push(`Customers: ${app.customers.length}`);
-    
-    // Sort products by sales volume (rough approximation using highest pending/sold invoices if we had them, for now just use standard data)
-    const topProducts = app.products.slice(0, 30).map((p) => `- ${p.name} (Code: ${p.code || "-"}, Type: ${unitKindLabel(p)}, Stock: ${formatStockLabel(p)}, Price: ₹${p.sellPrice}${rateSuffix(p)})`);
-    lines.push(`Product inventory details:\n${topProducts.join("\n")}`);
-    
-    const totalUdhari = app.customers.reduce((s, c) => s + (c.totalPending || 0), 0);
-    lines.push(`Total outstanding udhari (credit): ₹${totalUdhari}`);
-    
-    const todaySales = app.invoices.filter((i) => i.type === "sale" && new Date(i.date).toDateString() === new Date().toDateString());
-    lines.push(`Today's sales: ${todaySales.length} bills, revenue ₹${todaySales.reduce((s, i) => s + (i.grandTotal || 0), 0)}`);
-    
-    lines.push(`\nSYSTEM INSTRUCTION: You are a senior business analyst for this shop. Answer the user's question accurately using ONLY the data provided above.
-CRITICAL: When the user asks for analytical data (like low stock, sales summaries, or customer lists), you MUST format your response as a Markdown Table.
-Never use plain text lists when a table would be better. Do not apologize, just provide the data in a crisp, professional table.`);
+    const shopData = buildShopContext({
+      shop: app.shop,
+      products: app.products,
+      customers: app.customers,
+      invoices: app.invoices,
+      expenses: app.expenses,
+    });
+    return `${shopData}
 
-    return lines.join("\n");
+When the user asks for analytical data (low stock, sales summaries, customer lists), format the answer as a Markdown table when a table is clearer than a list.`;
   };
 
   const send = async () => {
@@ -59,11 +61,16 @@ Never use plain text lists when a table would be better. Do not apologize, just 
     setMessages((m) => [...m, { role: "assistant", content: "" }]);
     try {
       const ctx = buildContext();
+      let got = false;
       for await (const chunk of api.streamChat(
         next.map((m) => ({ role: m.role, content: m.content })),
         ctx
       )) {
+        got = true;
         setMessages((m) => { const c = [...m]; c[c.length - 1] = { role: "assistant", content: c[c.length - 1].content + chunk }; return c; });
+      }
+      if (!got) {
+        setMessages((m) => { const c = [...m]; c[c.length - 1] = { role: "assistant", content: "Sorry, could not get a response. Please try again." }; return c; });
       }
     } catch {
       setMessages((m) => { const c = [...m]; c[c.length - 1] = { role: "assistant", content: "Sorry, could not get a response. Please try again." }; return c; });
@@ -114,9 +121,9 @@ Never use plain text lists when a table would be better. Do not apologize, just 
               {m.role === "user" ? (
                 <div className="whitespace-pre-wrap">{m.content}</div>
               ) : (
-                <ReactMarkdown 
+                <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-50">
+                <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-50"
                   components={{
                     table: ({node, ...props}) => <div className="overflow-x-auto my-4 rounded-xl border border-slate-200 shadow-sm"><table className="w-full text-left border-collapse" {...props} /></div>,
                     thead: ({node, ...props}) => <thead className="bg-slate-100/50" {...props} />,
@@ -130,6 +137,7 @@ Never use plain text lists when a table would be better. Do not apologize, just 
                 >
                   {m.content || "…"}
                 </ReactMarkdown>
+                </div>
               )}
             </div>
             

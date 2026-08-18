@@ -1,0 +1,1 @@
+# AI package (OpenRouter / Nemotron)

@@ -181,7 +181,7 @@ export async function createExpense(data) {
   });
 }
 
-// ── AI / Gemini (proxied through backend) ──
+// ── AI (OpenRouter via backend) ──
 
 export async function parseCommand(transcript) {
   return request("/ai/parse-command", {
@@ -198,7 +198,7 @@ export async function extractStockSheet(base64, mimeType) {
 }
 
 /**
- * Stream a chat response from the backend Gemini proxy.
+ * Stream a chat response from the backend AI proxy.
  * Yields text chunks as an async generator.
  */
 export async function* streamChat(messages, systemContext) {
@@ -221,6 +221,16 @@ export async function* streamChat(messages, systemContext) {
   const decoder = new TextDecoder();
   let buffer = "";
 
+  const parseEvent = (line) => {
+    const trimmed = (line || "").trim();
+    if (!trimmed.startsWith("data:")) return null;
+    try {
+      return JSON.parse(trimmed.slice(5));
+    } catch {
+      return null;
+    }
+  };
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -230,15 +240,17 @@ export async function* streamChat(messages, systemContext) {
     buffer = lines.pop(); // keep incomplete line in buffer
 
     for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith("data:")) {
-        try {
-          const j = JSON.parse(trimmed.slice(5));
-          if (j.text) yield j.text;
-        } catch {}
-      }
+      const j = parseEvent(line);
+      if (!j) continue;
+      if (j.error) throw new Error(j.error);
+      if (j.text) yield j.text;
     }
   }
+
+  buffer += decoder.decode();
+  const last = parseEvent(buffer);
+  if (last?.error) throw new Error(last.error);
+  if (last?.text) yield last.text;
 }
 
 // ── Analytics ──

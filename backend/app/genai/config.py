@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict
-"""GenAI module configuration — loads YAML configs and uses the app-level Gemini settings."""
+"""GenAI module configuration — loads YAML configs; LLM calls go through OpenRouter."""
 
 import yaml
 from pathlib import Path

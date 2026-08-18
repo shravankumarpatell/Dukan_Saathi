@@ -1,5 +1,5 @@
 chunk_size: 1000
 chunk_overlap: 100
-embedding_model: "gemini-embedding-001"
+embedding_model: "local-hash"
 top_k: 5
-similarity_threshold: 0.7
+similarity_threshold: 0.15

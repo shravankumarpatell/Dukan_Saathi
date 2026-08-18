@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
+import { useIsPageActive } from "@/context/PageKeepAliveContext";
 import { KEYS } from "@/lib/keymap";
 import Kbd from "@/components/Kbd";
 import { Download } from "lucide-react";
@@ -25,7 +26,8 @@ export default function PdfViewerDialog({
   title = "PDF",
   testId = "pdf-viewer-frame",
 }) {
-  const open = !!url;
+  const pageActive = useIsPageActive();
+  const open = !!url && pageActive;
   const shellRef = useRef(null);
   const previousFocusRef = useRef(null);
   const onCloseRef = useRef(onClose);
@@ -109,7 +111,7 @@ export default function PdfViewerDialog({
   }, []);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && close()}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o && pageActive) close(); }}>
       <DialogContent
         ref={shellRef}
         tabIndex={-1}

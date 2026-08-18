@@ -229,14 +229,11 @@ export function AppProvider({ children }) {
     return inv;
   }, [refresh]);
 
-  // ── Gemini readiness (always true now since it's proxied through backend) ──
-  const geminiReady = true;
-
   const value = {
     user, authLoading, shop, saveShop, logout,
     products, customers, invoices, returns, expenses, refresh,
     draft, setDraft, commitDraft, cancelDraft: () => setDraft(null), commitBill, allocatePayment, reconcileCustomer,
-    isDemo: false, geminiReady,
+    isDemo: false,
     addProduct, updateProduct, convertStoreCreditReturn, addCustomer, speak,
   };
 

@@ -33,7 +33,15 @@ export function HotkeyProvider({ children }) {
   const bindingsRef = useRef(new Map());
 
   const pushScope = useCallback((id, { exclusive = false } = {}) => {
-    stackRef.current = [...stackRef.current.filter((s) => s.id !== id), { id, exclusive }];
+    const rest = stackRef.current.filter((s) => s.id !== id);
+    const next = { id, exclusive };
+    if (exclusive) {
+      stackRef.current = [...rest, next];
+    } else {
+      const excl = rest.filter((s) => s.exclusive);
+      const restNon = rest.filter((s) => !s.exclusive);
+      stackRef.current = [...restNon, next, ...excl];
+    }
     return () => {
       stackRef.current = stackRef.current.filter((s) => s.id !== id);
     };

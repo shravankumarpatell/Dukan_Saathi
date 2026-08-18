@@ -2,7 +2,7 @@
  * Application configuration.
  *
  * Firebase config comes from config.json or environment variables.
- * Gemini API key is NO LONGER needed on the frontend — it's proxied through the backend.
+ * AI (chat + smart stock extract) is proxied through the backend via OpenRouter.
  */
 
 import raw from "@/config.json";
@@ -19,9 +19,6 @@ export const firebaseConfig = {
 
 // Firebase is always required
 export const FIREBASE_READY = !!(firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_"));
-
-// Gemini is always available via backend proxy
-export const GEMINI_READY = true;
 
 // Demo mode removed
 export const IS_DEMO = false;

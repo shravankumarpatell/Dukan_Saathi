@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
     from app.customers.router import router as customers_router
     from app.returns.router import router as returns_router
     from app.expenses.router import router as expenses_router
-    from app.gemini.router import router as gemini_router
+    from app.ai.router import router as ai_router
     from app.analytics.router import router as analytics_router
     from app.genai.router import router as new_genai_router
 
@@ -62,7 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(customers_router, prefix=api_prefix)
     app.include_router(returns_router, prefix=api_prefix)
     app.include_router(expenses_router, prefix=api_prefix)
-    app.include_router(gemini_router, prefix=api_prefix)
+    app.include_router(ai_router, prefix=api_prefix)
     app.include_router(analytics_router, prefix=api_prefix)
     app.include_router(new_genai_router, prefix=api_prefix)
 

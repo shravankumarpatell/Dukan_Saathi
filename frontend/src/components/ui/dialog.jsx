@@ -3,8 +3,21 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useIsPageActive } from "@/context/PageKeepAliveContext"
 
-const Dialog = DialogPrimitive.Root
+function Dialog({ open, onOpenChange, ...props }) {
+  const pageActive = useIsPageActive()
+  const visible = open === undefined ? undefined : !!open && pageActive
+  return (
+    <DialogPrimitive.Root
+      open={visible}
+      onOpenChange={(next) => {
+        if (!pageActive && next === false) return
+        onOpenChange?.(next)
+      }}
+      {...props} />
+  )
+}
 
 const DialogTrigger = DialogPrimitive.Trigger
 
