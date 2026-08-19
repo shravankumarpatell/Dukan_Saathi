@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Type, AsyncGenerator
-"""LLM client — calls Google Gemini API via httpx.
+"""LLM client — Vertex Gemini via Application Default Credentials.
 
 Supports:
 - Structured extraction (image → JSON via Pydantic schema)
@@ -8,36 +8,70 @@ Supports:
 """
 
 import json
-import httpx
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
 
-from app.config import settings as app_settings
+from app.gemini.client import generate_content, ensure_configured
 from app.genai.config import settings
 from app.genai.logger import logger
 from app.genai.exceptions import LLMError, FallbackError
 
-GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+RETRYABLE = (TimeoutError, ConnectionError, OSError)
+try:
+    from google.genai.errors import ServerError
+
+    RETRYABLE = RETRYABLE + (ServerError,)
+except ImportError:
+    pass
 
 
 def _ensure_gemini():
-    if not app_settings.GEMINI_API_KEY:
-        raise LLMError("Gemini API key not configured on the server")
+    try:
+        ensure_configured()
+    except Exception as exc:
+        raise LLMError(str(exc)) from exc
+
+
+def _inline_refs(node, defs: dict):
+    """Replace $ref pointers with the referenced definition (Gemini has no $defs)."""
+    if isinstance(node, dict):
+        ref = node.get("$ref")
+        if isinstance(ref, str) and defs:
+            name = ref.split("/")[-1]
+            if name in defs:
+                return _inline_refs(defs[name], defs)
+        return {k: _inline_refs(v, defs) for k, v in node.items()}
+    if isinstance(node, list):
+        return [_inline_refs(i, defs) for i in node]
+    return node
+
+
+def _flatten_nullable(schema: dict) -> dict:
+    """Turn anyOf: [T, null] into T so Gemini responseSchema stays valid."""
+    any_of = schema.get("anyOf")
+    if isinstance(any_of, list):
+        non_null = [item for item in any_of if not (isinstance(item, dict) and item.get("type") == "null")]
+        if len(non_null) == 1 and isinstance(non_null[0], dict):
+            merged = {k: v for k, v in schema.items() if k != "anyOf"}
+            merged.update(non_null[0])
+            return merged
+    return schema
 
 
 def _schema_to_json_schema(schema_class: Type[BaseModel]) -> dict:
-    """Convert a Pydantic model to a Gemini-compatible JSON schema.
-
-    Gemini's responseSchema does NOT support 'title', 'default', '$defs',
-    or 'anyOf' fields — strip them out recursively.
-    """
+    """Convert a Pydantic model to a Gemini-compatible JSON schema."""
     raw = schema_class.model_json_schema()
-    return _clean_schema(raw)
+    defs = raw.pop("$defs", None) or raw.pop("definitions", None) or {}
+    inlined = _inline_refs(raw, defs)
+    return _clean_schema(inlined)
 
 
 def _clean_schema(schema: dict) -> dict:
     """Recursively remove unsupported keys for Gemini's responseSchema."""
-    disallowed = {"title", "default", "$defs", "anyOf", "allOf", "oneOf", "discriminator"}
+    if not isinstance(schema, dict):
+        return schema
+    schema = _flatten_nullable(schema)
+    disallowed = {"title", "default", "$defs", "definitions", "$ref", "anyOf", "allOf", "oneOf", "discriminator"}
     cleaned = {}
     for k, v in schema.items():
         if k in disallowed:
@@ -58,7 +92,7 @@ def create_retry_decorator(model_config):
             multiplier=settings.models.retry_policy.wait_exponential_multiplier,
             max=settings.models.retry_policy.wait_exponential_max,
         ),
-        retry=retry_if_exception_type((httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout)),
+        retry=retry_if_exception_type(RETRYABLE),
         reraise=True,
     )
 
@@ -71,55 +105,23 @@ class LLMClient:
     ) -> BaseModel:
         """Call Gemini with JSON mode + responseSchema for structured output."""
         _ensure_gemini()
-
-        url = f"{GEMINI_BASE}/{model_config.model}:generateContent?key={app_settings.GEMINI_API_KEY}"
-
-        # Build user parts
-        user_parts = []
-        if input_text:
-            user_parts.append({"text": input_text})
-        if image_base64:
-            # Strip data-URI prefix if present
-            b64 = image_base64
-            if b64.startswith("data:"):
-                b64 = b64.split(",", 1)[1]
-            user_parts.append({"inline_data": {"mime_type": image_mime, "data": b64}})
-        if not user_parts:
-            user_parts.append({"text": "Extract information from the context."})
-
-        payload = {
-            "contents": [{"role": "user", "parts": user_parts}],
-            "systemInstruction": {"parts": [{"text": prompt}]},
-            "generationConfig": {
-                "responseMimeType": "application/json",
-                "responseSchema": _schema_to_json_schema(schema_class),
-                "temperature": model_config.temperature,
-            },
-        }
-
         logger.info("LLM call start: model=%s schema=%s", model_config.model, schema_class.__name__)
 
-        async with httpx.AsyncClient(timeout=model_config.timeout_seconds) as client:
-            resp = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
+        text = await generate_content(
+            model=model_config.model,
+            user_text=input_text,
+            system_instruction=prompt,
+            image_base64=image_base64,
+            image_mime=image_mime,
+            temperature=model_config.temperature,
+            json_mode=True,
+            response_schema=_schema_to_json_schema(schema_class),
+        )
 
-            if resp.status_code != 200:
-                body = resp.text[:500]
-                logger.error("Gemini API error %d: %s", resp.status_code, body)
-                raise LLMError(f"Gemini API error {resp.status_code}", details={"body": body})
-
-            data = resp.json()
-            text = ""
-            candidates = data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                text = "".join(p.get("text", "") for p in parts)
-
-            logger.info("LLM call success: model=%s", model_config.model)
-
-            # Parse JSON into Pydantic model
-            cleaned = text.replace("```json", "").replace("```", "").strip()
-            parsed = json.loads(cleaned)
-            return schema_class.model_validate(parsed)
+        logger.info("LLM call success: model=%s", model_config.model)
+        cleaned = (text or "").replace("```json", "").replace("```", "").strip()
+        parsed = json.loads(cleaned)
+        return schema_class.model_validate(parsed)
 
     @staticmethod
     async def generate_structured(
@@ -167,33 +169,13 @@ class LLMClient:
         """Free-form chat via Gemini (no structured output)."""
         _ensure_gemini()
 
-        model = settings.models.primary.model
-        url = f"{GEMINI_BASE}/{model}:generateContent?key={app_settings.GEMINI_API_KEY}"
-
-        # Convert OpenAI-style messages to Gemini format
-        contents = []
-        for msg in messages:
-            role = "model" if msg.get("role") == "assistant" else "user"
-            contents.append({"role": role, "parts": [{"text": msg["content"]}]})
-
-        payload = {
-            "contents": contents,
-            "systemInstruction": {"parts": [{"text": prompt}]},
-            "generationConfig": {"temperature": settings.models.primary.temperature},
-        }
-
         @create_retry_decorator(settings.models.primary)
         async def call():
-            async with httpx.AsyncClient(timeout=settings.models.primary.timeout_seconds) as client:
-                resp = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
-                if resp.status_code != 200:
-                    raise LLMError(f"Gemini chat error {resp.status_code}")
-                data = resp.json()
-                text = ""
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    text = "".join(p.get("text", "") for p in parts)
-                return text
+            return await generate_content(
+                model=settings.models.primary.model,
+                messages=messages,
+                system_instruction=prompt,
+                temperature=settings.models.primary.temperature,
+            )
 
         return await call()

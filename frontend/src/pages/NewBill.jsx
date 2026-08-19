@@ -22,6 +22,7 @@ import { useFormFlow } from "@/hooks/useFormFlow";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,6 +84,7 @@ export default function NewBill() {
   const [detailsFor, setDetailsFor] = useState(null);   // product awaiting qty/rate
   const [cartOpen, setCartOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const clearVisible = useVisibleOpen(clearOpen);
   const { pdfUrl, filename: pdfFilename, showPdf, closePdf } = usePdfPreview();
 
   const handleClosePdf = useCallback(() => {
@@ -660,7 +662,7 @@ export default function NewBill() {
         saving={saving}
       />
 
-      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+      <AlertDialog open={clearVisible} onOpenChange={setClearOpen}>
         <AlertDialogContent data-testid="clear-bill-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Bill clear karein?</AlertDialogTitle>
@@ -698,7 +700,7 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
   const [rate, setRate] = useState("");
   const [sqftOpen, setSqftOpen] = useState(false);
   const rateRef = useRef(null);
-  const open = !!product;
+  const open = useVisibleOpen(!!product);
   const limitStock = type === "sale";
 
   useEffect(() => {

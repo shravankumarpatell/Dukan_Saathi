@@ -4,6 +4,7 @@ import * as api from "@/services/api";
 import Kbd from "@/components/Kbd";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { usePageFocus } from "@/hooks/usePageFocus";
+import { usePageKeepAlive } from "@/context/PageKeepAliveContext";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { formatStockLabel, unitKindLabel, rateSuffix } from "@/lib/units";
 import { Send, Bot, User, Sparkles } from "lucide-react";
@@ -22,10 +23,21 @@ export default function Chat() {
   const inputRef = useRef(null);
 
   const focusStart = usePageFocus(() => inputRef.current?.focus());
+  const { active: pageActive } = usePageKeepAlive();
 
   const resetIdle = () => { if (idleRef.current) clearTimeout(idleRef.current); idleRef.current = setTimeout(() => setMessages([]), IDLE_MS); };
-  useEffect(() => { resetIdle(); return () => idleRef.current && clearTimeout(idleRef.current); }, [messages]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
+  useEffect(() => {
+    if (!pageActive) {
+      if (idleRef.current) clearTimeout(idleRef.current);
+      return undefined;
+    }
+    resetIdle();
+    return () => idleRef.current && clearTimeout(idleRef.current);
+  }, [messages, pageActive]);
+  useEffect(() => {
+    if (!pageActive) return;
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, busy, pageActive]);
 
   const buildContext = () => {
     const lines = [];
@@ -42,10 +54,6 @@ export default function Chat() {
     
     const todaySales = app.invoices.filter((i) => i.type === "sale" && new Date(i.date).toDateString() === new Date().toDateString());
     lines.push(`Today's sales: ${todaySales.length} bills, revenue ₹${todaySales.reduce((s, i) => s + (i.grandTotal || 0), 0)}`);
-    
-    lines.push(`\nSYSTEM INSTRUCTION: You are a senior business analyst for this shop. Answer the user's question accurately using ONLY the data provided above.
-CRITICAL: When the user asks for analytical data (like low stock, sales summaries, or customer lists), you MUST format your response as a Markdown Table.
-Never use plain text lists when a table would be better. Do not apologize, just provide the data in a crisp, professional table.`);
 
     return lines.join("\n");
   };
@@ -114,9 +122,9 @@ Never use plain text lists when a table would be better. Do not apologize, just 
               {m.role === "user" ? (
                 <div className="whitespace-pre-wrap">{m.content}</div>
               ) : (
+                <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-50">
                 <ReactMarkdown 
                   remarkPlugins={[remarkGfm]}
-                  className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-50"
                   components={{
                     table: ({node, ...props}) => <div className="overflow-x-auto my-4 rounded-xl border border-slate-200 shadow-sm"><table className="w-full text-left border-collapse" {...props} /></div>,
                     thead: ({node, ...props}) => <thead className="bg-slate-100/50" {...props} />,
@@ -130,6 +138,7 @@ Never use plain text lists when a table would be better. Do not apologize, just 
                 >
                   {m.content || "…"}
                 </ReactMarkdown>
+                </div>
               )}
             </div>
             

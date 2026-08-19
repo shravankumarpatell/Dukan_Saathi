@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { useSearchParams } from "react-router-dom";
+import { useOwnedSearchParams } from "@/hooks/useOwnedSearchParams";
 import NumberInput from "@/components/NumberInput";
 import Kbd from "@/components/Kbd";
 import { money, fmtDate, round2 } from "@/lib/calc";
@@ -13,12 +13,13 @@ import { useQuickCreate } from "@/context/QuickCreateContext";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import { Plus, Wallet, Phone, HardHat, Users, ReceiptIndianRupee, Search } from "lucide-react";
 import SegmentedControl from "@/components/SegmentedControl";
 
 export default function Customers() {
   const { customers, invoices, allocatePayment, reconcileCustomer } = useApp();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useOwnedSearchParams();
   const quickCreate = useQuickCreate();
   const [tab, setTab] = useState(params.get("tab") === "customers" ? "customers" : "udhari");
   const [q, setQ] = useState(params.get("q") || "");
@@ -316,7 +317,7 @@ export default function Customers() {
 
 /* ── Record payment against specific bills ────────────────────────────────── */
 function PaymentDialog({ customer, bills, onClose, onSubmit, onReconcile }) {
-  const open = !!customer;
+  const open = useVisibleOpen(!!customer);
   const [alloc, setAlloc] = useState({});
   const [payMode, setPayMode] = useState("cash");
   const [busy, setBusy] = useState(false);

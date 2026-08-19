@@ -2,7 +2,7 @@
  * Application configuration.
  *
  * Firebase config comes from config.json or environment variables.
- * Gemini API key is NO LONGER needed on the frontend — it's proxied through the backend.
+ * Gemini API key is NO LONGER needed — the backend uses Vertex AI with Application Default Credentials.
  */
 
 import raw from "@/config.json";

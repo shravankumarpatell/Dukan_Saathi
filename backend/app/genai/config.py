@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict
-"""GenAI module configuration — loads YAML configs and uses the app-level Gemini settings."""
+"""GenAI module configuration — loads YAML configs; Gemini itself uses Vertex ADC."""
 
 import yaml
 from pathlib import Path
@@ -50,8 +50,9 @@ class RetrievalConfig(BaseModel):
 
 class PromptConfig(BaseModel):
     system: str
-    instructions: str
+    instructions: str = ""
     constraints: List[str] = []
+    user: str = ""
 
 
 class Settings(BaseModel):
@@ -59,6 +60,7 @@ class Settings(BaseModel):
     models: ModelsConfig = Field(default_factory=lambda: ModelsConfig(**load_yaml("models.yaml")))
     retrieval: RetrievalConfig = Field(default_factory=lambda: RetrievalConfig(**load_yaml("retrieval.yaml")))
     prompt_extraction: PromptConfig = Field(default_factory=lambda: PromptConfig(**load_yaml("prompts/extraction.yaml")))
+    prompt_nlu: PromptConfig = Field(default_factory=lambda: PromptConfig(**load_yaml("prompts/nlu.yaml")))
     prompt_chat: PromptConfig = Field(default_factory=lambda: PromptConfig(**load_yaml("prompts/chat.yaml")))
 
 

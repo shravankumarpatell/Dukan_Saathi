@@ -3,6 +3,7 @@ import NumberInput from "@/components/NumberInput";
 import Kbd from "@/components/Kbd";
 import SqftDialog from "@/components/SqftDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import { itemAmount, money } from "@/lib/calc";
 import {
   isBoxUnit, qtyFieldLabel, rateSuffix, productMetaLine, unitKindLabel,
@@ -41,6 +42,7 @@ export default function BillCartDialog({
   onRequestClear,
   saving,
 }) {
+  const visible = useVisibleOpen(open);
   const itemsRef = useRef(null);
   const closeBtnRef = useRef(null);
   const [sqftFor, setSqftFor] = useState(null); // { index, item }
@@ -128,7 +130,7 @@ export default function BillCartDialog({
     target.focus();
   };
 
-  useHotkeyScope(CART_SCOPE, { exclusive: true, enabled: open && !sqftOpen });
+  useHotkeyScope(CART_SCOPE, { exclusive: true, enabled: visible && !sqftOpen });
   useHotkeys(CART_SCOPE, [
     { keys: KEYS.cancel, label: "Close cart", handler: onClose },
     { keys: KEYS.save, label: "Save bill", handler: onSave, disabled: saving },
@@ -164,10 +166,10 @@ export default function BillCartDialog({
     },
   ]);
 
-  const flow = useFormFlow({ onSave: undefined, onCancel: onClose, enabled: open && !sqftOpen });
+  const flow = useFormFlow({ onSave: undefined, onCancel: onClose, enabled: visible && !sqftOpen });
 
   useEffect(() => {
-    if (!open) {
+    if (!visible) {
       setSqftFor(null);
       return undefined;
     }
@@ -177,7 +179,7 @@ export default function BillCartDialog({
       else closeBtnRef.current?.focus();
     }, 60);
     return () => clearTimeout(t);
-  }, [open]);
+  }, [visible]);
 
   const subtotal = items.reduce((s, it) => s + itemAmount(it), 0);
 
@@ -188,7 +190,7 @@ export default function BillCartDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(o) => !o && !sqftOpen && onClose()}>
+      <Dialog open={visible} onOpenChange={(o) => !o && !sqftOpen && onClose()}>
         <DialogContent
           data-testid="bill-cart-dialog"
           className="max-w-2xl"

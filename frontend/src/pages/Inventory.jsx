@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useOwnedSearchParams } from "@/hooks/useOwnedSearchParams";
 import NumberInput from "@/components/NumberInput";
 import UnitToggle from "@/components/UnitToggle";
 import TileSizeSelect from "@/components/TileSizeSelect";
@@ -20,13 +21,14 @@ import { useQuickCreate } from "@/context/QuickCreateContext";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import { Search, Upload, X, ChevronRight, Package } from "lucide-react";
 
 const NUMERIC = ["piecesPerBox", "sellPrice", "stockQty", "lowStockThreshold"];
 
 export default function Inventory() {
   const { products, updateProduct } = useApp();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useOwnedSearchParams();
   const navigate = useNavigate();
   const quickCreate = useQuickCreate();
   const [q, setQ] = useState(params.get("q") || "");
@@ -204,7 +206,7 @@ export default function Inventory() {
 }
 
 function EditProductDialog({ form, setForm, setUnit, onSave, onClose }) {
-  const open = !!form;
+  const open = useVisibleOpen(!!form);
   useHotkeyScope("modal:edit-product", { exclusive: true, enabled: open });
   useHotkeys("modal:edit-product", [
     { keys: KEYS.save, label: "Save product", handler: onSave },

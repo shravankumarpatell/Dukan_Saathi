@@ -1,38 +1,78 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional
 
-# --- Extraction Schemas ---
-class ExtractedProduct(BaseModel):
-    name: str = Field(description="The full name of the product or item")
-    code: Optional[str] = Field(default=None, description="The product code or SKU if available")
-    company: Optional[str] = Field(default=None, description="The brand or company name")
-    unit: str = Field(description="The unit of measurement (e.g., box, piece, kg)")
-    qty: int = Field(description="The total quantity in the specified unit")
-    price_per_unit: float = Field(description="The price per unit shown on the invoice")
 
-class InvoiceExtractionResult(BaseModel):
-    supplier_name: Optional[str] = Field(default=None, description="The name of the supplier or vendor")
-    invoice_number: Optional[str] = Field(default=None, description="The invoice or bill number")
-    date: Optional[str] = Field(default=None, description="The date on the invoice in YYYY-MM-DD format")
-    products: List[ExtractedProduct] = Field(description="The list of extracted products")
-    total_amount: Optional[float] = Field(default=None, description="The total amount of the invoice")
+class StockExtractRow(BaseModel):
+    """One product line from a supplier stock sheet."""
 
-# --- API Request/Response Schemas ---
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = Field(default="", description="Product name as written on the sheet")
+    code: str = Field(default="", description="Product code or SKU if visible")
+    company: str = Field(default="", description="Brand or company if visible")
+    size: str = Field(default="", description="Tile size from the allowed list, or empty for sanitary")
+    unit: str = Field(default="box", description='box for tiles/flooring, piece for sanitary')
+    piecesPerBox: int = Field(default=1, description="Pieces in one box; 1 for sanitary")
+    qty: float = Field(default=0, description="Boxes for tiles, pieces for sanitary")
+    lowConfidence: bool = Field(default=False, description="True if the row is blurry or uncertain")
+
+
+class StockExtractResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    rows: List[StockExtractRow] = Field(default_factory=list, description="Extracted product lines")
+
+
+class NluEntities(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    product: Optional[str] = Field(default=None)
+    qty: Optional[float] = Field(default=None)
+    customer: Optional[str] = Field(default=None)
+    amount: Optional[float] = Field(default=None)
+    mode: Optional[str] = Field(default=None, description="cash, online, or pending")
+
+
+class NluResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    intent: str = Field(
+        default="unknown",
+        description="sale, purchase, return, payment, stock_query, udhari_query, buyers_query, topseller_query, or unknown",
+    )
+    language: str = Field(default="en", description="hi or en")
+    entities: NluEntities = Field(default_factory=NluEntities)
+
+
 class ExtractRequest(BaseModel):
-    image_base64: str
+    image_base64: str = ""
+    mime_type: str = ""
+    base64: str = ""
+    mimeType: str = ""
+
+    def resolved_base64(self) -> str:
+        return self.image_base64 or self.base64
+
+    def resolved_mime(self) -> str:
+        return self.mime_type or self.mimeType
+
 
 class ExtractResponse(BaseModel):
     status: str
     data: dict
     fallback_used: bool = False
 
-# --- Chat Schemas ---
+
 class ChatMessage(BaseModel):
     role: str
     content: str
 
+
 class ChatRequest(BaseModel):
-    messages: List[ChatMessage]
+    messages: List[ChatMessage] = Field(..., min_length=1)
+    systemContext: str = ""
+
+
+class NluRequest(BaseModel):
+    transcript: str = Field(..., min_length=1)
+
 
 class ChatResponse(BaseModel):
     response: str

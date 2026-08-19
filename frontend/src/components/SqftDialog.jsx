@@ -4,6 +4,7 @@ import TileSizeSelect from "@/components/TileSizeSelect";
 import Kbd from "@/components/Kbd";
 import SegmentedControl from "@/components/SegmentedControl";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import { money, sqftCalc } from "@/lib/calc";
 import { tileSizeToInches } from "@/lib/tileSizes";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
@@ -20,7 +21,7 @@ export default function SqftDialog({ sqftFor, onClose, onApply }) {
     roomArea: "", roomLengthFt: "", roomWidthFt: "",
     size: "", wastagePct: "",
   });
-  const open = !!sqftFor;
+  const open = useVisibleOpen(!!sqftFor);
 
   const lastRes = useRef(null);
   const apply = useCallback(() => { if (lastRes.current) onApply(lastRes.current); }, [onApply]);

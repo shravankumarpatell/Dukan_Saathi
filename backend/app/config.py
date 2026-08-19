@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / ".env")
+os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "true")
 
 
 class Settings:
@@ -15,9 +16,10 @@ class Settings:
         "FIREBASE_CREDENTIALS_PATH", str(ROOT_DIR / "firebase-service-account.json")
     )
 
-    # Gemini
-    GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    # Gemini on Vertex AI via Application Default Credentials (no API key).
+    GOOGLE_CLOUD_PROJECT: str = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    GOOGLE_CLOUD_LOCATION: str = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
+    GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
     # CORS
     CORS_ORIGINS: list = os.environ.get(

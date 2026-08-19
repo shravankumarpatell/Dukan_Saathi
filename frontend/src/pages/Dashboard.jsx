@@ -12,7 +12,8 @@ import DateNav from "@/components/DateNav";
 import Kbd from "@/components/Kbd";
 import SegmentedControl from "@/components/SegmentedControl";
 import { addDays, earliestYMD, fromYMD, localNoonISO, toYMD } from "@/lib/dates";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useOwnedSearchParams } from "@/hooks/useOwnedSearchParams";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { useFormFlow } from "@/hooks/useFormFlow";
 import { usePageFocus } from "@/hooks/usePageFocus";
@@ -33,7 +34,7 @@ const Stat = ({ icon: Icon, label, value, tone = "indigo", testid, onClick }) =>
 export default function Dashboard() {
   const { products, invoices, customers, expenses, shop, setDraft, draft } = useApp();
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
+  const [params, setParams] = useOwnedSearchParams();
   const [exp, setExp] = useState(EMPTY_EXP);
   const [summaryDate, setSummaryDate] = useState(() => toYMD(new Date()));
   const expAmountRef = useRef(null);

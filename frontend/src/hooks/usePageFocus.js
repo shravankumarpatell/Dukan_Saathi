@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { usePageKeepAlive } from "@/context/PageKeepAliveContext";
 
 /**
  * Keep the caret on each page's start control.
@@ -12,10 +13,12 @@ import { useLocation } from "react-router-dom";
  */
 export function usePageFocus(focusFn, { enabled = true, delay = 60 } = {}) {
   const location = useLocation();
+  const { active: pageActive } = usePageKeepAlive();
+  const on = enabled && pageActive;
   const focusFnRef = useRef(focusFn);
   focusFnRef.current = focusFn;
-  const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
+  const enabledRef = useRef(on);
+  enabledRef.current = on;
 
   const focusStart = useCallback((ms = delay) => {
     const run = () => {
@@ -30,12 +33,12 @@ export function usePageFocus(focusFn, { enabled = true, delay = 60 } = {}) {
   }, [delay]);
 
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!on) return undefined;
     const t = setTimeout(() => {
       try { focusFnRef.current?.(); } catch { /* ignore */ }
     }, delay);
     return () => clearTimeout(t);
-  }, [location.key, location.pathname, enabled, delay]);
+  }, [location.key, location.pathname, on, delay]);
 
   return focusStart;
 }

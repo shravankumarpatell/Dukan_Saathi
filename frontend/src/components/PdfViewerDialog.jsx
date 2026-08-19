@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { KEYS } from "@/lib/keymap";
 import Kbd from "@/components/Kbd";
@@ -25,7 +26,7 @@ export default function PdfViewerDialog({
   title = "PDF",
   testId = "pdf-viewer-frame",
 }) {
-  const open = !!url;
+  const open = useVisibleOpen(!!url);
   const shellRef = useRef(null);
   const previousFocusRef = useRef(null);
   const onCloseRef = useRef(onClose);

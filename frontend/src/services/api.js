@@ -198,7 +198,7 @@ export async function extractStockSheet(base64, mimeType) {
 }
 
 /**
- * Stream a chat response from the backend Gemini proxy.
+ * Stream a chat response from the backend Gemini proxy (Vertex AI + ADC).
  * Yields text chunks as an async generator.
  */
 export async function* streamChat(messages, systemContext) {
