@@ -21,6 +21,8 @@ describe("normalizeTileSize", () => {
     expect(normalizeTileSize("1x1")).toBe("1x1 ft");
     expect(normalizeTileSize("8x12")).toBe("8x12 in");
     expect(normalizeTileSize("12x24")).toBe("12x24 in");
+    expect(normalizeTileSize("60*120")).toBe("2x4 ft");
+    expect(normalizeTileSize("60x120")).toBe("2x4 ft");
   });
 
   it("returns empty for unknown or sanitary-blank", () => {

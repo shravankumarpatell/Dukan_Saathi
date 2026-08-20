@@ -1,5 +1,5 @@
 import "@/App.css";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AppProvider, useApp } from "@/context/AppContext";
 import { HotkeyProvider } from "@/context/HotkeyContext";
@@ -7,6 +7,7 @@ import { QuickCreateProvider } from "@/context/QuickCreateContext";
 import Layout from "@/components/Layout";
 import KeepAliveRoutes from "@/components/KeepAliveRoutes";
 import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 import Settings from "@/pages/Settings";
 
 function Shell() {
@@ -24,7 +25,15 @@ function Shell() {
     );
   }
 
-  if (!user) return <Login />;
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
+  }
 
   // Enforce onboarding for new signups (require at least a phone number)
   if (!shop.phone) {

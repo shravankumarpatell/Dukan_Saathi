@@ -10,6 +10,7 @@ import { useHotkeyContext } from "@/context/HotkeyContext";
 import { NAV_ITEMS, NAV_BOTTOM, KEYS } from "@/lib/keymap";
 import { LayoutDashboard, Package, Undo2, Bot, Plus, LogOut, Keyboard } from "lucide-react";
 import { signOut as signOutUser } from "@/services/auth";
+import { LOGOUT } from "@/constants/testIds/auth";
 
 /* ─── Mobile nav (a deliberately shorter list than the sidebar) ─── */
 const MOBILE_LEFT = [
@@ -140,7 +141,12 @@ export default function Layout({ children }) {
               <p className="truncate text-sm font-semibold text-slate-800">{user?.name || user?.email || "User"}</p>
               <p className="truncate text-xs text-slate-400">{user?.email || ""}</p>
             </div>
-            <button onClick={signOutUser} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors" aria-label="Sign out">
+            <button
+              data-testid={LOGOUT.button}
+              onClick={signOutUser}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+              aria-label="Sign out"
+            >
               <LogOut className="h-4 w-4" />
             </button>
           </div>

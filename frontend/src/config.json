@@ -1,11 +1,3 @@
 {
-  "_comment": "DukanSaathi configuration. Paste your real Firebase web config here (or use frontend/.env). Gemini runs on the backend with Google Application Default Credentials — do not put a Gemini API key in the frontend.",
-  "firebase": {
-    "apiKey": "AIzaSyDrcziHo808rlQY90qgcebWDy2fQ4KfVOI",
-    "authDomain": "dukansaathi-4752.firebaseapp.com",
-    "projectId": "dukansaathi-4752",
-    "storageBucket": "dukansaathi-4752.firebasestorage.app",
-    "messagingSenderId": "360584719957",
-    "appId": "1:360584719957:web:a249882e0e1022e10faedc"
-  }
+  "_comment": "DukanSaathi frontend config. Supabase URL + anon key live in REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY. Gemini runs on the backend with ADC — do not put a Gemini API key here."
 }

@@ -1,19 +1,39 @@
-from typing import Optional, List, Dict
-"""Invoice API routes — the most critical endpoint. Server-side commitBill."""
+"""Invoice API routes — server-side bill commit."""
+
+from datetime import datetime, timezone
+from typing import List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
-from app.dependencies import get_current_user, AuthenticatedUser
-from app.database import get_db
-from app.common.calc import (
-    compute_bill_totals, gen_invoice_no, calculate_sold_pieces,
-    compute_stock_deduction, compute_stock_addition,
-    round2, today_iso, validate_payment_split, get_total_stock_pieces,
-    format_stock_pieces_label,
-)
-from app.common.errors import NotFoundError, InsufficientStockError, ValidationError
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.calc import (
+    calculate_sold_pieces,
+    compute_bill_totals,
+    compute_stock_addition,
+    compute_stock_deduction,
+    format_stock_pieces_label,
+    gen_invoice_no,
+    get_total_stock_pieces,
+    round2,
+    validate_payment_split,
+)
+from app.common.errors import InsufficientStockError, NotFoundError, ValidationError
+from app.db import get_session
+from app.dependencies import AuthenticatedUser, get_current_user
 from app.invoices.models import CreateBillRequest, InvoiceResponse
-from google.cloud.firestore_v1 import Increment
+from app.orm import Customer, Invoice, InvoiceItem, Payment, Product, Shop, StockLedger
+from app.persist import (
+    INVOICE_LOAD,
+    invoice_response,
+    load_invoice,
+    money,
+    parse_uuid,
+    product_dict,
+    shop_uuid,
+)
+from app.shops.router import _get_or_create_shop
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,92 +41,78 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
 
-def _shop_ref(shop_id: str):
-    return get_db().collection("shops").document(shop_id)
-
-
-def _invoices_ref(shop_id: str):
-    return _shop_ref(shop_id).collection("invoices")
-
-
-def _to_response(doc_id: str, data: dict) -> InvoiceResponse:
-    fields = InvoiceResponse.model_fields
-    return InvoiceResponse(id=doc_id, **{
-        k: data.get(k, fields[k].default) for k in fields if k != "id"
-    })
-
-
 @router.get("", response_model=List[InvoiceResponse])
-async def list_invoices(user: AuthenticatedUser = Depends(get_current_user)):
+async def list_invoices(
+    user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
     """List all invoices for the shop, sorted by date descending."""
-    docs = _invoices_ref(user.uid).order_by("date", direction="DESCENDING").stream()
-    return [_to_response(d.id, d.to_dict()) for d in docs]
+    shop_id = shop_uuid(user.uid)
+    rows = (
+        await session.execute(
+            select(Invoice)
+            .options(*INVOICE_LOAD)
+            .where(Invoice.shop_id == shop_id)
+            .order_by(Invoice.date.desc())
+        )
+    ).scalars().unique().all()
+    return [invoice_response(inv) for inv in rows]
 
 
 @router.get("/{invoice_id}", response_model=InvoiceResponse)
 async def get_invoice(
     invoice_id: str,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     """Get a single invoice by ID."""
-    snap = _invoices_ref(user.uid).document(invoice_id).get()
-    if not snap.exists:
-        raise NotFoundError("Invoice", invoice_id)
-    return _to_response(snap.id, snap.to_dict())
+    shop_id = shop_uuid(user.uid)
+    inv = await load_invoice(session, shop_id, parse_uuid(invoice_id, "Invoice"))
+    return invoice_response(inv)
 
 
 @router.post("", response_model=InvoiceResponse, status_code=201)
 async def create_bill(
     body: CreateBillRequest,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
-    """Create a sale or purchase invoice.
+    """Create a sale or purchase invoice in a single transaction."""
+    shop = await _get_or_create_shop(session, user)
+    shop_id = shop.id
 
-    This is the most critical endpoint. The server:
-    1. Validates all items exist and have sufficient stock (for sales)
-    2. Computes all totals (subtotal, discount, GST, grand total)
-    3. Generates the invoice number atomically
-    4. Deducts/adds stock for each item
-    5. Creates/updates the customer record
-    6. Updates customer balance (udhari)
-    7. Applies store credit if used
-    8. Persists the invoice
-    """
-    db = get_db()
-    shop_id = user.uid
-    shop_ref = _shop_ref(shop_id)
-    products_col = shop_ref.collection("products")
-    customers_col = shop_ref.collection("customers")
-    invoices_col = shop_ref.collection("invoices")
-    ledger_col = shop_ref.collection("stockLedger")
+    shop = (
+        await session.execute(select(Shop).where(Shop.id == shop_id).with_for_update())
+    ).scalar_one()
 
-    # ── 1. Load and validate products ──
-    product_docs = {}
-    for item in body.items:
-        snap = products_col.document(item.productId).get()
-        if not snap.exists:
-            raise NotFoundError("Product", item.productId)
-        product_docs[item.productId] = snap.to_dict()
+    product_ids = [parse_uuid(it.productId, "Product") for it in body.items]
+    products_by_id: dict[UUID, Product] = {}
+    for pid in product_ids:
+        stmt = select(Product).where(
+            Product.shop_id == shop_id, Product.id == pid
+        ).with_for_update()
+        product = (await session.execute(stmt)).scalar_one_or_none()
+        if product is None:
+            raise NotFoundError("Product", str(pid))
+        products_by_id[pid] = product
 
-    # ── 2. For sales, validate stock availability (aggregate per product) ──
     if body.type == "sale":
-        needed = {}
+        needed: dict[UUID, int] = {}
         for item in body.items:
-            needed[item.productId] = needed.get(item.productId, 0) + calculate_sold_pieces(item.model_dump())
-        for product_id, sold_pieces in needed.items():
-            product = product_docs[product_id]
-            available = get_total_stock_pieces(product)
+            pid = parse_uuid(item.productId, "Product")
+            needed[pid] = needed.get(pid, 0) + calculate_sold_pieces(item.model_dump())
+        for pid, sold_pieces in needed.items():
+            product = products_by_id[pid]
+            available = get_total_stock_pieces(product_dict(product))
             if sold_pieces > available:
-                name = product.get("name", product_id)
                 raise InsufficientStockError(
-                    name,
+                    product.name or str(pid),
                     available=available,
                     requested=sold_pieces,
-                    avail_label=format_stock_pieces_label(product, available),
-                    req_label=format_stock_pieces_label(product, sold_pieces),
+                    avail_label=format_stock_pieces_label(product_dict(product), available),
+                    req_label=format_stock_pieces_label(product_dict(product), sold_pieces),
                 )
 
-    # ── 3. Compute totals (server is authoritative) ──
     draft = {
         "items": [it.model_dump() for it in body.items],
         "gstEnabled": body.gstEnabled,
@@ -115,168 +121,159 @@ async def create_bill(
         "payments": [p.model_dump() for p in body.payments],
     }
     totals = compute_bill_totals(draft)
-
-    # Cash + Online (and any credit) must not exceed the bill total.
     validate_payment_split(totals["grandTotal"], body.payments)
+    credit_used = round2(sum(p.amount for p in body.payments if p.mode == "credit"))
 
-    credit_used = round2(sum(
-        p.amount for p in body.payments if p.mode == "credit"
-    ))
-
-    # ── 4. Generate invoice number (atomic increment) ──
-    shop_snap = shop_ref.get()
-    shop_data = shop_snap.to_dict() if shop_snap.exists else {}
-    seq = shop_data.get("invoiceSeq", 1) or 1
-    prefix = None
-    if body.type == "purchase":
-        prefix = "PUR"
+    seq = shop.invoice_seq or 1
+    shop.invoice_seq = seq + 1
+    prefix = "PUR" if body.type == "purchase" else None
     invoice_no = gen_invoice_no(seq, body.gstEnabled, prefix)
-    shop_ref.update({"invoiceSeq": Increment(1)})
 
-    # ── 5. Resolve customer ──
+    customer = None
     customer_id = None
     customer_name = body.customerName or "Walk-in"
-    customer_doc = None
 
     if body.customerId:
-        cust_snap = customers_col.document(body.customerId).get()
-        if cust_snap.exists:
-            customer_id = body.customerId
-            customer_doc = cust_snap.to_dict()
-            customer_name = customer_doc.get("name", customer_name)
+        cid = parse_uuid(body.customerId, "Customer")
+        customer = await session.get(Customer, cid)
+        if customer is None or customer.shop_id != shop_id:
+            customer = None
+        else:
+            customer_id = customer.id
+            customer_name = customer.name or customer_name
     elif body.customerName.strip():
-        # Try to find by name (case-insensitive)
         name_lower = body.customerName.strip().lower()
-        for doc in customers_col.stream():
-            d = doc.to_dict()
-            if (d.get("name", "").strip().lower() == name_lower):
-                customer_id = doc.id
-                customer_doc = d
-                customer_name = d.get("name", customer_name)
-                break
-
-        # Create new customer if not found
-        if not customer_id and body.customerName.strip():
-            new_cust = {
-                "name": body.customerName.strip(),
-                "phone": body.customerPhone or "",
-                "isContractor": body.isContractor,
-                "siteNote": body.siteNote or "",
-                "totalPending": 0,
-                "storeCredit": 0,
-            }
-            _, cust_ref = customers_col.add(new_cust)
-            customer_id = cust_ref.id
-            customer_doc = new_cust
+        customer = (
+            await session.execute(
+                select(Customer).where(
+                    Customer.shop_id == shop_id,
+                    func.lower(Customer.name) == name_lower,
+                )
+            )
+        ).scalar_one_or_none()
+        if customer:
+            customer_id = customer.id
+            customer_name = customer.name or customer_name
+        else:
+            customer = Customer(
+                shop_id=shop_id,
+                name=body.customerName.strip(),
+                phone=body.customerPhone or "",
+                is_contractor=body.isContractor,
+                site_note=body.siteNote or "",
+                total_pending=0,
+                store_credit=0,
+            )
+            session.add(customer)
+            await session.flush()
+            customer_id = customer.id
 
     if body.type == "sale" and credit_used > 0:
-        current_credit = round2((customer_doc or {}).get("storeCredit", 0) or 0)
+        current_credit = round2(money(customer.store_credit) if customer else 0)
         if credit_used > current_credit + 0.01:
             raise ValidationError(
                 f"Store credit ₹{credit_used:.2f} available ₹{current_credit:.2f} se zyada nahi ho sakta"
             )
 
-    # Snap the party role onto the invoice itself so reprints stay correct even
-    # if the customer master is edited later (or for walk-in contractors).
     is_contractor = bool(body.isContractor)
     site_note = (body.siteNote or "").strip()
+    now = datetime.now(timezone.utc)
 
-    # ── 6. Build invoice document ──
-    now = today_iso()
-    payments_data = [
-        {**p.model_dump(), "date": now}
-        for p in body.payments
-    ]
-    inv = {
-        "invoiceNo": invoice_no,
-        "date": now,
-        "type": body.type,
-        "customerId": customer_id,
-        "customerName": customer_name,
-        "customerPhone": body.customerPhone or (customer_doc or {}).get("phone", "") or "",
-        "isContractor": is_contractor,
-        "siteNote": site_note,
-        "items": [it.model_dump() for it in body.items],
-        "discount": body.discount.model_dump() if body.discount else None,
-        "gstEnabled": body.gstEnabled,
-        "gstRate": totals["gstRate"],
-        "subtotal": totals["subtotal"],
-        "discountOff": totals["discountOff"],
-        "gstAmount": totals["gstAmount"],
-        "grandTotal": totals["grandTotal"],
-        "payments": payments_data,
-        "amountPaid": totals["amountPaid"],
-        "amountPending": totals["amountPending"],
-        "paymentStatus": totals["paymentStatus"],
-        "createdVia": body.createdVia,
-    }
-
-    # ── 7. Use batch write for atomicity ──
-    batch = db.batch()
-
-    inv_ref = invoices_col.document()
-    batch.set(inv_ref, inv)
-
-    # ── 8. Stock operations ──
-    for item in body.items:
-        product = product_docs[item.productId]
-        sold_pieces = calculate_sold_pieces(item.model_dump())
-        prod_ref = products_col.document(item.productId)
-
-        if body.type == "sale":
-            new_qty = compute_stock_deduction(product, sold_pieces)
-            batch.update(prod_ref, new_qty)
-            ledger_ref = ledger_col.document()
-            batch.set(ledger_ref, {
-                "productId": item.productId,
-                "change": -sold_pieces,
-                "reason": "sale",
-                "invoiceId": inv_ref.id,
-                "timestamp": now,
-            })
-        else:  # purchase
-            new_qty = compute_stock_addition(product, sold_pieces)
-            batch.update(prod_ref, new_qty)
-            ledger_ref = ledger_col.document()
-            batch.set(ledger_ref, {
-                "productId": item.productId,
-                "change": sold_pieces,
-                "reason": "purchase",
-                "invoiceId": inv_ref.id,
-                "timestamp": now,
-            })
-
-    # ── 9. Customer balance + role sync ──
-    if customer_id and customer_doc:
-        cust_ref = customers_col.document(customer_id)
-        cust_updates = {}
-
-        if body.type == "sale" and totals["amountPending"] > 0:
-            cust_updates["totalPending"] = round2(
-                (customer_doc.get("totalPending", 0) or 0) + totals["amountPending"]
+    inv = Invoice(
+        shop_id=shop_id,
+        invoice_no=invoice_no,
+        date=now,
+        type=body.type,
+        customer_id=customer_id,
+        customer_name=customer_name,
+        customer_phone=body.customerPhone or (customer.phone if customer else "") or "",
+        is_contractor=is_contractor,
+        site_note=site_note,
+        discount_type=body.discount.type if body.discount else None,
+        discount_value=body.discount.value if body.discount else None,
+        gst_enabled=body.gstEnabled,
+        gst_rate=totals["gstRate"],
+        subtotal=totals["subtotal"],
+        discount_off=totals["discountOff"],
+        gst_amount=totals["gstAmount"],
+        grand_total=totals["grandTotal"],
+        amount_paid=totals["amountPaid"],
+        amount_pending=totals["amountPending"],
+        payment_status=totals["paymentStatus"],
+        created_via=body.createdVia,
+    )
+    for idx, item in enumerate(body.items):
+        inv.items.append(
+            InvoiceItem(
+                shop_id=shop_id,
+                line_no=idx,
+                product_id=parse_uuid(item.productId, "Product"),
+                name=item.name,
+                qty=item.qty,
+                pieces=item.pieces,
+                unit=item.unit,
+                rate=item.rate,
+                pieces_per_box=item.piecesPerBox,
+                size=item.size,
             )
+        )
+    for pay in body.payments:
+        inv.payments.append(
+            Payment(
+                shop_id=shop_id,
+                mode=pay.mode,
+                amount=pay.amount,
+                date=now,
+            )
+        )
+    session.add(inv)
+    await session.flush()
 
+    for item in body.items:
+        pid = parse_uuid(item.productId, "Product")
+        product = products_by_id[pid]
+        sold_pieces = calculate_sold_pieces(item.model_dump())
+        pdata = product_dict(product)
+        if body.type == "sale":
+            patch = compute_stock_deduction(pdata, sold_pieces)
+            product.stock_qty = patch["stockQty"]
+            change = -sold_pieces
+            reason = "sale"
+        else:
+            patch = compute_stock_addition(pdata, sold_pieces)
+            product.stock_qty = patch["stockQty"]
+            change = sold_pieces
+            reason = "purchase"
+        session.add(
+            StockLedger(
+                shop_id=shop_id,
+                product_id=pid,
+                change=change,
+                reason=reason,
+                invoice_id=inv.id,
+                timestamp=now,
+            )
+        )
+
+    if customer is not None:
+        if body.type == "sale" and totals["amountPending"] > 0:
+            customer.total_pending = round2(
+                money(customer.total_pending) + totals["amountPending"]
+            )
         if body.type == "sale" and credit_used > 0:
-            current_credit = customer_doc.get("storeCredit", 0) or 0
-            cust_updates["storeCredit"] = max(0, round2(current_credit - credit_used))
+            customer.store_credit = max(0, round2(money(customer.store_credit) - credit_used))
+        if bool(customer.is_contractor) != is_contractor:
+            customer.is_contractor = is_contractor
+        if site_note and (customer.site_note or "") != site_note:
+            customer.site_note = site_note
+        if body.customerPhone and (customer.phone or "") != body.customerPhone:
+            customer.phone = body.customerPhone
 
-        # Keep the master in sync with whatever the cashier ticked on this bill.
-        if bool(customer_doc.get("isContractor", False)) != is_contractor:
-            cust_updates["isContractor"] = is_contractor
-        if site_note and (customer_doc.get("siteNote") or "") != site_note:
-            cust_updates["siteNote"] = site_note
-        if body.customerPhone and (customer_doc.get("phone") or "") != body.customerPhone:
-            cust_updates["phone"] = body.customerPhone
-
-        if cust_updates:
-            batch.update(cust_ref, cust_updates)
-
-    # ── 10. Commit all writes atomically ──
-    batch.commit()
+    await session.flush()
+    inv = await load_invoice(session, shop_id, inv.id)
 
     logger.info(
         "Invoice %s created: type=%s, total=%s, shop=%s",
         invoice_no, body.type, totals["grandTotal"], shop_id,
     )
-
-    return _to_response(inv_ref.id, inv)
+    return invoice_response(inv)

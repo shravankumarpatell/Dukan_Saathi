@@ -3,47 +3,49 @@ from typing import List, Tuple
 
 from app.genai.logger import logger
 from app.genai.llm import LLMClient
-from app.genai.schemas import StockExtractResult, StockExtractRow, NluResult, ChatMessage
+from app.genai.schemas import StockExtractResult, NluResult, ChatMessage
 from app.genai.prompts import PromptBuilder
 from app.genai.config import settings
 from app.genai.retrieval import RetrievalService
-from app.common.tile_sizes import TILE_SIZE_PROMPT, normalize_tile_size
+from app.common.tile_sizes import TILE_SIZE_PROMPT
+from app.genai.stock_extract import (
+    decode_payload,
+    drop_non_product_rows,
+    enrich_rows_from_sheet_text,
+    extract_pdf_text,
+    load_extraction_prompt,
+    normalize_mime,
+    normalize_row,
+    sheet_user_text,
+)
 
-
-def _normalize_mime(mime: str) -> str:
-    mime = (mime or "").split(";")[0].strip().lower()
-    if mime in ("", "application/octet-stream"):
-        return "image/jpeg"
-    return mime
-
-
-def _normalize_row(row: StockExtractRow) -> StockExtractRow:
-    unit = str(row.unit or "").lower()
-    if unit in ("piece", "pcs", "pc", "sanitary"):
-        row.unit = "piece"
-        row.piecesPerBox = 1
-        row.size = ""
-    else:
-        row.unit = "box"
-        row.size = normalize_tile_size(row.size) or ""
-    return row
+# Back-compat aliases for older imports/tests.
+_normalize_mime = normalize_mime
+_normalize_row = normalize_row
 
 
 class ExtractionService:
     @staticmethod
     async def extract_stock(image_base64: str, mime_type: str = "") -> StockExtractResult:
         logger.info("Starting stock-sheet extraction")
+        mime = normalize_mime(mime_type)
+        raw = decode_payload(image_base64)
+        pdf_text = extract_pdf_text(raw) if mime == "application/pdf" else ""
         prompt = PromptBuilder.build(
-            settings.prompt_extraction,
+            load_extraction_prompt(),
             {"tile_sizes": TILE_SIZE_PROMPT},
         )
         result = await LLMClient.generate_structured(
             prompt=prompt,
             schema_class=StockExtractResult,
+            input_text=sheet_user_text(pdf_text),
             image_base64=image_base64,
-            image_mime=_normalize_mime(mime_type),
+            image_mime=mime,
         )
-        result.rows = [_normalize_row(r) for r in result.rows]
+        result.rows = enrich_rows_from_sheet_text(
+            drop_non_product_rows([normalize_row(r) for r in result.rows]),
+            pdf_text,
+        )
         logger.info("Stock-sheet extraction complete: %d products", len(result.rows))
         return result
 

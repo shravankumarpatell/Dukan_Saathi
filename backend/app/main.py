@@ -1,17 +1,17 @@
-from typing import Optional, List, Dict
 """FastAPI application — main entry point.
 
 Registers all routers, middleware, and error handlers.
 """
 
-from fastapi import FastAPI
-from starlette.middleware.cors import CORSMiddleware
-from app.config import settings
-from app.database import init_firebase
-from app.common.errors import AppError, app_error_handler, unhandled_error_handler
 import logging
 
-# Configure logging
+from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+
+from app.common.errors import AppError, app_error_handler, unhandled_error_handler
+from app.config import settings
+from app.db import init_db
+
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL, logging.INFO),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -28,32 +28,30 @@ def create_app() -> FastAPI:
         version="1.0.0",
     )
 
-    # ── Initialize Firebase ──
-    init_firebase()
+    @app.on_event("startup")
+    async def _startup():
+        await init_db()
 
-    # ── CORS ──
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
+        allow_origins=[o.strip() for o in settings.CORS_ORIGINS if o.strip()],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 
-    # ── Error handlers ──
     app.add_exception_handler(AppError, app_error_handler)
     app.add_exception_handler(Exception, unhandled_error_handler)
 
-    # ── Register routers ──
-    from app.shops.router import router as shops_router
-    from app.products.router import router as products_router
-    from app.invoices.router import router as invoices_router
+    from app.analytics.router import router as analytics_router
     from app.customers.router import router as customers_router
-    from app.returns.router import router as returns_router
     from app.expenses.router import router as expenses_router
     from app.gemini.router import router as gemini_router
-    from app.analytics.router import router as analytics_router
     from app.genai.router import router as new_genai_router
+    from app.invoices.router import router as invoices_router
+    from app.products.router import router as products_router
+    from app.returns.router import router as returns_router
+    from app.shops.router import router as shops_router
 
     api_prefix = "/api"
     app.include_router(shops_router, prefix=api_prefix)
@@ -66,7 +64,6 @@ def create_app() -> FastAPI:
     app.include_router(analytics_router, prefix=api_prefix)
     app.include_router(new_genai_router, prefix=api_prefix)
 
-    # ── Health check ──
     @app.get("/api/health")
     async def health():
         return {"status": "ok", "service": "DukanSaathi API"}

@@ -2,23 +2,30 @@
  * API Client — single HTTP layer between frontend and backend.
  *
  * Every data operation goes through this module. It:
- * - Attaches the Firebase ID token as Bearer authorization
+ * - Attaches the Supabase access token as Bearer authorization
  * - Provides consistent error handling
  * - Is the ONLY place that makes HTTP calls to the backend
  */
 
-import { getAuth } from "firebase/auth";
+import { supabase } from "@/supabase";
+import { getSessionToken } from "@/services/auth";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 /**
- * Get the current Firebase ID token for authenticated requests.
+ * Get the current Supabase access token for authenticated requests.
  * Returns null if no user is signed in.
  */
 async function getToken() {
-  const user = getAuth().currentUser;
-  if (!user) return null;
-  return user.getIdToken();
+  return getSessionToken();
+}
+
+async function handleUnauthorized() {
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Session is already unusable; the auth listener will send the user to login.
+  }
 }
 
 /**
@@ -36,6 +43,9 @@ async function request(path, options = {}) {
   const res = await fetch(url, { ...options, headers });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      await handleUnauthorized();
+    }
     let errorMessage = `Request failed: ${res.status}`;
     try {
       const body = await res.json();
@@ -214,6 +224,9 @@ export async function* streamChat(messages, systemContext) {
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      await handleUnauthorized();
+    }
     throw new Error("Chat request failed");
   }
 

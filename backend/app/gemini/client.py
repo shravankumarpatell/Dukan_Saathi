@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import asyncio
 from typing import Any, AsyncIterator, Optional
 
 from app.config import settings
@@ -186,21 +187,29 @@ async def generate_content(
 ) -> str:
     """Non-streaming generate. Returns concatenated text."""
     client = get_client()
-    response = await client.aio.models.generate_content(
-        model=model or settings.GEMINI_MODEL,
-        contents=_build_contents(
-            user_text=user_text,
-            messages=messages,
-            image_base64=image_base64,
-            image_mime=image_mime,
-        ),
-        config=_gen_config(
-            system_instruction=system_instruction,
-            temperature=temperature,
-            json_mode=json_mode,
-            response_schema=response_schema,
-        ),
-    )
+    timeout_s = 90.0
+    try:
+        response = await asyncio.wait_for(
+            client.aio.models.generate_content(
+                model=model or settings.GEMINI_MODEL,
+                contents=_build_contents(
+                    user_text=user_text,
+                    messages=messages,
+                    image_base64=image_base64,
+                    image_mime=image_mime,
+                ),
+                config=_gen_config(
+                    system_instruction=system_instruction,
+                    temperature=temperature,
+                    json_mode=json_mode,
+                    response_schema=response_schema,
+                ),
+            ),
+            timeout=timeout_s,
+        )
+    except asyncio.TimeoutError:
+        logger.error("Gemini generate_content timed out after %.0fs", timeout_s)
+        return ""
     try:
         return response.text or ""
     except Exception:

@@ -13,7 +13,11 @@ class TestNormalizeTileSize:
         assert normalize_tile_size("300x450") == "12x18 in"
         assert normalize_tile_size("1x1.5 ft") == "12x18 in"
 
-    def test_common_shop_sizes(self):
+    def test_60x120_is_2x4_ft(self):
+        assert normalize_tile_size("60*120") == "2x4 ft"
+        assert normalize_tile_size("60x120") == "2x4 ft"
+        assert normalize_tile_size("60x60") == "2x2 ft"
+        assert normalize_tile_size("80x160") == "800x1600 mm"
         assert normalize_tile_size("2x4") == "2x4 ft"
         assert normalize_tile_size("1x1") == "1x1 ft"
         assert normalize_tile_size("8x12") == "8x12 in"

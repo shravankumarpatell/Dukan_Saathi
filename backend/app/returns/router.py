@@ -1,28 +1,45 @@
-"""Return API routes — process return invoices with stock restoration and settlement.
+"""Return API routes — process return invoices with stock restoration and settlement."""
 
-Settlement policy:
-1. Always clear unpaid portion on the original sale first (synthetic return_adjust).
-2. Leftover by mode: adjust_udhari FIFOs other open sales then store credit;
-   cash / store_credit take the leftover.
-3. customer.totalPending is always recomputed from open sale amountPendings.
-"""
-
+from datetime import datetime, timezone
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
-from app.dependencies import get_current_user, AuthenticatedUser
-from app.database import get_db
-from app.common.errors import NotFoundError, ValidationError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.common.calc import (
-    gen_invoice_no, calculate_sold_pieces, compute_stock_addition,
-    round2, today_iso, item_amount,
-    remaining_returnable_by_product, remaining_returnable_amount,
-    allocate_return_across_invoices, remove_return_adjust_payments,
-    recompute_customer_total_pending, format_stock_pieces_label,
+    allocate_return_across_invoices,
+    calculate_sold_pieces,
+    compute_stock_addition,
+    format_stock_pieces_label,
+    gen_invoice_no,
+    item_amount,
+    recompute_customer_total_pending,
+    remaining_returnable_amount,
+    remaining_returnable_by_product,
+    remove_return_adjust_payments,
+    round2,
 )
-from app.returns.models import CreateReturnRequest, ConvertStoreCreditRequest
+from app.common.errors import NotFoundError, ValidationError
+from app.db import get_session
+from app.dependencies import AuthenticatedUser, get_current_user
 from app.invoices.models import InvoiceResponse
-from google.cloud.firestore_v1 import Increment, FieldFilter
+from app.orm import Customer, Invoice, InvoiceItem, Product, Shop, StockLedger
+from app.persist import (
+    INVOICE_LOAD,
+    apply_payment_fields,
+    invoice_calc_dict,
+    invoice_response,
+    load_invoice,
+    money,
+    parse_uuid,
+    product_dict,
+    set_settlement,
+    shop_uuid,
+)
+from app.returns.models import ConvertStoreCreditRequest, CreateReturnRequest
+from app.shops.router import _get_or_create_shop
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,52 +56,77 @@ def _empty_detail() -> dict:
     }
 
 
-def _to_response(doc_id: str, data: dict) -> InvoiceResponse:
-    fields = InvoiceResponse.model_fields
-    return InvoiceResponse(id=doc_id, **{
-        k: data.get(k, fields[k].default) for k in fields if k != "id"
-    })
+def _detail_of(inv: Invoice) -> dict:
+    stored = invoice_calc_dict(inv).get("settlementDetail")
+    if isinstance(stored, dict):
+        return {**_empty_detail(), **stored}
+    refund = round2(money(inv.refund_total) or 0)
+    detail = _empty_detail()
+    settlement = inv.settlement or "cash"
+    if settlement == "adjust_udhari":
+        detail["udhariAdjusted"] = refund
+    elif settlement == "store_credit":
+        detail["storeCredit"] = refund
+    else:
+        detail["cash"] = refund
+    return detail
 
 
-def _find_sale_by_invoice_no(invoices_col, invoice_no: str) -> tuple:
-    """Return (doc_id, data) for a sale invoice, or (None, None)."""
-    q = invoices_col.where(filter=FieldFilter("invoiceNo", "==", invoice_no))
-    for doc in q.stream():
-        data = doc.to_dict() or {}
-        if data.get("type") == "sale":
-            return doc.id, data
-    return None, None
+async def _find_sale_by_invoice_no(
+    session: AsyncSession, shop_id: UUID, invoice_no: str
+) -> Optional[Invoice]:
+    stmt = (
+        select(Invoice)
+        .options(*INVOICE_LOAD)
+        .where(
+            Invoice.shop_id == shop_id,
+            Invoice.invoice_no == invoice_no,
+            Invoice.type == "sale",
+        )
+    )
+    return (await session.execute(stmt)).scalars().unique().one_or_none()
 
 
-def _list_prior_returns(invoices_col, original_invoice_no: str, exclude_invoice_no: str = None) -> list:
-    """Prior return invoices against the same original sale."""
-    out = []
-    q = invoices_col.where(filter=FieldFilter("originalInvoiceNo", "==", original_invoice_no))
-    for doc in q.stream():
-        data = doc.to_dict() or {}
-        if data.get("type") != "return":
-            continue
-        if exclude_invoice_no and data.get("invoiceNo") == exclude_invoice_no:
-            continue
-        out.append({**data, "id": doc.id})
-    return out
+async def _list_prior_returns(
+    session: AsyncSession,
+    shop_id: UUID,
+    original_invoice_no: str,
+    exclude_invoice_no: str | None = None,
+) -> list[Invoice]:
+    stmt = (
+        select(Invoice)
+        .options(*INVOICE_LOAD)
+        .where(
+            Invoice.shop_id == shop_id,
+            Invoice.original_invoice_no == original_invoice_no,
+            Invoice.type == "return",
+        )
+    )
+    rows = list((await session.execute(stmt)).scalars().unique().all())
+    if exclude_invoice_no:
+        rows = [r for r in rows if r.invoice_no != exclude_invoice_no]
+    return rows
 
 
-def _list_customer_sales(invoices_col, customer_id: str) -> list:
-    """All sale invoices for a customer (with id attached)."""
+async def _list_customer_sales(
+    session: AsyncSession, shop_id: UUID, customer_id: Optional[UUID]
+) -> list[Invoice]:
     if not customer_id:
         return []
-    out = []
-    q = invoices_col.where(filter=FieldFilter("customerId", "==", customer_id))
-    for doc in q.stream():
-        data = doc.to_dict() or {}
-        if data.get("type") == "sale":
-            out.append({**data, "id": doc.id})
-    out.sort(key=lambda i: i.get("date") or "")
-    return out
+    stmt = (
+        select(Invoice)
+        .options(*INVOICE_LOAD)
+        .where(
+            Invoice.shop_id == shop_id,
+            Invoice.customer_id == customer_id,
+            Invoice.type == "sale",
+        )
+        .order_by(Invoice.date.asc())
+    )
+    return list((await session.execute(stmt)).scalars().unique().all())
 
 
-def _validate_settlement(settlement: str, customer: Optional[dict], open_pending: float = None) -> None:
+def _validate_settlement(settlement: str, customer: Optional[Customer], open_pending: float = None) -> None:
     if settlement == "cash":
         return
     if not customer:
@@ -95,7 +137,7 @@ def _validate_settlement(settlement: str, customer: Optional[dict], open_pending
         pending = (
             round2(open_pending)
             if open_pending is not None
-            else round2(customer.get("totalPending", 0) or 0)
+            else round2(money(customer.total_pending))
         )
         if pending <= 0:
             raise ValidationError(
@@ -103,73 +145,11 @@ def _validate_settlement(settlement: str, customer: Optional[dict], open_pending
             )
 
 
-def _detail_of(inv: dict) -> dict:
-    stored = inv.get("settlementDetail")
-    if isinstance(stored, dict):
-        return {**_empty_detail(), **stored}
-
-    refund = round2(inv.get("refundTotal", 0) or 0)
-    detail = _empty_detail()
-    settlement = inv.get("settlement") or "cash"
-    if settlement == "adjust_udhari":
-        detail["udhariAdjusted"] = refund
-    elif settlement == "store_credit":
-        detail["storeCredit"] = refund
-    else:
-        detail["cash"] = refund
-    return detail
-
-
-def _write_invoice_patches(invoices_col, patches: list) -> None:
-    for p in patches:
-        if p.get("id") and p.get("fields"):
-            invoices_col.document(p["id"]).update(p["fields"])
-
-
-def _reverse_return_adjusts(invoices_col, return_invoice_no: str, sales: list) -> list:
-    """Remove return_adjust payments for this return from all sales; return updated sales."""
-    updated = []
-    for sale in sales:
-        payments = sale.get("payments") or []
-        has = any(
-            (p.get("mode") or "") == "return_adjust"
-            and (p.get("returnInvoiceNo") or "") == return_invoice_no
-            for p in payments
-        )
-        if not has:
-            updated.append(sale)
-            continue
-        fields = remove_return_adjust_payments(sale, return_invoice_no)
-        invoices_col.document(sale["id"]).update(fields)
-        updated.append({**sale, **fields})
-    return updated
-
-
-def _apply_store_credit_delta(cust_ref, customer: dict, credit_delta: float) -> dict:
-    """Apply store-credit change; return new customer snapshot fields."""
-    credit_delta = round2(credit_delta)
-    if abs(credit_delta) < 0.0001 or not cust_ref:
-        return {}
-    current = round2(customer.get("storeCredit", 0) or 0)
-    new_credit = max(0.0, round2(current + credit_delta))
-    cust_ref.update({"storeCredit": new_credit})
-    return {"storeCredit": new_credit}
-
-
-def _set_total_pending_from_sales(cust_ref, sales: list) -> float:
-    total = recompute_customer_total_pending(sales)
-    if cust_ref:
-        cust_ref.update({"totalPending": total})
-    return total
-
-
-def _validate_return_qty(original_items: list, prior_returns: list, new_items: list) -> None:
+def _validate_return_qty(original_items: list, prior_returns: list[Invoice], new_items: list) -> None:
     prior_items = []
-    for r in prior_returns:
-        prior_items.extend(r.get("items") or [])
+    for ret in prior_returns:
+        prior_items.extend(invoice_calc_dict(ret).get("items") or [])
     remaining = remaining_returnable_by_product(original_items, prior_items)
-
-    # Also reject unknown product lines not on the original bill.
     original_ids = {it.get("productId") for it in (original_items or []) if it.get("productId")}
 
     for it in new_items:
@@ -181,7 +161,6 @@ def _validate_return_qty(original_items: list, prior_returns: list, new_items: l
         want = calculate_sold_pieces(it)
         left = int(remaining.get(pid, 0))
         if want > left:
-            # Build a friendly label using the return line's unit meta.
             label = format_stock_pieces_label(it, left)
             raise ValidationError(
                 f"'{it.get('name') or pid}' me sirf {label} return ho sakta hai (pehle se return ho chuka / sold se zyada)"
@@ -189,85 +168,79 @@ def _validate_return_qty(original_items: list, prior_returns: list, new_items: l
         remaining[pid] = left - want
 
 
+def _apply_patches(sales_by_id: dict[str, Invoice], shop_id: UUID, patches: list) -> None:
+    for patch in patches:
+        inv = sales_by_id.get(patch.get("id"))
+        if inv is None or not patch.get("fields"):
+            continue
+        apply_payment_fields(inv, shop_id, patch["fields"])
+
+
 @router.post("", response_model=InvoiceResponse, status_code=201)
 async def create_return(
     body: CreateReturnRequest,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     """Process a return invoice with ledger-consistent settlement."""
-    db = get_db()
-    shop_ref = db.collection("shops").document(user.uid)
-    products_col = shop_ref.collection("products")
-    invoices_col = shop_ref.collection("invoices")
-    customers_col = shop_ref.collection("customers")
-    returns_col = shop_ref.collection("returns")
-    ledger_col = shop_ref.collection("stockLedger")
+    shop = await _get_or_create_shop(session, user)
+    shop = (
+        await session.execute(select(Shop).where(Shop.id == shop.id).with_for_update())
+    ).scalar_one()
+    shop_id = shop.id
 
     if not (body.originalInvoiceNo or "").strip():
         raise ValidationError("Original invoice number zaroori hai")
 
-    # Validate returned items exist as products
     for item in body.items:
-        snap = products_col.document(item.productId).get()
-        if not snap.exists:
+        pid = parse_uuid(item.productId, "Product")
+        product = await session.get(Product, pid)
+        if product is None or product.shop_id != shop_id:
             raise NotFoundError("Product", item.productId)
 
-    # Load original sale
-    original_id, original = _find_sale_by_invoice_no(invoices_col, body.originalInvoiceNo.strip())
-    if not original_id:
+    original = await _find_sale_by_invoice_no(session, shop_id, body.originalInvoiceNo.strip())
+    if original is None:
         raise NotFoundError("Invoice", body.originalInvoiceNo)
-    original = {**original, "id": original_id}
 
-    # Prior returns against this bill
-    prior = _list_prior_returns(invoices_col, body.originalInvoiceNo.strip())
+    prior = await _list_prior_returns(session, shop_id, body.originalInvoiceNo.strip())
     items_data = [it.model_dump() for it in body.items]
-    _validate_return_qty(original.get("items") or [], prior, items_data)
+    _validate_return_qty(invoice_calc_dict(original).get("items") or [], prior, items_data)
 
-    # Refund: prefer line subtotal; cap by remaining returnable amount
     subtotal = round2(sum(item_amount(it) for it in items_data))
-    max_refund = remaining_returnable_amount(original, prior)
+    max_refund = remaining_returnable_amount(invoice_calc_dict(original), [invoice_calc_dict(r) for r in prior])
     requested = round2(body.refundTotal if body.refundTotal is not None else subtotal)
     if requested > max_refund + 0.01:
         raise ValidationError(
             f"Refund ₹{requested:.2f} is bill se zyada returnable nahi (max ₹{max_refund:.2f})"
         )
-    # Prefer server subtotal when client sends 0 / empty; otherwise allow override within cap.
     refund = requested if requested > 0 else min(subtotal, max_refund)
     refund = round2(min(refund, max_refund))
     if refund <= 0:
         raise ValidationError("Refund amount 0 nahi ho sakta")
 
-    # Customer
     customer = None
-    cust_ref = None
-    customer_id = body.customerId or original.get("customerId")
-    if customer_id:
-        cust_ref = customers_col.document(customer_id)
-        cust_snap = cust_ref.get()
-        if cust_snap.exists:
-            customer = cust_snap.to_dict()
-        else:
-            cust_ref = None
+    customer_id = None
+    raw_cid = body.customerId or (str(original.customer_id) if original.customer_id else None)
+    if raw_cid:
+        customer_id = parse_uuid(raw_cid, "Customer")
+        customer = await session.get(Customer, customer_id)
+        if customer is None or customer.shop_id != shop_id:
+            customer = None
             customer_id = None
 
-    sales = _list_customer_sales(invoices_col, customer_id) if customer_id else []
-    # Ensure original is in the working set with latest fields
-    sales_by_id = {s["id"]: s for s in sales}
-    sales_by_id[original_id] = {**sales_by_id.get(original_id, original), **original, "id": original_id}
-    sales = sorted(sales_by_id.values(), key=lambda i: i.get("date") or "")
-    open_pending = recompute_customer_total_pending(sales)
-
+    sales = await _list_customer_sales(session, shop_id, customer_id)
+    sales_by_id = {str(s.id): s for s in sales}
+    sales_by_id[str(original.id)] = original
+    sales = sorted(sales_by_id.values(), key=lambda i: i.date.isoformat() if i.date else "")
+    open_pending = recompute_customer_total_pending([invoice_calc_dict(s) for s in sales])
     _validate_settlement(body.settlement, customer, open_pending=open_pending)
 
-    # Generate return invoice number first (needed for payment tags)
-    shop_snap = shop_ref.get()
-    shop_data = shop_snap.to_dict() if shop_snap.exists else {}
-    seq = shop_data.get("invoiceSeq", 1) or 1
+    seq = shop.invoice_seq or 1
+    shop.invoice_seq = seq + 1
     invoice_no = gen_invoice_no(seq, False, "RET")
-    shop_ref.update({"invoiceSeq": Increment(1)})
 
-    working_original = sales_by_id[original_id]
-    others = [s for s in sales if s["id"] != original_id]
+    working_original = invoice_calc_dict(original)
+    others = [invoice_calc_dict(s) for s in sales if s.id != original.id]
     patches, detail, _ = allocate_return_across_invoices(
         refund,
         working_original,
@@ -275,78 +248,90 @@ async def create_return(
         return_invoice_no=invoice_no,
         settlement=body.settlement,
     )
-    _write_invoice_patches(invoices_col, patches)
-
-    # Refresh sales after patches for recompute
-    for p in patches:
-        if p["id"] in sales_by_id:
-            sales_by_id[p["id"]].update(p["fields"])
+    _apply_patches(sales_by_id, shop_id, patches)
+    for patch in patches:
+        sid = patch.get("id")
+        if sid and sid in sales_by_id:
+            # keep in-memory calc dicts in sync via ORM
+            pass
     sales = list(sales_by_id.values())
 
-    # Store credit from settlement detail; totalPending from invoices
-    if customer is not None and cust_ref is not None:
+    if customer is not None:
         credit_add = round2(detail.get("storeCredit", 0) or 0)
         if credit_add > 0:
-            customer = {**customer, **_apply_store_credit_delta(cust_ref, customer, credit_add)}
-        _set_total_pending_from_sales(cust_ref, sales)
+            customer.store_credit = max(0, round2(money(customer.store_credit) + credit_add))
+        customer.total_pending = recompute_customer_total_pending(
+            [invoice_calc_dict(s) for s in sales]
+        )
 
-    inv = {
-        "invoiceNo": invoice_no,
-        "date": today_iso(),
-        "type": "return",
-        "customerId": customer_id,
-        "customerName": body.customerName or original.get("customerName") or "Walk-in",
-        "isContractor": bool((customer or original).get("isContractor", False)),
-        "siteNote": (customer or original).get("siteNote", "") or "",
-        "items": items_data,
-        "gstEnabled": False,
-        "gstRate": 0,
-        "subtotal": subtotal,
-        "discountOff": 0,
-        "gstAmount": 0,
-        "grandTotal": refund,
-        "payments": [],
-        "amountPaid": 0,
-        "amountPending": 0,
-        "paymentStatus": "return",
-        "createdVia": "manual",
-        "settlement": body.settlement,
-        "settlementDetail": detail,
-        "originalInvoiceNo": body.originalInvoiceNo.strip(),
-        "refundTotal": refund,
-    }
+    now = datetime.now(timezone.utc)
+    inv = Invoice(
+        shop_id=shop_id,
+        invoice_no=invoice_no,
+        date=now,
+        type="return",
+        customer_id=customer_id,
+        customer_name=body.customerName or original.customer_name or "Walk-in",
+        is_contractor=bool((customer.is_contractor if customer else original.is_contractor)),
+        site_note=(customer.site_note if customer else original.site_note) or "",
+        gst_enabled=False,
+        gst_rate=0,
+        subtotal=subtotal,
+        discount_off=0,
+        gst_amount=0,
+        grand_total=refund,
+        amount_paid=0,
+        amount_pending=0,
+        payment_status="return",
+        created_via="manual",
+        original_invoice_id=original.id,
+        original_invoice_no=body.originalInvoiceNo.strip(),
+        refund_total=refund,
+    )
+    for idx, item in enumerate(body.items):
+        inv.items.append(
+            InvoiceItem(
+                shop_id=shop_id,
+                line_no=idx,
+                product_id=parse_uuid(item.productId, "Product"),
+                name=item.name,
+                qty=item.qty,
+                pieces=item.pieces,
+                unit=item.unit,
+                rate=item.rate,
+                pieces_per_box=item.piecesPerBox,
+            )
+        )
+    set_settlement(inv, shop_id, detail, body.settlement)
+    session.add(inv)
+    await session.flush()
 
-    _, inv_ref = invoices_col.add(inv)
-
-    # Restore stock after validation / settlement
     for item in body.items:
-        product = products_col.document(item.productId).get().to_dict()
+        pid = parse_uuid(item.productId, "Product")
+        product = (
+            await session.execute(
+                select(Product).where(Product.shop_id == shop_id, Product.id == pid).with_for_update()
+            )
+        ).scalar_one()
         add_pieces = calculate_sold_pieces(item.model_dump())
         if add_pieces > 0:
-            new_qty = compute_stock_addition(product, add_pieces)
-            products_col.document(item.productId).update(new_qty)
-            ledger_col.add({
-                "productId": item.productId,
-                "change": add_pieces,
-                "reason": "return",
-                "invoiceId": inv_ref.id,
-                "timestamp": today_iso(),
-            })
+            patch = compute_stock_addition(product_dict(product), add_pieces)
+            product.stock_qty = patch["stockQty"]
+            session.add(
+                StockLedger(
+                    shop_id=shop_id,
+                    product_id=pid,
+                    change=add_pieces,
+                    reason="return",
+                    invoice_id=inv.id,
+                    timestamp=now,
+                )
+            )
 
-    returns_col.add({
-        "invoiceNo": invoice_no,
-        "originalInvoiceNo": body.originalInvoiceNo.strip(),
-        "customerId": customer_id,
-        "customerName": inv["customerName"],
-        "items": items_data,
-        "refundTotal": refund,
-        "settlement": body.settlement,
-        "settlementDetail": detail,
-        "date": today_iso(),
-    })
-
+    await session.flush()
+    inv = await load_invoice(session, shop_id, inv.id)
     logger.info("Return %s created against %s", invoice_no, body.originalInvoiceNo)
-    return _to_response(inv_ref.id, inv)
+    return invoice_response(inv)
 
 
 @router.post("/{invoice_id}/convert-store-credit", response_model=InvoiceResponse)
@@ -354,30 +339,17 @@ async def convert_store_credit_return(
     invoice_id: str,
     body: ConvertStoreCreditRequest,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
-    """Convert a store-credit return to cash refund or adjust-udhari.
-
-    Items/stock are untouched. Reverses old store credit + return_adjust
-    payments, then re-allocates the same refund under the new settlement.
-    """
-    db = get_db()
-    shop_ref = db.collection("shops").document(user.uid)
-    invoices_col = shop_ref.collection("invoices")
-    customers_col = shop_ref.collection("customers")
-    returns_col = shop_ref.collection("returns")
-
-    inv_ref = invoices_col.document(invoice_id)
-    inv_snap = inv_ref.get()
-    if not inv_snap.exists:
-        raise NotFoundError("Return", invoice_id)
-
-    inv = inv_snap.to_dict() or {}
-    if inv.get("type") != "return":
+    """Convert a store-credit return to cash refund or adjust-udhari."""
+    shop_id = shop_uuid(user.uid)
+    inv = await load_invoice(session, shop_id, parse_uuid(invoice_id, "Return"))
+    if inv.type != "return":
         raise ValidationError("Only return invoices can be converted")
 
     old_detail = _detail_of(inv)
     old_credit = round2(old_detail.get("storeCredit", 0) or 0)
-    current_settlement = (inv.get("settlement") or "").strip()
+    current_settlement = (inv.settlement or "").strip()
     if current_settlement != "store_credit" and old_credit <= 0.01:
         raise ValidationError("Sirf store-credit return convert ho sakta hai")
 
@@ -385,62 +357,68 @@ async def convert_store_credit_return(
     if target not in ("cash", "adjust_udhari"):
         raise ValidationError("Target settlement cash ya adjust_udhari hona chahiye")
 
-    return_no = inv.get("invoiceNo") or ""
-    original_no = (inv.get("originalInvoiceNo") or "").strip()
-    new_refund = round2(inv.get("refundTotal", 0) or inv.get("grandTotal", 0) or 0)
+    return_no = inv.invoice_no or ""
+    original_no = (inv.original_invoice_no or "").strip()
+    new_refund = round2(money(inv.refund_total) or money(inv.grand_total) or 0)
     if new_refund <= 0:
         raise ValidationError("Refund amount 0 nahi ho sakta")
 
-    # Cap refund against remaining returnable (excluding this return itself)
     original = None
-    original_id = None
     if original_no:
-        original_id, original = _find_sale_by_invoice_no(invoices_col, original_no)
-        if original_id:
-            prior = _list_prior_returns(invoices_col, original_no, exclude_invoice_no=return_no)
-            max_refund = remaining_returnable_amount({**original, "id": original_id}, prior)
+        original = await _find_sale_by_invoice_no(session, shop_id, original_no)
+        if original is not None:
+            prior = await _list_prior_returns(
+                session, shop_id, original_no, exclude_invoice_no=return_no
+            )
+            max_refund = remaining_returnable_amount(
+                invoice_calc_dict(original), [invoice_calc_dict(r) for r in prior]
+            )
             if new_refund > max_refund + 0.01:
                 raise ValidationError(
                     f"Refund ₹{new_refund:.2f} is bill se zyada returnable nahi (max ₹{max_refund:.2f})"
                 )
             new_refund = round2(min(new_refund, max_refund))
-            original = {**original, "id": original_id}
 
     customer = None
-    cust_ref = None
-    customer_id = inv.get("customerId")
-    if customer_id:
-        cust_ref = customers_col.document(customer_id)
-        cust_snap = cust_ref.get()
-        if cust_snap.exists:
-            customer = cust_snap.to_dict()
-        else:
-            cust_ref = None
+    if inv.customer_id:
+        customer = await session.get(Customer, inv.customer_id)
+        if customer is not None and customer.shop_id != shop_id:
+            customer = None
 
-    # Reverse old store credit first
-    if customer is not None and cust_ref is not None and old_credit > 0:
-        customer = {**customer, **_apply_store_credit_delta(cust_ref, customer, -old_credit)}
+    if customer is not None and old_credit > 0:
+        customer.store_credit = max(0.0, round2(money(customer.store_credit) - old_credit))
 
-    # Reverse old return_adjust payments on sales
-    sales = _list_customer_sales(invoices_col, customer_id) if customer_id else []
-    if original_id and original and original_id not in {s["id"] for s in sales}:
+    sales = await _list_customer_sales(session, shop_id, inv.customer_id)
+    if original is not None and str(original.id) not in {str(s.id) for s in sales}:
         sales.append(original)
-    sales = _reverse_return_adjusts(invoices_col, return_no, sales)
 
-    open_pending = recompute_customer_total_pending(sales)
+    for sale in sales:
+        data = invoice_calc_dict(sale)
+        has = any(
+            (p.get("mode") or "") == "return_adjust"
+            and (p.get("returnInvoiceNo") or "") == return_no
+            for p in (data.get("payments") or [])
+        )
+        if not has:
+            continue
+        fields = remove_return_adjust_payments(data, return_no)
+        apply_payment_fields(sale, shop_id, fields)
+
+    sales = await _list_customer_sales(session, shop_id, inv.customer_id)
+    if original is not None:
+        original = await load_invoice(session, shop_id, original.id)
+        if str(original.id) not in {str(s.id) for s in sales}:
+            sales.append(original)
+
+    open_pending = recompute_customer_total_pending([invoice_calc_dict(s) for s in sales])
     _validate_settlement(target, customer, open_pending=open_pending)
 
     detail = _empty_detail()
-    if customer is not None and cust_ref is not None and original:
-        sales_by_id = {s["id"]: s for s in sales}
-        if original_id:
-            sales_by_id[original_id] = {
-                **sales_by_id.get(original_id, original),
-                **original,
-                "id": original_id,
-            }
-        working_original = sales_by_id.get(original_id) or original
-        others = [s for s in sales_by_id.values() if s["id"] != original_id]
+    if customer is not None and original is not None:
+        sales_by_id = {str(s.id): s for s in sales}
+        sales_by_id[str(original.id)] = original
+        working_original = invoice_calc_dict(original)
+        others = [invoice_calc_dict(s) for s in sales_by_id.values() if s.id != original.id]
         patches, detail, _ = allocate_return_across_invoices(
             new_refund,
             working_original,
@@ -448,44 +426,31 @@ async def convert_store_credit_return(
             return_invoice_no=return_no,
             settlement=target,
         )
-        _write_invoice_patches(invoices_col, patches)
-        for p in patches:
-            if p["id"] in sales_by_id:
-                sales_by_id[p["id"]].update(p["fields"])
-        sales = list(sales_by_id.values())
-
+        _apply_patches(sales_by_id, shop_id, patches)
         credit_add = round2(detail.get("storeCredit", 0) or 0)
         if credit_add > 0:
-            _apply_store_credit_delta(cust_ref, customer, credit_add)
-        _set_total_pending_from_sales(cust_ref, sales)
+            customer.store_credit = max(0, round2(money(customer.store_credit) + credit_add))
+        customer.total_pending = recompute_customer_total_pending(
+            [invoice_calc_dict(s) for s in sales_by_id.values()]
+        )
     else:
-        # Walk-in / no original — cash only path
         _validate_settlement(target, None)
         detail["cash"] = new_refund
-        if cust_ref:
-            _set_total_pending_from_sales(cust_ref, sales)
+        if customer is not None:
+            customer.total_pending = recompute_customer_total_pending(
+                [invoice_calc_dict(s) for s in sales]
+            )
 
-    converted_at = today_iso()
-    patch = {
-        "settlement": target,
-        "settlementDetail": detail,
-        "refundTotal": new_refund,
-        "grandTotal": new_refund,
-        "settlementConvertedAt": converted_at,
-    }
-    inv_ref.update(patch)
-
-    mirror = returns_col.where(filter=FieldFilter("invoiceNo", "==", return_no))
-    for doc in mirror.stream():
-        returns_col.document(doc.id).update({
-            "settlement": target,
-            "settlementDetail": detail,
-            "refundTotal": new_refund,
-            "settlementConvertedAt": converted_at,
-        })
+    converted_at = datetime.now(timezone.utc)
+    inv.refund_total = new_refund
+    inv.grand_total = new_refund
+    inv.settlement_converted_at = converted_at
+    set_settlement(inv, shop_id, detail, target)
+    await session.flush()
+    inv = await load_invoice(session, shop_id, inv.id)
 
     logger.info(
         "Return %s store-credit converted to %s (refund %s)",
         return_no, target, new_refund,
     )
-    return _to_response(invoice_id, {**inv, **patch})
+    return invoice_response(inv)

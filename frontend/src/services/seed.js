@@ -1,4 +1,4 @@
-// Demo seed data for tiles & sanitaryware showroom, used in DEMO mode (no Firebase).
+// Demo seed data for tiles & sanitaryware showroom (unused in production).
 export function seedData() {
   const now = Date.now();
   const day = 86400000;

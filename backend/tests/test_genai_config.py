@@ -52,3 +52,16 @@ def test_extraction_prompt_includes_tile_sizes():
     prompt = PromptBuilder.build(settings.prompt_extraction, {"tile_sizes": TILE_SIZE_PROMPT})
     assert "2x2 ft" in prompt
     assert "12x18 in" in prompt
+    assert "grand totals" in prompt.lower() or "Skip totals" in prompt
+    assert "sqft" in prompt.lower()
+
+
+def test_export_optimized_yaml(tmp_path):
+    from eval.extraction.compile import export_optimized_yaml
+
+    dest = tmp_path / "extraction.optimized.yaml"
+    path = export_optimized_yaml("Use the boxes column for qty.", dest)
+    text = path.read_text(encoding="utf-8")
+    assert "Use the boxes column for qty." in text
+    assert "system:" in text
+

@@ -1,8 +1,8 @@
-from typing import Optional, List, Dict
 """Application configuration loaded from environment variables."""
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).parent.parent
@@ -11,23 +11,35 @@ os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "true")
 
 
 class Settings:
-    # Firebase
-    FIREBASE_CREDENTIALS_PATH: str = os.environ.get(
-        "FIREBASE_CREDENTIALS_PATH", str(ROOT_DIR / "firebase-service-account.json")
+    DATABASE_URL: str = os.environ.get(
+        "DATABASE_URL",
+        "postgresql+psycopg://postgres:postgres@localhost:54322/postgres",
     )
+    SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    SUPABASE_PUBLISHABLE_KEY: str = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
+    SUPABASE_SECRET_KEY: str = os.environ.get("SUPABASE_SECRET_KEY", "")
+    SUPABASE_JWKS_URL: str = os.environ.get("SUPABASE_JWKS_URL", "").rstrip("/")
+    # Legacy JWT secret — only needed for local `supabase start` HS256 tokens.
+    SUPABASE_JWT_SECRET: str = os.environ.get("SUPABASE_JWT_SECRET", "")
+    SUPABASE_JWT_AUDIENCE: str = os.environ.get("SUPABASE_JWT_AUDIENCE", "authenticated")
 
-    # Gemini on Vertex AI via Application Default Credentials (no API key).
     GOOGLE_CLOUD_PROJECT: str = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
     GOOGLE_CLOUD_LOCATION: str = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
     GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
-    # CORS
     CORS_ORIGINS: list = os.environ.get(
         "CORS_ORIGINS", "http://localhost:3000"
     ).split(",")
 
-    # Server
     LOG_LEVEL: str = os.environ.get("LOG_LEVEL", "INFO")
+
+    @property
+    def supabase_jwks_url(self) -> str:
+        if self.SUPABASE_JWKS_URL:
+            return self.SUPABASE_JWKS_URL
+        if not self.SUPABASE_URL:
+            return ""
+        return f"{self.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
 
 
 settings = Settings()
