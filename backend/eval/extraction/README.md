@@ -5,7 +5,7 @@ Label **7** supplier sheets so we can score extraction at 100% on known files an
 ## Layout
 
 - `samples/` — original PDF or image (`01-kajaria-stock.pdf`, `.png`, `.jpg`, …). Binaries are gitignored.
-- `gold/` — one JSON per sample, **same stem**: `01-kajaria-stock.json`.
+- `gold/` — one JSON per sample, **same stem**: `01-kajaria-stock.json`. Gold JSON is gitignored.
 - `gold/_example.json` — template only (not scored).
 
 `source` inside the JSON must be the sample filename.

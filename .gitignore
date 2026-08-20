@@ -98,7 +98,9 @@ frontend/node_modules/.cache/default-development/9.pack
 frontend/node_modules/.cache/default-development/14.pack
 frontend/node_modules/.cache/default-development/1.pack
 
-# Extraction eval: keep gold JSON; ignore supplier PDFs/images and GEPA cache
+# Extraction eval: ignore supplier PDFs/images, gold JSON, and GEPA cache
 backend/eval/extraction/samples/*
 !backend/eval/extraction/samples/.gitkeep
+backend/eval/extraction/gold/*
+!backend/eval/extraction/gold/.gitkeep
 backend/eval/extraction/.gepa_cache/
