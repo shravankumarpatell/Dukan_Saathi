@@ -27,7 +27,7 @@ class Settings:
     # Pin Vertex to Mumbai so prompts stay in-country. Override only if you
     # have a documented reason (Assured Workloads India Data Boundary).
     GOOGLE_CLOUD_LOCATION: str = os.environ.get("GOOGLE_CLOUD_LOCATION", "asia-south1")
-    GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
     # Google AI Studio key — used when Vertex ADC is not available (Oracle VM).
     GEMINI_API_KEY: str = (
         os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")

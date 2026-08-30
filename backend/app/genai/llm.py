@@ -99,14 +99,15 @@ def create_retry_decorator(model_config):
 
 
 def _structured_model_pair():
-    """Primary from GEMINI_MODEL env when set; fallback from YAML (2.5-flash)."""
+    """Primary from GEMINI_MODEL env when set; fallback from YAML (3.5-flash)."""
     primary = settings.models.primary
     env_model = (app_settings.GEMINI_MODEL or "").strip()
     if env_model:
         primary = primary.model_copy(update={"model": env_model})
     fallback = settings.models.fallback
     if fallback.model == primary.model:
-        fallback = fallback.model_copy(update={"model": "gemini-2.0-flash"})
+        alt = "gemini-3.5-flash" if primary.model != "gemini-3.5-flash" else "gemini-3.6-flash"
+        fallback = fallback.model_copy(update={"model": alt})
     return primary, fallback
 
 
