@@ -115,7 +115,10 @@ export default function BulkUpload() {
       });
       toast.success(`${mapped.length} items add hue — aur sheet bhi laga sakte hain`);
     } catch (err) {
-      toast.error("Extraction failed. Try a clearer photo, or check that Gemini ADC is set up on the server.");
+      toast.error(
+        err?.message ||
+          "Extraction failed. Try a clearer photo, or check that Gemini is set up on the server.",
+      );
     } finally {
       setBusy(false);
     }

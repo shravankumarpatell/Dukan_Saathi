@@ -22,11 +22,11 @@ chat_service = ChatService(retrieval_service)
 
 
 def _ensure_gemini():
-    """Fail fast if Vertex Gemini / ADC is not configured."""
+    """Fail fast if Gemini (API key or Vertex ADC) is not configured."""
     if not is_configured():
         raise HTTPException(
             status_code=503,
-            detail="GOOGLE_CLOUD_PROJECT is not set. Gemini uses Vertex AI with Application Default Credentials.",
+            detail="Gemini is not configured. Set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT on the server.",
         )
 
 

@@ -1,4 +1,4 @@
-"""Gemini via Vertex AI + Application Default Credentials (no API key)."""
+"""Gemini client — Google AI Studio API key, or Vertex AI + ADC."""
 
 from __future__ import annotations
 
@@ -18,23 +18,42 @@ _adc_ok = False
 
 _ADC_HELP = (
     "Google Application Default Credentials not found. "
-    "On Windows with Git Bash or WSL run: "
-    "bash <(curl -sSL https://storage.googleapis.com/cloud-samples-data/adc/setup_adc.sh) "
-    "Or: gcloud auth application-default login. "
-    "On a VM set GOOGLE_APPLICATION_CREDENTIALS to a service-account JSON path."
+    "On a VM either set GEMINI_API_KEY (Google AI Studio) in backend/.env, "
+    "or set GOOGLE_APPLICATION_CREDENTIALS to a Vertex service-account JSON. "
+    "On Windows: gcloud auth application-default login."
+)
+_GENAI_HELP = (
+    "Package google-genai is missing. On the VM use Python 3.10+ "
+    "(venv312) and pip install -r requirements.txt."
 )
 
 
+def _api_key() -> str:
+    return (settings.GEMINI_API_KEY or "").strip()
+
+
 def is_configured() -> bool:
-    return bool(settings.GOOGLE_CLOUD_PROJECT)
+    return bool(_api_key() or settings.GOOGLE_CLOUD_PROJECT)
+
+
+def _import_genai():
+    try:
+        from google import genai
+    except ImportError as exc:
+        raise ValidationError(_GENAI_HELP) from exc
+    return genai
 
 
 def ensure_configured() -> None:
-    """Require a GCP project and ADC. Raises ValidationError if missing."""
+    """Require a Gemini API key or Vertex ADC. Raises ValidationError if missing."""
     global _adc_ok
+    if _api_key():
+        _import_genai()
+        return
     if not settings.GOOGLE_CLOUD_PROJECT:
         raise ValidationError(
-            "GOOGLE_CLOUD_PROJECT is not set. Gemini uses Vertex AI with Application Default Credentials."
+            "Gemini is not configured. Set GEMINI_API_KEY in backend/.env "
+            "(Google AI Studio), or set GOOGLE_CLOUD_PROJECT plus Vertex ADC."
         )
     if _adc_ok:
         return
@@ -61,15 +80,21 @@ def ensure_configured() -> None:
 
 
 def get_client():
-    """Cached google-genai client using Vertex AI + ADC (never an API key)."""
+    """Cached google-genai client: API key if set, otherwise Vertex + ADC."""
     global _client
     if _client is not None:
         return _client
 
     ensure_configured()
+    genai = _import_genai()
 
     import os
-    from google import genai
+
+    key = _api_key()
+    if key:
+        os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "false"
+        _client = genai.Client(api_key=key)
+        return _client
 
     os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
     os.environ.setdefault("GOOGLE_CLOUD_PROJECT", settings.GOOGLE_CLOUD_PROJECT)
@@ -153,8 +178,27 @@ def _build_contents(
     return [types.Content(role="user", parts=parts)]
 
 
+def _is_gemini_3(model: Optional[str]) -> bool:
+    return "gemini-3" in (model or "").lower()
+
+
+def _thinking_config(level: str):
+    from google.genai import types
+
+    thinking_cls = getattr(types, "ThinkingConfig", None)
+    if thinking_cls is None:
+        return None
+    for value in (level.lower(), level.upper(), level):
+        try:
+            return thinking_cls(thinking_level=value)
+        except Exception:
+            continue
+    return None
+
+
 def _gen_config(
     *,
+    model: Optional[str] = None,
     system_instruction: Optional[str] = None,
     temperature: float = 0.3,
     json_mode: bool = False,
@@ -162,7 +206,15 @@ def _gen_config(
 ):
     from google.genai import types
 
-    kwargs: dict = {"temperature": temperature}
+    model_id = model or settings.GEMINI_MODEL
+    kwargs: dict = {}
+    # Gemini 3.x ignores / will reject sampling params — use thinking_level instead.
+    if _is_gemini_3(model_id):
+        thinking = _thinking_config("minimal" if json_mode else "medium")
+        if thinking is not None:
+            kwargs["thinking_config"] = thinking
+    else:
+        kwargs["temperature"] = temperature
     if system_instruction:
         kwargs["system_instruction"] = system_instruction
     if json_mode:
@@ -193,10 +245,11 @@ async def generate_content(
     """Non-streaming generate. Returns concatenated text."""
     client = get_client()
     timeout_s = 90.0
+    model_id = model or settings.GEMINI_MODEL
     try:
         response = await asyncio.wait_for(
             client.aio.models.generate_content(
-                model=model or settings.GEMINI_MODEL,
+                model=model_id,
                 contents=_build_contents(
                     user_text=user_text,
                     messages=messages,
@@ -204,6 +257,7 @@ async def generate_content(
                     image_mime=image_mime,
                 ),
                 config=_gen_config(
+                    model=model_id,
                     system_instruction=system_instruction,
                     temperature=temperature,
                     json_mode=json_mode,
@@ -214,11 +268,12 @@ async def generate_content(
         )
     except asyncio.TimeoutError:
         logger.error("Gemini generate_content timed out after %.0fs", timeout_s)
-        return ""
+        raise
     try:
         return response.text or ""
     except Exception:
-        return ""
+        logger.exception("Gemini response had no text")
+        raise
 
 
 async def stream_content(
@@ -231,10 +286,12 @@ async def stream_content(
 ) -> AsyncIterator[str]:
     """Yield text deltas from Vertex Gemini."""
     client = get_client()
+    model_id = model or settings.GEMINI_MODEL
     stream = client.aio.models.generate_content_stream(
-        model=model or settings.GEMINI_MODEL,
+        model=model_id,
         contents=_build_contents(user_text=user_text, messages=messages),
         config=_gen_config(
+            model=model_id,
             system_instruction=system_instruction,
             temperature=temperature,
         ),

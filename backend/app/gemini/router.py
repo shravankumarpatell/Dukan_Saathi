@@ -1,6 +1,6 @@
 """Gemini proxy routes — Vertex AI + ADC. Prompts and schemas live in genai/."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -92,10 +92,13 @@ async def extract_stock_sheet(
         result = await ExtractionService.extract_stock(body.resolved_base64(), body.resolved_mime())
         return {"rows": [r.model_dump() for r in result.rows]}
     except json.JSONDecodeError:
-        return {"rows": [], "error": "Failed to parse extraction"}
-    except ApplicationError:
+        raise HTTPException(status_code=503, detail="Gemini returned invalid JSON for this sheet.")
+    except ApplicationError as exc:
         logger.exception("Gemini vision error")
-        return {"rows": [], "error": "Gemini unavailable"}
-    except Exception:
+        raise HTTPException(status_code=503, detail=exc.message or "Gemini unavailable")
+    except Exception as exc:
         logger.exception("Gemini vision error")
-        return {"rows": [], "error": "Gemini unavailable"}
+        raise HTTPException(
+            status_code=503,
+            detail=(str(exc) or "Gemini unavailable")[:300],
+        )

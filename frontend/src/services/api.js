@@ -204,10 +204,14 @@ export async function parseCommand(transcript) {
 }
 
 export async function extractStockSheet(base64, mimeType) {
-  return request("/ai/extract-stock", {
+  const result = await request("/ai/extract-stock", {
     method: "POST",
     body: JSON.stringify({ base64, mimeType }),
   });
+  if (result?.error) {
+    throw new Error(result.error);
+  }
+  return result;
 }
 
 /**
