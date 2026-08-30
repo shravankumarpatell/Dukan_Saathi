@@ -27,3 +27,21 @@ def test_schema_inlines_nested_models():
     assert "$ref" not in str(schema)
     assert "$defs" not in schema
     assert schema["properties"]["rows"]["items"]["properties"]["name"]["type"] == "string"
+
+
+def test_structured_model_pair_uses_env(monkeypatch):
+    from app.genai import llm
+
+    monkeypatch.setattr(llm.app_settings, "GEMINI_MODEL", "gemini-2.5-flash")
+    primary, fallback = llm._structured_model_pair()
+    assert primary.model == "gemini-2.5-flash"
+    assert fallback.model != primary.model
+
+
+def test_structured_model_pair_yaml_when_env_empty(monkeypatch):
+    from app.genai import llm
+
+    monkeypatch.setattr(llm.app_settings, "GEMINI_MODEL", "")
+    primary, fallback = llm._structured_model_pair()
+    assert primary.model == "gemini-3.5-flash"
+    assert fallback.model == "gemini-2.5-flash"

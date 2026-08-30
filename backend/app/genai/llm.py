@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
 
 from app.gemini.client import generate_content, ensure_configured
+from app.config import settings as app_settings
 from app.genai.config import settings
 from app.genai.logger import logger
 from app.genai.exceptions import LLMError, FallbackError
@@ -97,6 +98,27 @@ def create_retry_decorator(model_config):
     )
 
 
+def _structured_model_pair():
+    """Primary from GEMINI_MODEL env when set; fallback from YAML (2.5-flash)."""
+    primary = settings.models.primary
+    env_model = (app_settings.GEMINI_MODEL or "").strip()
+    if env_model:
+        primary = primary.model_copy(update={"model": env_model})
+    fallback = settings.models.fallback
+    if fallback.model == primary.model:
+        fallback = fallback.model_copy(update={"model": "gemini-2.0-flash"})
+    return primary, fallback
+
+
+def _fallback_error_message(primary_err: object, fallback_err: object) -> str:
+    p = str(primary_err).strip()
+    f = str(fallback_err).strip()
+    extra = "; ".join(part for part in (p, f) if part)
+    if extra:
+        return f"Gemini extract failed: {extra}"[:400]
+    return "Fatal failure in both models."
+
+
 class LLMClient:
     @staticmethod
     async def _call_gemini_structured(
@@ -120,6 +142,8 @@ class LLMClient:
 
         logger.info("LLM call success: model=%s", model_config.model)
         cleaned = (text or "").replace("```json", "").replace("```", "").strip()
+        if not cleaned:
+            raise LLMError(f"Gemini ({model_config.model}) returned an empty response")
         parsed = json.loads(cleaned)
         return schema_class.model_validate(parsed)
 
@@ -129,17 +153,19 @@ class LLMClient:
         input_text: str = None, image_base64: str = None, image_mime: str = "image/jpeg",
     ) -> BaseModel:
         """Generate structured output with automatic fallback."""
-        @create_retry_decorator(settings.models.primary)
+        primary, fallback = _structured_model_pair()
+
+        @create_retry_decorator(primary)
         async def call_primary():
             return await LLMClient._call_gemini_structured(
-                settings.models.primary, prompt, schema_class, input_text, image_base64, image_mime,
+                primary, prompt, schema_class, input_text, image_base64, image_mime,
             )
 
-        @create_retry_decorator(settings.models.fallback)
+        @create_retry_decorator(fallback)
         async def call_fallback():
-            logger.warning("Triggering fallback model: %s", settings.models.fallback.model)
+            logger.warning("Triggering fallback model: %s", fallback.model)
             return await LLMClient._call_gemini_structured(
-                settings.models.fallback, prompt, schema_class, input_text, image_base64, image_mime,
+                fallback, prompt, schema_class, input_text, image_base64, image_mime,
             )
 
         try:
@@ -151,7 +177,7 @@ class LLMClient:
             except RetryError as fe:
                 logger.error("Fallback model exhausted: %s", fe)
                 raise FallbackError(
-                    "Both primary and fallback models failed.",
+                    _fallback_error_message(e, fe),
                     details={"original_error": str(e), "fallback_error": str(fe)},
                 )
         except Exception as e:
@@ -160,7 +186,7 @@ class LLMClient:
                 return await call_fallback()
             except Exception as fe:
                 raise FallbackError(
-                    "Fatal failure in both models.",
+                    _fallback_error_message(e, fe),
                     details={"primary": str(e), "fallback": str(fe)},
                 )
 
@@ -168,14 +194,15 @@ class LLMClient:
     async def generate_chat(prompt: str, messages: List[dict]) -> str:
         """Free-form chat via Gemini (no structured output)."""
         _ensure_gemini()
+        primary, _ = _structured_model_pair()
 
-        @create_retry_decorator(settings.models.primary)
+        @create_retry_decorator(primary)
         async def call():
             return await generate_content(
-                model=settings.models.primary.model,
+                model=primary.model,
                 messages=messages,
                 system_instruction=prompt,
-                temperature=settings.models.primary.temperature,
+                temperature=primary.temperature,
             )
 
         return await call()

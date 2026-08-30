@@ -203,17 +203,18 @@ def _gen_config(
     temperature: float = 0.3,
     json_mode: bool = False,
     response_schema: Optional[dict] = None,
+    include_thinking: bool = True,
 ):
     from google.genai import types
 
     model_id = model or settings.GEMINI_MODEL
     kwargs: dict = {}
     # Gemini 3.x ignores / will reject sampling params — use thinking_level instead.
-    if _is_gemini_3(model_id):
+    if include_thinking and _is_gemini_3(model_id):
         thinking = _thinking_config("minimal" if json_mode else "medium")
         if thinking is not None:
             kwargs["thinking_config"] = thinking
-    else:
+    elif not _is_gemini_3(model_id):
         kwargs["temperature"] = temperature
     if system_instruction:
         kwargs["system_instruction"] = system_instruction
@@ -246,34 +247,58 @@ async def generate_content(
     client = get_client()
     timeout_s = 90.0
     model_id = model or settings.GEMINI_MODEL
+    contents = _build_contents(
+        user_text=user_text,
+        messages=messages,
+        image_base64=image_base64,
+        image_mime=image_mime,
+    )
+
+    async def _call(*, include_thinking: bool, schema: Optional[dict]):
+        return await client.aio.models.generate_content(
+            model=model_id,
+            contents=contents,
+            config=_gen_config(
+                model=model_id,
+                system_instruction=system_instruction,
+                temperature=temperature,
+                json_mode=json_mode,
+                response_schema=schema,
+                include_thinking=include_thinking,
+            ),
+        )
+
     try:
         response = await asyncio.wait_for(
-            client.aio.models.generate_content(
-                model=model_id,
-                contents=_build_contents(
-                    user_text=user_text,
-                    messages=messages,
-                    image_base64=image_base64,
-                    image_mime=image_mime,
-                ),
-                config=_gen_config(
-                    model=model_id,
-                    system_instruction=system_instruction,
-                    temperature=temperature,
-                    json_mode=json_mode,
-                    response_schema=response_schema,
-                ),
-            ),
+            _call(include_thinking=True, schema=response_schema),
             timeout=timeout_s,
         )
     except asyncio.TimeoutError:
         logger.error("Gemini generate_content timed out after %.0fs", timeout_s)
         raise
+    except Exception as exc:
+        logger.warning("Gemini generate failed (%s); retrying simpler config", exc)
+        try:
+            response = await asyncio.wait_for(
+                _call(include_thinking=False, schema=None),
+                timeout=timeout_s,
+            )
+        except Exception:
+            raise exc
+
     try:
-        return response.text or ""
+        text = response.text or ""
     except Exception:
-        logger.exception("Gemini response had no text")
-        raise
+        text = ""
+        logger.exception("Gemini response had no .text")
+    if not text:
+        # Thinking-only replies sometimes leave .text empty; pull parts.
+        try:
+            parts = response.candidates[0].content.parts
+            text = "".join(getattr(p, "text", "") or "" for p in parts)
+        except Exception:
+            text = ""
+    return text
 
 
 async def stream_content(
