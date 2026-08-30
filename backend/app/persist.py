@@ -136,6 +136,8 @@ def invoice_calc_dict(inv: Invoice) -> dict:
         "settlement": inv.settlement,
         "settlementDetail": settlement_detail(inv),
         "settlementConvertedAt": iso(inv.settlement_converted_at) or None,
+        "settlementConvertedAmount": money(inv.settlement_converted_amount),
+        "settlementConvertedTo": inv.settlement_converted_to,
         "originalInvoiceNo": inv.original_invoice_no,
         "refundTotal": money(inv.refund_total) if inv.refund_total is not None else None,
     }

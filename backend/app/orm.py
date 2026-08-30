@@ -43,6 +43,7 @@ class Shop(Base):
     gst_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     gstin: Mapped[str] = mapped_column(Text, default="")
     invoice_seq: Mapped[int] = mapped_column(Integer, default=1)
+    chat_privacy_mode: Mapped[str] = mapped_column(Text, default="strict")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -129,6 +130,8 @@ class Invoice(Base):
     settlement_converted_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    settlement_converted_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    settlement_converted_to: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     original_invoice_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid, ForeignKey("invoices.id", ondelete="SET NULL"), nullable=True
     )

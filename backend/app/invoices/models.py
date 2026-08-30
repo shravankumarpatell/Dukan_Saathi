@@ -26,12 +26,12 @@ class DiscountInput(BaseModel):
 
 
 class CreateBillRequest(BaseModel):
-    """Request body for creating a sale or purchase invoice.
+    """Request body for creating a sale invoice.
 
     The server computes all totals, validates stock, and manages
     customer balances. The frontend should NOT send pre-computed totals.
     """
-    type: str = Field(..., pattern="^(sale|purchase)$")
+    type: str = Field(default="sale", pattern="^sale$")
     items: List[BillItemInput] = Field(..., min_length=1)
     gstEnabled: bool = True
     gstRate: float = Field(default=18, ge=0)
@@ -75,5 +75,7 @@ class InvoiceResponse(BaseModel):
     settlement: Optional[str] = None
     settlementDetail: Optional[dict] = None
     settlementConvertedAt: Optional[str] = None
+    settlementConvertedAmount: float = 0
+    settlementConvertedTo: Optional[str] = None
     originalInvoiceNo: Optional[str] = None
     refundTotal: Optional[float] = None

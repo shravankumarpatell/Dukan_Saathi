@@ -22,6 +22,7 @@ node_modules/
 # Next.js
 /.next/
 /out/
+frontend/.next/
 next-env.d.ts
 *.tsbuildinfo
 
@@ -104,3 +105,11 @@ backend/eval/extraction/samples/*
 backend/eval/extraction/gold/*
 !backend/eval/extraction/gold/.gitkeep
 backend/eval/extraction/.gepa_cache/
+
+# Stitch live-UI import artifacts (inlined HTML, local Chrome profile)
+.stitch/capture-html/
+.stitch/chrome-profile/
+.stitch/capture-auth.json
+.stitch/_screens.json
+.stitch/_last.json
+.stitch/scripts/node_modules/

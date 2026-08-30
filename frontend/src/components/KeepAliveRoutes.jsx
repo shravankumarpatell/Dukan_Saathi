@@ -1,16 +1,21 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import dynamic from "next/dynamic";
+import { usePathname } from "@/context/AppHistoryContext";
+import { useNavigate } from "@/hooks/useNavigate";
 import { PageKeepAliveProvider } from "@/context/PageKeepAliveContext";
-import Dashboard from "@/pages/Dashboard";
-import Inventory from "@/pages/Inventory";
-import NewBill from "@/pages/NewBill";
-import Customers from "@/pages/Customers";
-import Returns from "@/pages/Returns";
-import Chat from "@/pages/Chat";
-import BulkUpload from "@/pages/BulkUpload";
-import Analytics from "@/pages/Analytics";
-import BillHistory from "@/pages/BillHistory";
-import Settings from "@/pages/Settings";
+import Dashboard from "@/screens/Dashboard";
+import Inventory from "@/screens/Inventory";
+import NewBill from "@/screens/NewBill";
+import Customers from "@/screens/Customers";
+import Returns from "@/screens/Returns";
+import Chat from "@/screens/Chat";
+import BulkUpload from "@/screens/BulkUpload";
+import BillHistory from "@/screens/BillHistory";
+import Settings from "@/screens/Settings";
+
+const Analytics = dynamic(() => import("@/screens/Analytics"), { ssr: false });
 
 const PAGES = [
   { path: "/", Page: Dashboard },
@@ -32,22 +37,24 @@ const KNOWN = new Set(PAGES.map((p) => p.path));
  * survives in-app navigation. Hidden pages are inert and not displayed.
  */
 export default function KeepAliveRoutes() {
-  const { pathname } = useLocation();
+  const pathname = usePathname() || "/";
+  const navigate = useNavigate();
   const [visited, setVisited] = useState(() => new Set(KNOWN.has(pathname) ? [pathname] : ["/"]));
 
   useEffect(() => {
-    if (!KNOWN.has(pathname)) return;
+    if (!KNOWN.has(pathname)) {
+      navigate("/", { replace: true });
+      return;
+    }
     setVisited((prev) => {
       if (prev.has(pathname)) return prev;
       const next = new Set(prev);
       next.add(pathname);
       return next;
     });
-  }, [pathname]);
+  }, [pathname, navigate]);
 
-  if (!KNOWN.has(pathname)) {
-    return <Navigate to="/" replace />;
-  }
+  if (!KNOWN.has(pathname)) return null;
 
   return (
     <>
@@ -56,7 +63,16 @@ export default function KeepAliveRoutes() {
         if (!visited.has(path) && !active) return null;
         return (
           <PageKeepAliveProvider key={path} active={active}>
-            <div hidden={!active} inert={active ? undefined : true} aria-hidden={!active}>
+            <div
+              hidden={!active}
+              inert={active ? undefined : true}
+              aria-hidden={!active}
+              className={
+                // Only when active: `flex` would override HTML `hidden` (display:none)
+                // and leak Chat onto every other route after visiting /chat.
+                path === "/chat" && active ? "flex h-full min-h-0 flex-col" : undefined
+              }
+            >
               <Page />
             </div>
           </PageKeepAliveProvider>

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { sanitizeNumber } from "@/components/NumberInput";
-import Kbd from "@/components/Kbd";
 import SegmentedControl from "@/components/SegmentedControl";
 import TileSizeSelect from "@/components/TileSizeSelect";
 import { normalizeTileSize } from "@/lib/tileSizes";
@@ -18,18 +17,25 @@ export const emptyRow = (id) => ({
   unit: UNIT_BOX, piecesPerBox: "", qty: "", price: "",
 });
 
-export default function BulkGrid({ rows, setRows }) {
+export default function BulkGrid({ rows, setRows, autofocus = true }) {
   const tableRef = useRef(null);
   const seededFocus = useRef(false);
 
-  // Autofocus the Type control of the first row once it exists.
+  // Autofocus the Type control of the first row once it exists (first visit only).
   useEffect(() => {
-    if (seededFocus.current || rows.length === 0) return;
+    if (!autofocus || seededFocus.current || rows.length === 0) return;
     seededFocus.current = true;
-    const t = setTimeout(() => cellAt(rows[0].id, "unit")?.focus(), 60);
+    const t = setTimeout(() => {
+      const el = cellAt(rows[0].id, "unit");
+      try {
+        el?.focus({ focusVisible: true });
+      } catch {
+        el?.focus();
+      }
+    }, 60);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows.length]);
+  }, [rows.length, autofocus]);
 
   const updateRow = (id, field, value) => {
     setRows((prev) => prev.map((r) => {
@@ -41,19 +47,21 @@ export default function BulkGrid({ rows, setRows }) {
   };
 
   const addRow = () => {
-    setRows((prev) => [...prev, emptyRow(Date.now())]);
+    const id = Date.now();
+    setRows((prev) => [...prev, emptyRow(id)]);
     setTimeout(() => {
-      const last = rows[rows.length - 1];
-      // After state update the new row is last+1 — query by newest data-rowid for unit.
-      const cells = tableRef.current?.querySelectorAll('[data-field="unit"]');
-      const lastCell = cells?.[cells.length - 1];
-      lastCell?.focus();
-      void last;
+      const el = tableRef.current?.querySelector(`[data-rowid="${id}"][data-field="unit"]`)
+        || tableRef.current?.querySelector(`[data-testid="bulk-unit-${id}-box"]`);
+      try {
+        el?.focus({ focusVisible: true });
+      } catch {
+        el?.focus();
+      }
     }, 50);
   };
 
   const removeRow = (id) => {
-    setRows((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)));
+    setRows((prev) => prev.filter((r) => r.id !== id));
   };
 
   const handlePaste = (e, rowId, fieldIndex) => {
@@ -130,7 +138,7 @@ export default function BulkGrid({ rows, setRows }) {
     if (e.altKey && (e.key === "x" || e.key === "X")) {
       e.preventDefault();
       e.stopPropagation();
-      if (rows.length <= 1) return;
+      if (rows.length === 0) return;
       const index = rows.findIndex((r) => r.id === id);
       const neighbour = rows[index + 1] || rows[index - 1];
       removeRow(id);
@@ -156,7 +164,7 @@ export default function BulkGrid({ rows, setRows }) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+    <div className="ds-panel overflow-hidden">
       <div className="overflow-x-auto p-1">
         <table className="w-full text-sm" ref={tableRef}>
           <thead>
@@ -207,7 +215,7 @@ export default function BulkGrid({ rows, setRows }) {
                           data-field="size"
                           onPaste={(e) => handlePaste(e, r.id, fieldIdx)}
                           onKeyDown={(e) => handleKeyDown(e, r.id, fieldIdx)}
-                          className="flex min-w-[150px] items-center gap-1 rounded-md border border-transparent bg-transparent px-1 py-1 focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100"
+                          className="flex min-w-[150px] items-center gap-1 rounded-md border border-transparent bg-transparent px-1 py-1 focus-within:border-mint/40 focus-within:bg-white focus-within:ring-2 focus-within:ring-mint/20"
                           inputClassName="w-full bg-transparent text-xs outline-none placeholder:text-slate-300"
                         />
                       ) : (
@@ -231,7 +239,7 @@ export default function BulkGrid({ rows, setRows }) {
                               : field === "qty" ? (isTile ? "boxes" : "pcs")
                               : field === "piecesPerBox" ? "e.g. 4" : ""
                           }
-                          className="w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-300"
+                          className="w-full rounded-dense border border-transparent bg-transparent px-2 py-1.5 focus:border-mint focus:bg-white focus:ring-2 focus:ring-mint/20 outline-none transition-all placeholder:text-slate-300"
                         />
                       )}
                     </td>
@@ -255,15 +263,13 @@ export default function BulkGrid({ rows, setRows }) {
 
       <div className="space-y-2 border-t border-slate-100 bg-slate-50/50 p-2">
         <button
+          type="button"
+          data-testid="bulk-add-row-btn"
           onClick={addRow}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-3 text-sm font-semibold text-slate-500 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 transition-all"
+          className="flex w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-border py-3 text-sm font-semibold text-ink-muted hover:border-mint/40 hover:bg-mint-soft hover:text-mint-dark transition-colors"
         >
           <Plus className="h-4 w-4" /> Add Row
         </button>
-        <p className="text-center text-[11px] text-slate-400">
-          Type pe ←/→ · <Kbd keys="enter" /> agla cell · <Kbd keys="shift+enter" /> pichla · <Kbd keys="arrowup" /> <Kbd keys="arrowdown" /> line ·{" "}
-          <Kbd keys="alt+x" /> line hataayein · aakhri cell par <Kbd keys="enter" /> se nayi line
-        </p>
       </div>
     </div>
   );

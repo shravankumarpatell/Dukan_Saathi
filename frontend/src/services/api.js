@@ -10,7 +10,10 @@
 import { supabase } from "@/supabase";
 import { getSessionToken } from "@/services/auth";
 
-const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.REACT_APP_API_URL ||
+  "http://localhost:8000/api";
 
 /**
  * Get the current Supabase access token for authenticated requests.
@@ -208,10 +211,10 @@ export async function extractStockSheet(base64, mimeType) {
 }
 
 /**
- * Stream a chat response from the backend Gemini proxy (Vertex AI + ADC).
- * Yields text chunks as an async generator.
+ * Stream a shop-analyst answer from the backend (Vertex AI + ADC).
+ * Yields text chunks. Result rows stay on the server (tokenized planner + local template fill).
  */
-export async function* streamChat(messages, systemContext) {
+export async function* streamChat(messages) {
   const token = await getToken();
   const url = `${BASE_URL}/ai/chat`;
   const res = await fetch(url, {
@@ -220,7 +223,10 @@ export async function* streamChat(messages, systemContext) {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ messages, systemContext }),
+    body: JSON.stringify({
+      messages,
+      systemContext: "",
+    }),
   });
 
   if (!res.ok) {
@@ -247,8 +253,12 @@ export async function* streamChat(messages, systemContext) {
       if (trimmed.startsWith("data:")) {
         try {
           const j = JSON.parse(trimmed.slice(5));
+          if (j.error) throw new Error(j.error);
           if (j.text) yield j.text;
-        } catch {}
+        } catch (err) {
+          if (err instanceof SyntaxError) continue;
+          throw err;
+        }
       }
     }
   }

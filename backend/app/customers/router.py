@@ -84,7 +84,7 @@ async def list_customers(
     role: Optional[str] = Query(
         None,
         pattern="^(all|customer|contractor)$",
-        description="Filter: all (default), customer (retail), or contractor (contractor/dealer).",
+        description="Filter: all (default), customer, or contractor (contractor/dealer).",
     ),
     user: AuthenticatedUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
@@ -172,6 +172,9 @@ async def allocate_payment(
         raise ValidationError("Kam se kam ek bill ke against amount daaliye")
 
     total_paid = 0.0
+    paid_at = today_iso()
+    pay_mode = body.mode or "cash"
+    applied_rows: list[dict] = []
 
     for alloc in body.allocations:
         amount = round2(alloc.amount)
@@ -208,7 +211,7 @@ async def allocate_payment(
         fields = apply_payment_to_invoice(
             inv_data,
             amount,
-            {"mode": body.mode or "cash", "date": today_iso()},
+            {"mode": pay_mode, "date": paid_at},
         )
         applied = round2(fields.pop("_applied", 0) or 0)
         if applied <= 0:
@@ -216,6 +219,12 @@ async def allocate_payment(
 
         apply_payment_fields(inv, shop_id, fields)
         total_paid = round2(total_paid + applied)
+        applied_rows.append({
+            "invoiceId": str(inv.id),
+            "invoiceNo": inv.invoice_no or "",
+            "amount": applied,
+            "amountPending": money(inv.amount_pending),
+        })
 
     sales = await _list_customer_sales(session, shop_id, cid)
     new_pending = recompute_customer_total_pending([invoice_calc_dict(s) for s in sales])
@@ -229,6 +238,9 @@ async def allocate_payment(
         "totalPaid": total_paid,
         "customerId": customer_id,
         "totalPending": new_pending,
+        "mode": pay_mode,
+        "paidAt": paid_at,
+        "allocations": applied_rows,
     }
 
 

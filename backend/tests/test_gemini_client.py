@@ -18,6 +18,15 @@ def test_is_configured_reads_project(monkeypatch):
     assert is_configured() is True
 
 
+def test_gen_config_omits_unknown_store_flag():
+    from app.gemini.client import _gen_config
+
+    cfg = _gen_config(system_instruction="hi", temperature=0, json_mode=True)
+    dumped = cfg.model_dump() if hasattr(cfg, "model_dump") else {}
+    assert dumped.get("temperature") == 0
+    assert "store" not in dumped or dumped.get("store") in (False, None)
+
+
 def test_ensure_configured_requires_project(monkeypatch):
     from app.gemini import client as gemini_client
 

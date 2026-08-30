@@ -209,6 +209,131 @@ class TestReturnSettlements:
         assert cust["totalPending"] == 0
 
 
+class TestMixedReturnThenCashConvert:
+    def test_skp_udhari_capped_then_cash_refund_keeps_udhari(self, client):
+        """Udhari 500, paid purchase 1500, return 1000 against udhari → 500+500 credit;
+        cash convert mutates the same return to 500 udhari + 500 cash."""
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(client, headers, stockQty=40, sellPrice=100)
+        customer = _create_customer(client, headers, name="SKP")
+        udhari_sale = _sale(client, headers, product, customer=customer, qty=5, payments=[])
+        paid_sale = _sale(
+            client, headers, product, customer=customer, qty=15,
+            payments=[{"mode": "cash", "amount": 1500}],
+        )
+        before = _get_customer(client, headers, customer["id"])
+        assert before["totalPending"] == 500
+        assert before["storeCredit"] == 0
+
+        ret = _return(
+            client, headers, paid_sale, product, qty=10, refund=1000,
+            settlement="adjust_udhari", customer=customer,
+        )
+        assert ret["refundTotal"] == 1000
+        assert ret["settlementDetail"]["udhariAdjusted"] == 500
+        assert ret["settlementDetail"]["storeCredit"] == 500
+        assert ret["settlementDetail"]["cash"] == 0
+        after_ret = _get_customer(client, headers, customer["id"])
+        assert after_ret["totalPending"] == 0
+        assert after_ret["storeCredit"] == 500
+        assert _get_invoice(client, headers, udhari_sale["id"])["amountPending"] == 0
+
+        converted = client.post(
+            f"/api/returns/{ret['id']}/convert-store-credit",
+            json={"targetSettlement": "cash"},
+            headers=headers,
+        )
+        assert converted.status_code == 200, converted.text
+        body = converted.json()
+        assert body["id"] == ret["id"]
+        assert body["invoiceNo"] == ret["invoiceNo"]
+        assert body["refundTotal"] == 1000
+        assert body["settlementDetail"]["udhariAdjusted"] == 500
+        assert body["settlementDetail"]["cash"] == 500
+        assert body["settlementDetail"]["storeCredit"] == 0
+        assert body["settlementConvertedAmount"] == 500
+        assert body["settlementConvertedTo"] == "cash"
+        assert body["settlementConvertedAt"]
+        after_cash = _get_customer(client, headers, customer["id"])
+        assert after_cash["storeCredit"] == 0
+        assert after_cash["totalPending"] == 0
+        # Prior udhari clear must not reopen.
+        assert _get_invoice(client, headers, udhari_sale["id"])["amountPending"] == 0
+
+    def test_store_credit_to_udhari_records_conversion_receipt_fields(self, client):
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(client, headers, stockQty=20, sellPrice=100)
+        customer = _create_customer(client, headers, name="Udhari Convert")
+        open_sale = _sale(client, headers, product, customer=customer, qty=2, payments=[])
+        paid_sale = _sale(
+            client, headers, product, customer=customer, qty=2,
+            payments=[{"mode": "cash", "amount": 200}],
+        )
+        ret = _return(
+            client, headers, paid_sale, product, qty=1, refund=100,
+            settlement="store_credit", customer=customer,
+        )
+        assert ret["settlementDetail"]["storeCredit"] == 100
+        before = _get_customer(client, headers, customer["id"])
+        assert before["storeCredit"] == 100
+        assert before["totalPending"] == 200
+
+        converted = client.post(
+            f"/api/returns/{ret['id']}/convert-store-credit",
+            json={"targetSettlement": "adjust_udhari"},
+            headers=headers,
+        )
+        assert converted.status_code == 200, converted.text
+        body = converted.json()
+        assert body["settlementConvertedAmount"] == 100
+        assert body["settlementConvertedTo"] == "adjust_udhari"
+        assert body["settlementConvertedAt"]
+        assert body["settlementDetail"]["udhariAdjusted"] == 100
+        assert body["settlementDetail"]["storeCredit"] == 0
+        after = _get_customer(client, headers, customer["id"])
+        assert after["storeCredit"] == 0
+        assert after["totalPending"] == 100
+        assert _get_invoice(client, headers, open_sale["id"])["amountPending"] == 100
+
+    def test_udhari_convert_records_only_absorbed_amount_keeps_leftover_credit(self, client):
+        """Store credit 1000 vs open udhari 100 → receipt is 100, credit left 900."""
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(client, headers, stockQty=40, sellPrice=100)
+        customer = _create_customer(client, headers, name="Leftover Convert")
+        open_sale = _sale(client, headers, product, customer=customer, qty=1, payments=[])
+        paid_sale = _sale(
+            client, headers, product, customer=customer, qty=10,
+            payments=[{"mode": "cash", "amount": 1000}],
+        )
+        ret = _return(
+            client, headers, paid_sale, product, qty=10, refund=1000,
+            settlement="store_credit", customer=customer,
+        )
+        assert ret["settlementDetail"]["storeCredit"] == 1000
+        before = _get_customer(client, headers, customer["id"])
+        assert before["storeCredit"] == 1000
+        assert before["totalPending"] == 100
+
+        converted = client.post(
+            f"/api/returns/{ret['id']}/convert-store-credit",
+            json={"targetSettlement": "adjust_udhari"},
+            headers=headers,
+        )
+        assert converted.status_code == 200, converted.text
+        body = converted.json()
+        assert body["settlementConvertedAmount"] == 100
+        assert body["settlementConvertedTo"] == "adjust_udhari"
+        assert body["settlementDetail"]["udhariAdjusted"] == 100
+        assert body["settlementDetail"]["storeCredit"] == 900
+        after = _get_customer(client, headers, customer["id"])
+        assert after["storeCredit"] == 900
+        assert after["totalPending"] == 0
+        assert _get_invoice(client, headers, open_sale["id"])["amountPending"] == 0
+
+
 class TestPaymentsAndReconcile:
     def test_allocate_payment_reduces_pending(self, client):
         headers, _ = auth_header()
@@ -225,9 +350,49 @@ class TestPaymentsAndReconcile:
         body = res.json()
         assert body["totalPaid"] == 80
         assert body["totalPending"] == 120
+        assert body["mode"] == "cash"
+        assert body["paidAt"]
+        assert body["allocations"] == [{
+            "invoiceId": sale["id"],
+            "invoiceNo": sale["invoiceNo"],
+            "amount": 80,
+            "amountPending": 120,
+        }]
         original = _get_invoice(client, headers, sale["id"])
         assert original["amountPending"] == 120
         assert original["paymentStatus"] == "partial"
+
+    def test_allocate_payment_across_bills_shares_timestamp(self, client):
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(client, headers)
+        customer = _create_customer(client, headers)
+        first = _sale(client, headers, product, customer=customer, payments=[])
+        second = _sale(client, headers, product, customer=customer, payments=[])
+        res = client.post(
+            f"/api/customers/{customer['id']}/payment",
+            json={
+                "allocations": [
+                    {"invoiceId": first["id"], "amount": 50},
+                    {"invoiceId": second["id"], "amount": 30},
+                ],
+                "mode": "online",
+            },
+            headers=headers,
+        )
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["totalPaid"] == 80
+        assert body["mode"] == "online"
+        assert body["totalPending"] == 320
+        assert [row["amount"] for row in body["allocations"]] == [50, 30]
+        first_pay = _get_invoice(client, headers, first["id"])["payments"][-1]
+        second_pay = _get_invoice(client, headers, second["id"])["payments"][-1]
+        assert first_pay["mode"] == "online"
+        assert first_pay["date"] == second_pay["date"]
+        assert (first_pay["date"] or "")[:19] == (body["paidAt"] or "")[:19]
+        after = _get_customer(client, headers, customer["id"])
+        assert after["totalPending"] == 320
 
     def test_reconcile_applies_unallocated_return_to_open_sale(self, client):
         headers, _ = auth_header()

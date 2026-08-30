@@ -170,6 +170,11 @@ def _gen_config(
     if response_schema:
         kwargs["response_mime_type"] = "application/json"
         kwargs["response_schema"] = response_schema
+    # Vertex Interactions `store` is not on every google-genai GenerateContentConfig.
+    if not settings.GEMINI_STORE_PROMPTS:
+        fields = getattr(types.GenerateContentConfig, "model_fields", None) or {}
+        if "store" in fields:
+            kwargs["store"] = False
     return types.GenerateContentConfig(**kwargs)
 
 

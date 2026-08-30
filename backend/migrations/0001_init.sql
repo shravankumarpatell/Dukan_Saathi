@@ -89,6 +89,8 @@ CREATE TABLE invoices (
     settlement_udhari numeric(12, 2) NOT NULL DEFAULT 0,
     settlement_store_credit numeric(12, 2) NOT NULL DEFAULT 0,
     settlement_converted_at timestamptz,
+    settlement_converted_amount numeric(12, 2) NOT NULL DEFAULT 0,
+    settlement_converted_to text CHECK (settlement_converted_to IS NULL OR settlement_converted_to IN ('cash', 'adjust_udhari')),
     original_invoice_id uuid REFERENCES invoices (id) ON DELETE SET NULL,
     original_invoice_no text,
     refund_total numeric(12, 2),

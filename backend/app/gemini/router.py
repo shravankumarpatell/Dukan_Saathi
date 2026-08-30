@@ -2,13 +2,16 @@
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.dependencies import get_current_user, AuthenticatedUser
-from app.config import settings
-from app.common.errors import ValidationError
-from app.gemini.client import ensure_configured, stream_content
+from app.db import get_session
+from app.gemini.client import ensure_configured
 from app.genai.schemas import ChatRequest, NluRequest, ExtractRequest
-from app.genai.services import ExtractionService, NluService, ChatService
+from app.genai.services import ExtractionService, NluService
+from app.common.errors import ValidationError
 from app.genai.exceptions import ApplicationError
+from app.persist import shop_uuid
 import json
 import logging
 
@@ -21,30 +24,43 @@ def _ensure_gemini():
     ensure_configured()
 
 
+def _dialect_from_session(session: AsyncSession) -> str:
+    bind = session.get_bind()
+    name = bind.dialect.name if bind is not None else "sqlite"
+    return "postgres" if name == "postgresql" else "sqlite"
+
+
 @router.post("/chat")
 async def chat_stream(
     body: ChatRequest,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
-    """Stream a chat response from Gemini. Returns Server-Sent Events."""
-    _ensure_gemini()
+    """Stream a shop-analyst answer. Returns Server-Sent Events."""
+    from app.analyst.service import GeminiAnalystLLM, stream_analyst_answer
 
-    messages = [{"role": msg.role, "content": msg.content} for msg in body.messages]
-    system_instruction = ChatService.system_prompt(body.systemContext)
+    _ensure_gemini()
+    shop_id = shop_uuid(user.uid)
+    user_msgs = [m.content for m in body.messages if m.role == "user" and (m.content or "").strip()]
+    last_user = user_msgs[-1] if user_msgs else ""
+    prior = user_msgs[:-1][-6:]
+    dialect = _dialect_from_session(session)
 
     async def event_stream():
         try:
-            async for text in stream_content(
-                model=settings.GEMINI_MODEL,
-                messages=messages,
-                system_instruction=system_instruction,
-                temperature=0.3,
+            async for payload in stream_analyst_answer(
+                shop_id=shop_id,
+                question=last_user,
+                session=session,
+                llm=GeminiAnalystLLM(),
+                dialect=dialect,
+                prior_questions=prior,
             ):
-                yield f"data: {json.dumps({'text': text})}\n\n"
+                yield f"data: {json.dumps(payload)}\n\n"
         except ValidationError as exc:
             yield f"data: {json.dumps({'error': exc.message})}\n\n"
         except Exception:
-            logger.exception("Gemini chat stream failed")
+            logger.exception("Analyst chat stream failed")
             yield f"data: {json.dumps({'error': 'Gemini API error'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

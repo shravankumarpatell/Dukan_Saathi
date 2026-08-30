@@ -1,0 +1,11 @@
+Follow .stitch/STITCH_PROMPT.md.
+
+Design ONE new desktop UI (1440×900) for EXISTING DukanSaathi, route /bill. Title New Bill. New Bill F2 active in the glass sidebar (same nav as STITCH_PROMPT). Never TilePOS. No mic.
+
+Sale | Purchase toggle.
+Customer name search + phone. Contractor checkbox.
+Add item catalog search.
+SOLID cart table (not glass): qty and amounts in JetBrains Mono.
+Payment: Cash, Online, Udhari pending.
+Buttons: Clear (rose ghost), Preview Alt+P, Save F9 large #1A5BFA.
+Dense POS. Blue mesh behind. Glass sidebar + header only.

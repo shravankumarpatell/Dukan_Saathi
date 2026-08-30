@@ -1,0 +1,9 @@
+Edit THIS screen only: Stock page of existing DukanSaathi (route /inventory). Title Stock.
+
+Same DukanSaathi sidebar as Dashboard (Stock active). No TilePOS, no Catalog.
+
+Buttons: Add Stock, Naya item. Search name/code/company.
+List of products: name, size/company line, stock qty badge, sell price, LOW badge if low. Chevron to edit.
+Dense list, not a marketplace grid of fake Statuario tiles unless as one example SKU name like Pearl White.
+
+Ink sidebar, canvas #F3F5F7, mint accents.

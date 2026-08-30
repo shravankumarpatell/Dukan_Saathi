@@ -20,7 +20,7 @@ export default function DateNav({
           min={min ? min.slice(0, 7) : undefined}
           max={maxYm}
           onChange={(e) => e.target.value && onChange(e.target.value)}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+          className="rounded-control border border-border bg-panel px-3 py-1.5 text-sm text-ink"
         />
       </div>
     );
@@ -42,7 +42,7 @@ export default function DateNav({
             const n = Number(e.target.value);
             if (n >= minY && n <= maxY) onChange(String(n));
           }}
-          className="w-24 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm tabular-nums"
+          className="w-24 rounded-control border border-border bg-panel px-3 py-1.5 text-sm tabular-nums text-ink"
         />
       </div>
     );
@@ -58,7 +58,7 @@ export default function DateNav({
         min={min || undefined}
         max={maxY}
         onChange={(e) => e.target.value && onChange(e.target.value)}
-        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm"
+        className="rounded-control border border-border bg-panel px-3 py-1.5 text-sm text-ink"
       />
     </div>
   );

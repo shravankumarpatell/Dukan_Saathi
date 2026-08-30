@@ -1,18 +1,20 @@
+"use client";
+
 import { useCallback, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { usePathname } from "@/context/AppHistoryContext";
 import { usePageKeepAlive } from "@/context/PageKeepAliveContext";
 
 /**
  * Keep the caret on each page's start control.
  *
- * - Fires on every fresh navigation to the page (`location.key` / pathname)
+ * - Fires on pathname change and when keep-alive `active` flips true
  * - Returns `focusStart()` for post-submit / reset / modal-close callers
  *
  * Pass `enabled: false` while an exclusive modal owns the keyboard so we
  * don't steal focus from dialogs.
  */
 export function usePageFocus(focusFn, { enabled = true, delay = 60 } = {}) {
-  const location = useLocation();
+  const pathname = usePathname();
   const { active: pageActive } = usePageKeepAlive();
   const on = enabled && pageActive;
   const focusFnRef = useRef(focusFn);
@@ -38,7 +40,7 @@ export function usePageFocus(focusFn, { enabled = true, delay = 60 } = {}) {
       try { focusFnRef.current?.(); } catch { /* ignore */ }
     }, delay);
     return () => clearTimeout(t);
-  }, [location.key, location.pathname, on, delay]);
+  }, [pathname, on, delay]);
 
   return focusStart;
 }

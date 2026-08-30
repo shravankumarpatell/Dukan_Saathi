@@ -61,7 +61,7 @@ const InvoiceSearch = forwardRef(function InvoiceSearch(
 
   return (
     <div className="relative" ref={wrapperRef}>
-      <div className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500">
+      <div className="ds-combo">
         <Search className="h-4 w-4 shrink-0 text-slate-400" />
         <input
           ref={inputRef}
@@ -93,7 +93,7 @@ const InvoiceSearch = forwardRef(function InvoiceSearch(
             nav.handleKeyDown(e);
           }}
           placeholder={placeholder}
-          className="w-full bg-transparent outline-none placeholder:text-slate-400"
+          className="ds-bare-input w-full placeholder:text-slate-400"
         />
       </div>
 
@@ -102,7 +102,7 @@ const InvoiceSearch = forwardRef(function InvoiceSearch(
           id="invoice-search-list"
           role="listbox"
           ref={nav.listRef}
-          className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+          className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-panel shadow-lg"
         >
           {results.length === 0 && <div className="px-3 py-4 text-sm text-slate-500">Koi sale invoice nahi mila.</div>}
           {results.map((i, idx) => {
@@ -118,10 +118,10 @@ const InvoiceSearch = forwardRef(function InvoiceSearch(
                 data-testid={`invoice-option-${i.id}`}
                 onMouseEnter={() => hover(idx)}
                 onMouseDown={(e) => { e.preventDefault(); onPick(i); setOpen(false); }}
-                className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left ${active ? "bg-indigo-50" : ""}`}
+                className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left ${active ? "bg-mint-soft" : ""}`}
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <ReceiptText className="h-4 w-4 shrink-0 text-indigo-600" />
+                  <ReceiptText className="h-4 w-4 shrink-0 text-mint" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-900">{i.customerName || "Walk-in"}</p>
                     <p className="truncate text-xs text-slate-500">{i.invoiceNo} · {fmtDate(i.date)}</p>

@@ -8,7 +8,7 @@ import {
 } from "@/lib/tileSizes";
 
 const WRAP =
-  "flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-2 focus-within:ring-2 focus-within:ring-indigo-500";
+  "ds-combo";
 
 /**
  * Searchable tile-size combobox. Type "2x2" / "12*18" to filter.
@@ -19,7 +19,7 @@ export default function TileSizeSelect({
   onChange,
   testId = "tile-size",
   className = WRAP,
-  inputClassName = "w-full bg-transparent text-sm outline-none placeholder:text-slate-400",
+  inputClassName = "ds-bare-input w-full text-sm placeholder:text-slate-400",
   placeholder = "Size search karein…",
   onKeyDown,
   onPaste,
@@ -199,7 +199,7 @@ export default function TileSizeSelect({
                 data-testid={`${testId}-opt-${row.size.value}`}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(row.size)}
-                className={`flex w-full flex-col items-start px-3 py-1.5 text-left ${active ? "bg-indigo-50" : ""}`}
+                className={`flex w-full flex-col items-start px-3 py-1.5 text-left ${active ? "bg-mint-soft" : ""}`}
               >
                 <span className="text-sm font-medium text-slate-800">{row.size.option}</span>
                 <span className="text-[10px] uppercase tracking-wide text-slate-400">{row.size.group}</span>

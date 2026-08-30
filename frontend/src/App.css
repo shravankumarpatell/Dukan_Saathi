@@ -1,13 +1,5 @@
 .App { min-height: 100vh; }
 
-/* Voice mic radar pulse */
-@keyframes ds-radar {
-  0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.5); }
-  70% { box-shadow: 0 0 0 22px rgba(234, 88, 12, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
-}
-.ds-listening { animation: ds-radar 1.4s infinite; }
-
 /* Draft slide-up */
 @keyframes ds-slideup {
   from { opacity: 0; transform: translateY(28px); }
@@ -23,11 +15,49 @@
 .ds-fade { animation: ds-fade 0.35s ease both; }
 
 /* subtle table stripe */
-.ds-stripe tbody tr:nth-child(even) { background-color: #f8fafc; }
+.ds-stripe tbody tr:nth-child(even) { background-color: rgb(var(--canvas)); }
 
-::selection { background: #fed7aa; color: #7c2d12; }
+::selection { background: rgb(var(--mint-soft)); color: rgb(var(--ink)); }
 
-/* ─── Desktop sidebar link transitions ─── */
-.ds-sidebar-link {
-  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+/* Keyboard-first: radios get a ring on programmatic focus too (Alt+Q, page land). */
+button:focus-visible,
+a:focus-visible,
+[href]:focus-visible,
+[role="button"]:focus-visible,
+[role="radio"]:focus,
+[role="radio"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="option"]:focus-visible {
+    outline: 2px solid rgb(var(--mint));
+    outline-offset: 2px;
+}
+[role="dialog"],
+[role="dialog"]:focus,
+[role="dialog"]:focus-visible,
+[cmdk-list],
+[cmdk-list]:focus,
+[cmdk-list]:focus-visible,
+[cmdk-item]:focus,
+[cmdk-item]:focus-visible,
+[role="listbox"]:focus,
+[role="listbox"]:focus-visible {
+    outline: none !important;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: none;
+}
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+    outline: 2px solid rgb(var(--mint));
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ds-slideup,
+    .ds-fade {
+        animation: none;
+    }
 }

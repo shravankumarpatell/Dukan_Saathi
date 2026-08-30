@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { KEYS } from "@/lib/keymap";
-import Kbd from "@/components/Kbd";
 import { Download } from "lucide-react";
 
 /**
@@ -15,7 +14,8 @@ import { Download } from "lucide-react";
  *
  * On close we restore the caret to whatever had focus before the dialog opened
  * (Radix's default restore is disabled because the shell / iframe otherwise
- * leaves focus on a dead node → "cursor gayab").
+ * leaves focus on a dead node → "cursor gayab") — unless the parent passes
+ * `restoreFocus={false}` and owns focus itself (e.g. New Bill after F9 save).
  *
  * Download uses the provided filename (blob: URLs ignore Content-Disposition).
  */
@@ -25,10 +25,13 @@ export default function PdfViewerDialog({
   onClose,
   title = "PDF",
   testId = "pdf-viewer-frame",
+  restoreFocus = true,
 }) {
   const open = useVisibleOpen(!!url);
   const shellRef = useRef(null);
   const previousFocusRef = useRef(null);
+  const restoreFocusRef = useRef(restoreFocus);
+  restoreFocusRef.current = restoreFocus;
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -84,6 +87,7 @@ export default function PdfViewerDialog({
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
       close();
     };
 
@@ -98,6 +102,10 @@ export default function PdfViewerDialog({
   }, [open, url, close]);
 
   const restorePreviousFocus = useCallback(() => {
+    if (!restoreFocusRef.current) {
+      previousFocusRef.current = null;
+      return;
+    }
     const el = previousFocusRef.current;
     previousFocusRef.current = null;
     if (!el || typeof el.focus !== "function") return;
@@ -136,6 +144,7 @@ export default function PdfViewerDialog({
         }}
         onEscapeKeyDown={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           close();
         }}
         data-testid="pdf-viewer-dialog"
@@ -155,15 +164,12 @@ export default function PdfViewerDialog({
             }}
           />
         )}
-        <div className="flex items-center justify-between gap-2 px-2 pb-1">
-          <p className="text-[11px] text-slate-400">
-            <Kbd keys={KEYS.cancel} /> se band
-          </p>
+        <div className="flex items-center justify-end gap-2 px-2 pb-1">
           <button
             type="button"
             data-testid="pdf-download-btn"
             onClick={download}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95"
+            className="inline-flex items-center gap-1.5 rounded-control border border-border bg-white px-2.5 py-1 text-xs font-semibold text-ink hover:bg-canvas active:scale-95"
             title={filename}
           >
             <Download className="h-3.5 w-3.5" /> Download

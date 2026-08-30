@@ -1,38 +1,41 @@
 import React from "react";
 import { Zap, ScanLine, ReceiptIndianRupee } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const FEATURES = [
-  { icon: Zap, t: "Instant Data Entry", d: "Fast keyboard grids & AI extraction." },
-  { icon: ReceiptIndianRupee, t: "GST-ready PDF bill", d: "Professional invoicing & udhari tracking." },
-  { icon: ScanLine, t: "Photo se stock intake", d: "Supplier sheet ki photo, automatic entry." },
+  { icon: Zap, t: "Ledger in real time", d: "Kamai, udhari, cash — ek private console." },
+  { icon: ReceiptIndianRupee, t: "GST-ready bills", d: "Clean PDFs, split payments, vusool." },
+  { icon: ScanLine, t: "Stock from a photo", d: "Supplier sheet in, catalog out." },
 ];
 
 export default function AuthLayout({ children }) {
   return (
-    <div className="grid min-h-screen md:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-indigo-950 p-10 text-white md:flex">
-        <img
-          src="https://images.unsplash.com/photo-1785216346524-38260d16f87f?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-25"
-        />
+    <div className="relative grid min-h-screen ds-mesh md:grid-cols-2">
+      <div className="absolute right-4 top-4 z-20">
+        <ThemeToggle />
+      </div>
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-surface p-12 text-white md:flex">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(37,99,235,0.38),transparent_55%)]" />
         <div className="relative">
-          <h1 className="font-display text-4xl font-extrabold tracking-tight">DukanSaathi</h1>
-          <p className="mt-2 text-lg text-indigo-200">Smart shop management for modern retail.</p>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-mint">DukanSaathi</p>
+          <h1 className="mt-4 font-display text-4xl font-semibold tracking-tight">The dukaan,<br />as a ledger.</h1>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/55">
+            Keyboard-first POS for tile shops — bills, stock, and udhari without the circus.
+          </p>
         </div>
-        <div className="relative space-y-4">
+        <div className="relative space-y-5">
           {FEATURES.map((f, i) => (
             <div key={i} className="flex items-start gap-3">
-              <div className="rounded-lg bg-orange-600 p-2"><f.icon className="h-5 w-5" /></div>
+              <div className="rounded-control bg-mint/15 p-2 text-mint"><f.icon className="h-4 w-4" /></div>
               <div>
-                <p className="font-semibold">{f.t}</p>
-                <p className="text-sm text-indigo-200">{f.d}</p>
+                <p className="text-sm font-medium">{f.t}</p>
+                <p className="text-sm text-white/50">{f.d}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
-      <div className="flex items-center justify-center bg-stone-100 p-6">
+      <div className="flex items-center justify-center p-6">
         {children}
       </div>
     </div>
@@ -46,7 +49,7 @@ export function GoogleButton({ onClick, disabled, label = "Continue with Google"
       data-testid="google-login-btn"
       onClick={onClick}
       disabled={disabled}
-      className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-900 px-4 py-3 font-semibold text-white transition-transform active:scale-95 disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-2 rounded-control bg-surface px-4 py-3 text-sm font-semibold text-white transition-transform active:scale-[0.99] disabled:opacity-60"
     >
       <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
         <path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -62,9 +65,9 @@ export function GoogleButton({ onClick, disabled, label = "Continue with Google"
 export function OrDivider() {
   return (
     <div className="my-4 flex items-center gap-3">
-      <div className="h-px flex-1 bg-slate-200" />
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">or</span>
-      <div className="h-px flex-1 bg-slate-200" />
+      <div className="h-px flex-1 bg-border" />
+      <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted">or</span>
+      <div className="h-px flex-1 bg-border" />
     </div>
   );
 }

@@ -35,7 +35,7 @@ class NluResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
     intent: str = Field(
         default="unknown",
-        description="sale, purchase, return, payment, stock_query, udhari_query, buyers_query, topseller_query, or unknown",
+        description="sale, return, payment, stock_query, udhari_query, buyers_query, topseller_query, or unknown",
     )
     language: str = Field(default="en", description="hi or en")
     entities: NluEntities = Field(default_factory=NluEntities)

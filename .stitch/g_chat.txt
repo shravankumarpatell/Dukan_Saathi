@@ -1,0 +1,9 @@
+Follow .stitch/STITCH_PROMPT.md.
+
+Design ONE new desktop UI (1440×900) for EXISTING DukanSaathi, route /chat. Title Analyst. Analyst Alt+A active. Same glass sidebar. Never TilePOS. NO microphone. NO push-to-talk. Text only.
+
+Header: Analyst. Subtitle: numbers from the shop ledger.
+Toggle Strict | Rich.
+Empty-state chips: Ram ka last bill · pichle mahine ki kamai · sabse zyada udhari kiska · low stock kaunsa.
+Composer at bottom, Send #1A5BFA.
+Inter. Blue mesh. Glass chrome only.

@@ -4,6 +4,8 @@ import { isPieceUnit } from "./units";
 
 export const GST_DEFAULT = 18;
 export const GST_SLABS = [0, 5, 12, 18, 28, 40];
+/** Matches Postgres numeric(12, 2). */
+export const MAX_MONEY = 9999999999.99;
 
 export function money(n) {
   const v = Number(n) || 0;
@@ -112,6 +114,26 @@ export function computeBillTotals(draft) {
   if (amountPending > 0.5 && amountPaid > 0.5) paymentStatus = "partial";
   else if (amountPending > 0.5) paymentStatus = "pending";
   return { subtotal, discountOff, taxable, gstRate, gstAmount, grandTotal, amountPaid, amountPending, paymentStatus };
+}
+
+/** @returns {string|null} Hindi error message when totals exceed DB limit */
+export function billLimitError(totals, items = []) {
+  const over = (n, label) => {
+    const v = round2(n);
+    if (Math.abs(v) > MAX_MONEY) {
+      return `${label} bahut bada hai (max ~₹999 crore). Rate ya qty check karein.`;
+    }
+    return null;
+  };
+  for (const it of items) {
+    const err = over(itemAmount(it), it.name || "Item");
+    if (err) return err;
+    const rateErr = over(Number(it.rate) || 0, `${it.name || "Item"} rate`);
+    if (rateErr) return rateErr;
+  }
+  return over(totals?.grandTotal, "Bill total")
+    || over(totals?.subtotal, "Subtotal")
+    || null;
 }
 
 export function todayISO() { return new Date().toISOString(); }

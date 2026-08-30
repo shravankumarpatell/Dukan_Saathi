@@ -99,7 +99,7 @@ test("decision notes flag karcha above kamai", () => {
 });
 
 test("avgBill and collectionRate", () => {
-  const stats = { ...emptyStats(), bills: 2, salesGross: 1000, cashCollected: 600, onlineCollected: 100 };
+  const stats = { ...emptyStats(), bills: 2, salesGross: 1000, cashIn: 600, cashCollected: 600, onlineIn: 100, onlineCollected: 100 };
   expect(avgBill(stats)).toBe(500);
   expect(collectionRate(stats)).toBe(70);
 });

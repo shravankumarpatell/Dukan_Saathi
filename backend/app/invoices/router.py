@@ -11,12 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.calc import (
     calculate_sold_pieces,
     compute_bill_totals,
-    compute_stock_addition,
     compute_stock_deduction,
     format_stock_pieces_label,
     gen_invoice_no,
     get_total_stock_pieces,
     round2,
+    validate_bill_limits,
     validate_payment_split,
 )
 from app.common.errors import InsufficientStockError, NotFoundError, ValidationError
@@ -77,7 +77,9 @@ async def create_bill(
     user: AuthenticatedUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """Create a sale or purchase invoice in a single transaction."""
+    """Create a sale invoice in a single transaction."""
+    if body.type != "sale":
+        raise ValidationError("Sirf sale bill ban sakta hai. Stock ke liye Add Stock use karein.")
     shop = await _get_or_create_shop(session, user)
     shop_id = shop.id
 
@@ -96,22 +98,21 @@ async def create_bill(
             raise NotFoundError("Product", str(pid))
         products_by_id[pid] = product
 
-    if body.type == "sale":
-        needed: dict[UUID, int] = {}
-        for item in body.items:
-            pid = parse_uuid(item.productId, "Product")
-            needed[pid] = needed.get(pid, 0) + calculate_sold_pieces(item.model_dump())
-        for pid, sold_pieces in needed.items():
-            product = products_by_id[pid]
-            available = get_total_stock_pieces(product_dict(product))
-            if sold_pieces > available:
-                raise InsufficientStockError(
-                    product.name or str(pid),
-                    available=available,
-                    requested=sold_pieces,
-                    avail_label=format_stock_pieces_label(product_dict(product), available),
-                    req_label=format_stock_pieces_label(product_dict(product), sold_pieces),
-                )
+    needed: dict[UUID, int] = {}
+    for item in body.items:
+        pid = parse_uuid(item.productId, "Product")
+        needed[pid] = needed.get(pid, 0) + calculate_sold_pieces(item.model_dump())
+    for pid, sold_pieces in needed.items():
+        product = products_by_id[pid]
+        available = get_total_stock_pieces(product_dict(product))
+        if sold_pieces > available:
+            raise InsufficientStockError(
+                product.name or str(pid),
+                available=available,
+                requested=sold_pieces,
+                avail_label=format_stock_pieces_label(product_dict(product), available),
+                req_label=format_stock_pieces_label(product_dict(product), sold_pieces),
+            )
 
     draft = {
         "items": [it.model_dump() for it in body.items],
@@ -121,13 +122,13 @@ async def create_bill(
         "payments": [p.model_dump() for p in body.payments],
     }
     totals = compute_bill_totals(draft)
+    validate_bill_limits(totals, body.items)
     validate_payment_split(totals["grandTotal"], body.payments)
     credit_used = round2(sum(p.amount for p in body.payments if p.mode == "credit"))
 
     seq = shop.invoice_seq or 1
     shop.invoice_seq = seq + 1
-    prefix = "PUR" if body.type == "purchase" else None
-    invoice_no = gen_invoice_no(seq, body.gstEnabled, prefix)
+    invoice_no = gen_invoice_no(seq, body.gstEnabled, None)
 
     customer = None
     customer_id = None
@@ -168,7 +169,7 @@ async def create_bill(
             await session.flush()
             customer_id = customer.id
 
-    if body.type == "sale" and credit_used > 0:
+    if credit_used > 0:
         current_credit = round2(money(customer.store_credit) if customer else 0)
         if credit_used > current_credit + 0.01:
             raise ValidationError(
@@ -234,16 +235,10 @@ async def create_bill(
         product = products_by_id[pid]
         sold_pieces = calculate_sold_pieces(item.model_dump())
         pdata = product_dict(product)
-        if body.type == "sale":
-            patch = compute_stock_deduction(pdata, sold_pieces)
-            product.stock_qty = patch["stockQty"]
-            change = -sold_pieces
-            reason = "sale"
-        else:
-            patch = compute_stock_addition(pdata, sold_pieces)
-            product.stock_qty = patch["stockQty"]
-            change = sold_pieces
-            reason = "purchase"
+        patch = compute_stock_deduction(pdata, sold_pieces)
+        product.stock_qty = patch["stockQty"]
+        change = -sold_pieces
+        reason = "sale"
         session.add(
             StockLedger(
                 shop_id=shop_id,
@@ -256,11 +251,11 @@ async def create_bill(
         )
 
     if customer is not None:
-        if body.type == "sale" and totals["amountPending"] > 0:
+        if totals["amountPending"] > 0:
             customer.total_pending = round2(
                 money(customer.total_pending) + totals["amountPending"]
             )
-        if body.type == "sale" and credit_used > 0:
+        if credit_used > 0:
             customer.store_credit = max(0, round2(money(customer.store_credit) - credit_used))
         if bool(customer.is_contractor) != is_contractor:
             customer.is_contractor = is_contractor

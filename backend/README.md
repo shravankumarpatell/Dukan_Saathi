@@ -31,8 +31,9 @@ Copy `.env.example` to `.env`. Gemini uses **Vertex AI + Application Default Cre
 ```
 GOOGLE_GENAI_USE_VERTEXAI=true
 GOOGLE_CLOUD_PROJECT=your-gcp-project-id
-GOOGLE_CLOUD_LOCATION=global
+GOOGLE_CLOUD_LOCATION=asia-south1
 GEMINI_MODEL=gemini-2.5-flash
+GEMINI_STORE_PROMPTS=false
 ```
 
 On Windows (Git Bash or WSL):

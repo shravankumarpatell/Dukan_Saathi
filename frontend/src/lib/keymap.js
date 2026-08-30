@@ -21,7 +21,7 @@ import {
  *   Ctrl+N/T/W   window management      → unused
  *
  * Nav F-keys (primary workflow): F1 Dashboard, F2 Bill, F3 Stock, F4 History.
- * Shortcut cheat sheet: Alt+K (does not fight Dashboard on F1).
+ * Search anywhere: Alt+K. Shortcut cheat sheet: Ctrl+K (⌘K on Mac).
  *
  * Change a binding here and it updates everywhere, including the on-screen
  * hints and the cheat sheet.
@@ -47,8 +47,10 @@ export const SCOPES = {
 
 /** Reused across pages so the same action always has the same key. */
 export const KEYS = {
-  palette: "mod+k",
-  help: "alt+k",
+  palette: "alt+k",
+  help: "mod+k",
+  /** Clear Analyst chat (Alt+K is search). */
+  chatClear: "alt+shift+k",
 
   gotoDashboard: "F1",
   gotoBill: "F2",
@@ -87,13 +89,13 @@ export const KEYS = {
  */
 export const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, keys: KEYS.gotoDashboard, end: true, keywords: "home ghar overview stats" },
-  { to: "/bill", label: "New Bill", icon: Plus, keys: KEYS.gotoBill, keywords: "invoice sale purchase bill banao" },
+  { to: "/bill", label: "New Bill", icon: Plus, keys: KEYS.gotoBill, keywords: "invoice sale bill banao" },
   { to: "/inventory", label: "Stock", icon: Package, keys: KEYS.gotoStock, keywords: "inventory items products maal tiles sanitary" },
   { to: "/history", label: "Bill History", icon: ReceiptText, keys: KEYS.gotoHistory, keywords: "invoices past bills receipts" },
   { to: "/returns", label: "Returns", icon: Undo2, keys: KEYS.gotoReturns, keywords: "return refund wapas store credit" },
   { to: "/bulk", label: "Add Stock", icon: Upload, keys: KEYS.gotoBulk, keywords: "bulk upload intake supplier maal" },
   { to: "/customers", label: "Udhari & Customers", icon: Users, keys: KEYS.gotoCustomers, keywords: "udhari credit grahak party ledger customers" },
-  { to: "/chat", label: "AI Assistant", icon: Bot, keys: KEYS.gotoChat, keywords: "chat ai help sawal" },
+  { to: "/chat", label: "AI Saathi", icon: Bot, keys: KEYS.gotoChat, keywords: "chat ai help sawal saathi analyst munim hisaab" },
   { to: "/analytics", label: "Analytics", icon: BarChart3, keys: KEYS.gotoAnalytics, keywords: "reports charts revenue top sellers kamai karcha monthly yearly daily" },
 ];
 
@@ -102,7 +104,7 @@ export const NAV_BOTTOM = [
 ];
 
 /**
- * The cheat sheet shown by Alt+K.
+ * The cheat sheet shown by Ctrl+K (⌘K).
  *
  * Page-specific shortcuts are appended live from whatever scopes are currently
  * on the stack, so this only lists the vocabulary that's true everywhere.
@@ -112,7 +114,7 @@ export const SHORTCUT_GUIDE = [
   {
     group: "Jaana kahin bhi — Go anywhere",
     items: [
-      { keys: KEYS.palette, label: "Command palette (search any screen or action)" },
+      { keys: KEYS.palette, label: "Search anywhere (bills, items, customers, screens)" },
       { keys: KEYS.gotoDashboard, label: "Dashboard" },
       { keys: KEYS.gotoBill, label: "New bill" },
       { keys: KEYS.gotoStock, label: "Stock" },
@@ -120,7 +122,7 @@ export const SHORTCUT_GUIDE = [
       { keys: KEYS.gotoReturns, label: "Returns" },
       { keys: KEYS.gotoBulk, label: "Add stock (bulk)" },
       { keys: KEYS.gotoCustomers, label: "Udhari & Customers" },
-      { keys: KEYS.gotoChat, label: "AI assistant" },
+      { keys: KEYS.gotoChat, label: "AI Saathi" },
       { keys: KEYS.gotoAnalytics, label: "Analytics" },
       { keys: KEYS.gotoExpense, label: "Add expense" },
       { keys: KEYS.sqftCalc, label: "Quick sq-ft calculator (Dashboard)" },

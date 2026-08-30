@@ -1,0 +1,9 @@
+Edit THIS screen only: Login for the existing DukanSaathi React app.
+
+Remove TilePOS, phone-only "Dukandar Phone Number", and any showroom stock-photo as the product identity.
+
+Left: solid ink #0B1220 panel. Small mint label DUKANSAATHI. Headline: The dukaan, as a ledger. Three bullets: Instant data entry, GST-ready PDF bill, Photo se stock intake.
+
+Right: white card, heading Apni dukaan kholiye, subtitle Sign in to manage stock, billing & udhari. Button Continue with Google (ink). Divider or. Email + Password fields. Sign in (ink). Forgot password + Create account.
+
+Desktop 1440. IBM Plex Sans. No orange.

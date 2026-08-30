@@ -1,0 +1,8 @@
+{
+  "id": "line-amount",
+  "question": "Meena ne kaunsi tiles li",
+  "category": "fanout",
+  "route": "sql",
+  "sql": "SELECT product_name, ROUND(SUM(line_amount), 2) AS line_amount FROM v_invoice_lines WHERE invoice_type = 'sale' AND customer_id = :c1 GROUP BY product_name",
+  "expect_from": "fixture_lines"
+}

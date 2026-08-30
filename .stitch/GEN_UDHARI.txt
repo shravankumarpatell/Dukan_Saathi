@@ -1,0 +1,8 @@
+Desktop screen for the EXISTING DukanSaathi app route /customers — Udhari & Customers.
+
+Same ink sidebar as the rest of the app (Dashboard, New Bill, Stock, Bill History, Returns, Add Stock, Udhari & Customers active, AI Assistant, Analytics). Never say TilePOS.
+
+Page title: Udhari & Customers. Two tabs: Udhari | Customers.
+Udhari tab: list of customers with outstanding rupees in IBM Plex Mono, Pay button.
+Customers tab: searchable list, Add customer.
+Premium fintech: #0B1220 sidebar, #F3F5F7 canvas, #0D9488 mint accent, IBM Plex Sans, hairline borders.

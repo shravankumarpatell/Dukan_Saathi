@@ -21,8 +21,12 @@ const NumberInput = forwardRef(function NumberInput({ value, onChange, className
   };
 
   const handleKeyDown = (e) => {
-    // Block scientific notation / sign characters that number keyboards may emit
-    if (e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
+    // Block scientific notation / sign characters that number keyboards may emit.
+    // Do not swallow Alt/Ctrl/Meta chords (Alt+E expense, etc.).
+    if (
+      (e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-")
+      && !e.altKey && !e.ctrlKey && !e.metaKey
+    ) {
       e.preventDefault();
     }
     props.onKeyDown?.(e);
@@ -40,7 +44,7 @@ const NumberInput = forwardRef(function NumberInput({ value, onChange, className
       onFocus={handleFocus}
       onKeyDown={handleKeyDown}
       onWheel={(e) => e.currentTarget.blur()}
-      className={className}
+      className={`outline-none ${className}`.trim()}
     />
   );
 });

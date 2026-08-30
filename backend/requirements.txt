@@ -21,3 +21,4 @@ pdf2image>=1.17.0
 Pillow>=10.2.0
 python-multipart>=0.0.9
 pdfplumber>=0.11.0
+sqlglot>=25.0.0

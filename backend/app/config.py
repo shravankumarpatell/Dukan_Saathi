@@ -24,8 +24,19 @@ class Settings:
     SUPABASE_JWT_AUDIENCE: str = os.environ.get("SUPABASE_JWT_AUDIENCE", "authenticated")
 
     GOOGLE_CLOUD_PROJECT: str = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
-    GOOGLE_CLOUD_LOCATION: str = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
+    # Pin Vertex to Mumbai so prompts stay in-country. Override only if you
+    # have a documented reason (Assured Workloads India Data Boundary).
+    GOOGLE_CLOUD_LOCATION: str = os.environ.get("GOOGLE_CLOUD_LOCATION", "asia-south1")
     GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    # Never persist chat prompts/responses on Vertex (Interactions `store=false`).
+    GEMINI_STORE_PROMPTS: bool = os.environ.get("GEMINI_STORE_PROMPTS", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    ANALYST_DATABASE_URL: str = os.environ.get("ANALYST_DATABASE_URL", "")
+    ANALYST_ROW_LIMIT: int = int(os.environ.get("ANALYST_ROW_LIMIT", "80"))
+    ANALYST_STATEMENT_TIMEOUT_MS: int = int(os.environ.get("ANALYST_STATEMENT_TIMEOUT_MS", "2000"))
 
     CORS_ORIGINS: list = os.environ.get(
         "CORS_ORIGINS", "http://localhost:3000"

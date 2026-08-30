@@ -96,7 +96,7 @@ const CustomerSearch = forwardRef(function CustomerSearch(
 
   return (
     <div className="relative" ref={wrapperRef}>
-      <div className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500">
+      <div className="ds-combo">
         <Search className="h-4 w-4 shrink-0 text-slate-400" />
         <input
           ref={inputRef}
@@ -116,7 +116,7 @@ const CustomerSearch = forwardRef(function CustomerSearch(
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder || "Search existing or type a new name…"}
-          className="w-full bg-transparent outline-none placeholder:text-slate-400"
+          className="ds-bare-input w-full placeholder:text-slate-400"
         />
       </div>
 
@@ -125,7 +125,7 @@ const CustomerSearch = forwardRef(function CustomerSearch(
           id="customer-search-list"
           role="listbox"
           ref={nav.listRef}
-          className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+          className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-panel shadow-lg"
         >
           {rows.map((row, i) => {
             const active = i === activeIndex;
@@ -145,7 +145,7 @@ const CustomerSearch = forwardRef(function CustomerSearch(
                   type="button"
                   data-testid="customer-add-new"
                   onMouseDown={(e) => { e.preventDefault(); createNew(); }}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-indigo-700 ${active ? "bg-indigo-100" : ""}`}
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-mint-dark ${active ? "bg-mint-soft" : ""}`}
                 >
                   <UserPlus className="h-4 w-4 shrink-0" />
                   <span className="flex-1">Add new: "{typed}"</span>
@@ -162,7 +162,7 @@ const CustomerSearch = forwardRef(function CustomerSearch(
                 type="button"
                 data-testid={`customer-option-${c.id}`}
                 onMouseDown={(e) => { e.preventDefault(); selectRow(i); }}
-                className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left ${active ? "bg-indigo-50" : ""}`}
+                className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left ${active ? "bg-mint-soft" : ""}`}
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-900">{c.name}</p>

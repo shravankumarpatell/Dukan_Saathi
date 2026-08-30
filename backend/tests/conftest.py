@@ -61,6 +61,10 @@ def client():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
+            if engine.dialect.name == "sqlite":
+                from app.analyst.sqlite_views import apply_sqlite_analyst_schema
+
+                await apply_sqlite_analyst_schema(conn)
 
     asyncio.run(_prepare())
 

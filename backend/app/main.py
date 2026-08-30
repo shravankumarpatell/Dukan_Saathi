@@ -24,7 +24,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="DukanSaathi API",
-        description="Backend API for DukanSaathi — voice-first stock & billing assistant for Indian retail",
+        description="Backend API for DukanSaathi — stock, billing, and udhari for Indian retail",
         version="1.0.0",
     )
 

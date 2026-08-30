@@ -1,0 +1,9 @@
+---
+description: Trust Ledger visual system for DukanSaathi UI work
+globs: frontend/src/**/*.{js,jsx,css}
+alwaysApply: false
+---
+
+# Visual system
+
+Follow `.stitch/DESIGN.md` (Trust Ledger). Ice canvas (`ds-mesh` `#EAF2FF`) with solid navy chrome (`ds-glass-dark` `#1B365D`) on the sidebar. Light headers use translucent ice (`ds-glass`). Data tables and form dialogs stay **solid** (`ds-panel`, 12px). Primary actions use `bg-mint` (`#2563EB`). Type: Inter; rupees and kbd `font-mono` (JetBrains Mono). Controls 8px radius. No stadium pills on fields or cards. FAB / avatars stay round. No voice/mic. Keep testids, routes, and keymap bindings. Do not paste Stitch HTML over React.

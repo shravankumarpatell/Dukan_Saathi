@@ -1,0 +1,8 @@
+{
+  "id": "customer-last-bill",
+  "question": "Meena ka last bill",
+  "category": "named_entity",
+  "route": "sql",
+  "sql": "SELECT invoice_no, grand_total, amount_pending FROM v_sales WHERE customer_id = :c1 ORDER BY bill_date DESC, invoice_no DESC",
+  "expect_from": "fixture_last_bill"
+}

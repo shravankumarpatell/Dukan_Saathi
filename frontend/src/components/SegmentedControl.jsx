@@ -37,7 +37,11 @@ export default function SegmentedControl({
       const el = groupRef.current?.querySelector(
         `[data-testid="${testPrefix}-${CSS.escape(String(nextValue))}"]`
       );
-      el?.focus();
+      try {
+        el?.focus({ focusVisible: true });
+      } catch {
+        el?.focus();
+      }
     });
   };
 
@@ -110,18 +114,18 @@ export default function SegmentedControl({
               aria-checked={selected}
               tabIndex={!blocked && focused ? 0 : -1}
               {...(selected && !blocked ? { "data-flow-field": "" } : {})}
-              {...(selected && selectedAttrs ? selectedAttrs : {})}
+              {...(selectedAttrs && !blocked ? selectedAttrs : {})}
               data-testid={`${testPrefix}-${o.value}`}
               disabled={blocked}
               title={o.title || o.label}
               onFocus={() => !blocked && setFocusValue(o.value)}
               onClick={() => !blocked && onChange(o.value)}
-              className={`rounded-lg border px-2 py-2 text-xs font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 ${
+              className={`rounded-control border px-2 py-2 text-xs font-semibold transition-colors outline-none focus:z-10 focus:ring-2 focus:ring-mint focus:ring-offset-2 focus:ring-offset-canvas ${
                 blocked
-                  ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300"
+                  ? "cursor-not-allowed border-border bg-canvas text-ink-muted/40"
                   : selected
-                    ? "border-indigo-900 bg-indigo-900 text-white"
-                    : "border-slate-300 bg-white text-slate-600 hover:border-indigo-300"
+                    ? "border-surface bg-surface text-white focus:ring-offset-canvas"
+                    : "border-border bg-panel text-ink-muted hover:border-surface/40"
               } ${o.className || ""}`}
             >
               {o.label}

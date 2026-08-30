@@ -1,0 +1,12 @@
+Follow .stitch/STITCH_PROMPT.md.
+
+Design ONE new desktop UI (1440×900) for EXISTING DukanSaathi, route /. Shop name Aajana trading. Never TilePOS or Velocity.com. No microphone.
+
+Glass sidebar 260px over a blue mesh. Search Jaayein kahin bhi… + Ctrl+K.
+Nav EXACTLY, Dashboard F1 active (3px #1A5BFA bar): Dashboard F1, New Bill F2, Stock F3, Bill History F4, Returns Alt+R, Add Stock Alt+N, Udhari & Customers Alt+U, Analyst Alt+A, Analytics Alt+I.
+Footer Settings Alt+S, Shortcuts Alt+K, user + logout.
+
+Main: Namaste. Aaj ka hisaab ek nazar me. Date.
+SOLID KPI strip (not frosted numbers): Aaj ki kamayi, Aaj Bills, Total Udhari, Low Stock. JetBrains Mono rupees. Kamayi #1A5BFA.
+Workbench two solid cards: Add Expense (amount, note, Cash|Online, Add) and Daily Summary (date, Print Daily Summary PDF Alt+P).
+Below: Quick Sq-ft Calculator. Inter UI. Blue mesh behind, glass chrome only.

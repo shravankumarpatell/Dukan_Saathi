@@ -1,7 +1,8 @@
-from typing import Optional, List, Dict
 """Pydantic models for Shop endpoints."""
 
-from pydantic import BaseModel, Field
+from typing import Optional
+
+from pydantic import BaseModel
 
 
 class ShopResponse(BaseModel):

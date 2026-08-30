@@ -191,6 +191,13 @@ export function unitKindLabel(productOrItem) {
   return isBoxUnit(productOrItem) ? "Tiles" : "Sanitary";
 }
 
+/** Chip classes — mint for tiles, cool cyan for sanitary. Never amber. */
+export function unitKindChipClass(productOrItem) {
+  return isBoxUnit(productOrItem) ? "ds-chip ds-chip-tile" : "ds-chip ds-chip-sanitary";
+}
+
+export const CONTRACTOR_CHIP = "ds-chip ds-chip-role";
+
 /** Form option label: "Tiles · Boxes + Pcs" | "Sanitary · Pieces" */
 export function unitOptionLabel(unit) {
   return normalizeUnit(unit) === UNIT_BOX ? "Tiles · Boxes + Pcs" : "Sanitary · Pieces";

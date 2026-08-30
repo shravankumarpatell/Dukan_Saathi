@@ -1,0 +1,1636 @@
+[
+  {
+    "title": "/login",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\01-login.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/11449369666882578281",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WEmRoKOSvp9GtksrntFnuK9ElUwkAV-6dfjjBK2uik9mlwkAgYUYDAXDs1a1Pmtj_NpPsHxvh-uGm0H7FXi6cVhjmmQGXgtslVAezfTIpafwwGjvmMQrzvZCz9jzG46zGfow2wNRKP1IodEqsCaxKuU_oi5-yg3pXvXYu8OJ5SxkLNEQob4QRDWLbbjGlk6jM7PWU1PTeZHaL3-RWR3OPpC-EzWS2gGJEGI82VX2ssfz1K-wJtM6YJVwNgxJSpV55R1sYJZ1M_YQ"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/11449369666882577568",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzU2NTY4YWNlMDJkM2MyODk4MjA4OGM5YRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "11449369666882578994",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/login",
+            "name": "projects/9847785945380024944/screens/11449369666882578994",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "11449369666882578994",
+          "sourceScreen": "projects/9847785945380024944/screens/11449369666882578994",
+          "x": 490,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/signup",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\02-signup.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/5639949521268742552",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WlGD9Gf5J0TqgNffMlws5Jh_6w6gjnJHjwtFlYK62I3nh0sv15JoV_a0dcYzvpTkQO2NsTXaQYME4KORCixYw5RVlc_FoYI6orkl9XUuS13NIj7IQKviozcbGwDE-yvhXBBPl08vTKi8CjaEhIgPyyUihU4iAhfDC-h9IU2fA3RibeFVt-q8MGJ-xIc0EWST4wR08eI056tWpnRDFz17jpIvKNVD6ZuZ90P7epxS7FsVGc1hebVIP2_-capBbeN_QF-NWK6Q66"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/5639949521268740197",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzU2ZDlkYzk2MDJkM2MyODk4MjA4OGM5YRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "5639949521268740811",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/signup",
+            "name": "projects/9847785945380024944/screens/5639949521268740811",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "5639949521268740811",
+          "sourceScreen": "projects/9847785945380024944/screens/5639949521268740811",
+          "x": 1870,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\03-dashboard.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/6108570662540343273",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1VFQIGH_lUk0FUHfgpR6QTAGMob9_OTMhzoigMef1j3d-KPOg3H5mUtARPey3jvBytBSHZtKYNDjmwPQcy6t8N9_5xrVczaERqrnBdQ-lxndOaV4jwMnvigdLIst4NUiFLGe2LVJHlgXKyZK1SnHLDlp3Y_LxDp7R4KK0YUYgvSPI2dY7AbYyS9D-NtbrBy_sk5833QvpZrm5G98ItwgMin3PS7l-42SqjTrFmX_nVuDQvqM9eDVdLbCn6pjrtkiFufyaltabqD"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/6108570662540343168",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzU3NzZhYzExMDM2YzdiNzZiNDIxYzk4ZhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "6108570662540343378",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/",
+            "name": "projects/9847785945380024944/screens/6108570662540343378",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "6108570662540343378",
+          "sourceScreen": "projects/9847785945380024944/screens/6108570662540343378",
+          "x": 3250,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bill",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\04-new-bill.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/15473207512107669568",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1XQRvuI44MgdzBrYudN0Jbkq3NzhVPTAsSW4cN2r0FTeqebMkXuI19ela0EM60IYUblF1dAkYtQwd_nBtDcm0Iuz8KrITBMndGHH7SIlSjVRUwQnoOGtxjXa-AzMPjeQ2caMaEEYOO7fUaGqY64KM0kIEfCZ23bktU9fnktJJ_f5QK14idj-JVd5bJ-lAGwz2ualuJI3aIElMgAk5eGPLuWr4G1C5bZvR7AxzFYlZpgVK-s-u7RhIeDPcMAhdsEEO5jPbOyZ3XgXw"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/15473207512107667739",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzU3ZjNiNWQ3MDkyNWM3Mzc4NzBkNjRlMBILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "15473207512107671397",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bill",
+            "name": "projects/9847785945380024944/screens/15473207512107671397",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "15473207512107671397",
+          "sourceScreen": "projects/9847785945380024944/screens/15473207512107671397",
+          "x": 4630,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bill \u00b7 purchase",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\05-new-bill-purchase.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/7974530152442782317",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1VaEE4oqqyH8R4PET-OO9BwmRp12a8xslJ29Wjr_7wks7FpfEzc7heuYMhNzi0s0Jk2NoQeqi-jb2fVzME6atTU4r4b2VcgpoTaiPXbN-IPbnBnXIIcYv-4i7IxJubjzo1ziTmjWK1ymqDKl8Gyg68FQCG5bLItQXcPr8VylVxlSBT3ipj5zWfBven167IedZMGpehwabxZvlkOMMGdJJmWsPPKzRZulrUdKFmThV_VQBkJNZiuOMcbCUc57F8P5ObDwutdi0WFsA"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/7974530152442782642",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzU4NmEwODA1MDJhOTlmY2U3NTBkMmNjOBILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "7974530152442781992",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bill \u00b7 purchase",
+            "name": "projects/9847785945380024944/screens/7974530152442781992",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "7974530152442781992",
+          "sourceScreen": "projects/9847785945380024944/screens/7974530152442781992",
+          "x": 6010,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/inventory",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\06-stock.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/14163954544924505639",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1UAKtWsxWK6ez3UlqKVKoBiadkHmdg5aJVS9hXY3mTEb6HZexNipAAbHOtAsS4r7NYrJ_lRgCTzpXgBEXWqKSyCbdEk8lQhpGE5dLeZVL1lLzmWJrovI97bMutfoLVwYAFVQFn0dLq2iXBQLUkUcS6JOSuyuc2IlmDUZfS7TWWmRo4IOREYoC5IwWtN_LyPF_gda-w3Guf_E3CbEzlABKiDe5TzPGkoZPzUwz7T5dni_SbBJpFF4v0QjPazU1Mn9yov7E-hov-LVQ"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/14163954544924504924",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzU4ZTcwZTAzMDAzMDExNGM5NTI4YzNhZRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "14163954544924506354",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/inventory",
+            "name": "projects/9847785945380024944/screens/14163954544924506354",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "14163954544924506354",
+          "sourceScreen": "projects/9847785945380024944/screens/14163954544924506354",
+          "x": 7390,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/inventory?low=1",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\07-stock-low.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/16967241633113205585",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1W35ZdfjC-Jcj1ttDH4HryU8rwSLWfguwFL01bpV30JI972XkDSflx2aOye3KVkzPBKuj30rvQvNNI09Bmd6xl8ku_jLUO_XZHFjqY_E4P0DUNKmvU60G9jw6L4xo3VlAD4DkyKK1TawgHf0KGIUMha-LU7q3qHOJc3oRC9d1916WFtR-tXbuLsuTZfVrKz7XTUK-iQFWPNXZSNzYpb1N2LtD32zb74DX_6hqaqm2HrKNflRTm-LtwvJ9vHrWbzrYYTxor4vAGxdQ"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/16967241633113205630",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzU5NjMzNjlkMDdjNGMxYTU5ODI1ZTlkZRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "16967241633113205540",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/inventory?low=1",
+            "name": "projects/9847785945380024944/screens/16967241633113205540",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "16967241633113205540",
+          "sourceScreen": "projects/9847785945380024944/screens/16967241633113205540",
+          "x": 8770,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/history",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\08-history.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/2903090336924312607",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1VDcGkyQrjXvQOAFZbW-XWO4-pMjyLijAmeRQHT6M3YZeWgqjXv7yWqElNrdjI7EJHz76KzlKC8YjY1jR8rx8ow1Zh02g9-bFt7T4QU4n6Wnynt7F6M2B9DSLmh19szsCXgW_6EREuP5cfvcNKftCuQE5Vkt10I83Z_Uq2dD7xlWMn19LAL10T9xEpzw8rzaBRIBkRtQOeoFws1uCWIFNnvPv01nlRFyZAMDEp9VcapRM_h5LBr4_BSZjnG0YasL7ZzQVfjPPVSaA"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/2903090336924311924",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzU5ZTkyZWNjMDJhOWJkMTZmMjBhMDAyYhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "2903090336924313290",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/history",
+            "name": "projects/9847785945380024944/screens/2903090336924313290",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "2903090336924313290",
+          "sourceScreen": "projects/9847785945380024944/screens/2903090336924313290",
+          "x": 10150,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/returns",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\09-returns.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/4406607313888436953",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1W4d1VKFVrSQwZbtzkhWCcS2mRZcg3CVLuYI27KUh3H4OimpADAdeuqYvFtBCIiemu-0s2PLyCwotv8QBMZ5IK3Fgje_R99sAy17uaHWem0wYpX6WpxcCVD_wZuLVkBeiN2nDiJrSh4t-jZG-hwr3ZxHJh54174RlRmva5vQdUL7TL5ZDw53KPMOxIn_V-Hqdu3FZ-3ahAIX4j-Yekf1_3j9o1pePy0tTMIF88GL1u2i7m9OcKfoUJV7H-5eQ9psEjzDPSFGTrP"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/4406607313888437368",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVhNjhlN2NjMDdjNGQyNGYyZjA1NjJjYRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "4406607313888436538",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/returns",
+            "name": "projects/9847785945380024944/screens/4406607313888436538",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "4406607313888436538",
+          "sourceScreen": "projects/9847785945380024944/screens/4406607313888436538",
+          "x": 11530,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/returns \u00b7 line items",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\10-returns-detail.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/6574445242575301006",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1XJ21pll8BHdsNalN3w2eYQVABkCJt3SVw9WqP6SKtPUme46k6CwTtRqD2AXgdSgqkaWFF7phQm7z_7WL5G6eJ6uryiNcj1v1w23HU1Oj_ZJe3y17sYj4NVqplqGzUCh5gzRRbmsMUulhNSvFLa1lcJHnYWf7_1TXOB-W19u_AbMF3lh0Qs9ZOuYp0kfQ2D7p6YlRw-uFSaHanCvOMKvz_dooqOKX8uGL3h03J18393lsvXOKP3vtYmW3nLuGXUm39xaYMEUTgtLw"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/6574445242575300683",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVhZjFkMmIyMDFhNjM3YTViNDBlNTcwMhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "6574445242575301329",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/returns \u00b7 line items",
+            "name": "projects/9847785945380024944/screens/6574445242575301329",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "6574445242575301329",
+          "sourceScreen": "projects/9847785945380024944/screens/6574445242575301329",
+          "x": 12910,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/returns \u00b7 store-credit convert",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\11-returns-convert.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/6662628239175870842",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WP8G-ULGfvVjc2hNWnf0P2oU8bekWeB5-XyCNpuRzl5gxbTa11qgVnFbOBU3oPSiFrJA-08aJBloaxVyLE5BZIlstZD4maY4HyCvnJ_Dis7hRoEyahg2Ak_v6XZR2NjSP77Xjkr1dhKDy9Pv1YnugTlX44goyLWlwR8gZk7tBGxxTu2Nx8NNAxqGaxS8QDomMgluNiVE0SwZFNshZRmxOe0rETZi7i-ZLHW55Ltk0Ta4KsiprZ7Jrbn9BkVsGfVsElffsO7mkxIA"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/6662628239175870463",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzViNmY3NTRlMDFhNjI4MTEzMTA4OWMyORILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "6662628239175871221",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/returns \u00b7 store-credit convert",
+            "name": "projects/9847785945380024944/screens/6662628239175871221",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "6662628239175871221",
+          "sourceScreen": "projects/9847785945380024944/screens/6662628239175871221",
+          "x": 14290,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bulk",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\12-add-stock.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/6263858085432361561",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1VoFpO3B9pUaZOaK9-Lh3Xg9xxZYFAVnPPF84KkINPGkGU2xGQvasv8p7yPuLAe6jW_YGJzXOqZ7bRkQ-vvcQiChoVSFEDCPxS0kYV8XLoT6fEgwC6C5jLuCKVkbDHC9ErYrI-7FyTUQcjVWF9MPMMtPQaTj8O9aiDGMiJ9sJ_J-JZNYNBDBRVH-Jga4j215EV_c4nL-epssB1QpqvGWM2gQ6o5LuSqhubgmvlMBCmMF2FnFW__-DPKHWN3Fc8BkWjvwuvLUx5QSw"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/6263858085432361254",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzViZWRlMWZkMDFhNjM3YTViNDBlNTcwMhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "6263858085432361868",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bulk",
+            "name": "projects/9847785945380024944/screens/6263858085432361868",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "6263858085432361868",
+          "sourceScreen": "projects/9847785945380024944/screens/6263858085432361868",
+          "x": 15670,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/customers",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\13-udhari.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/4917740733500780667",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1Ve7khNsltUbU7mPHlZcRFKm_xA-wk1frOBAlAE7EwQTo3gKMQnZB2sMwubVXXVeY0oHXqlYKCllI8oeRlLhfu2IB1dqaFwIXAWMOMo1IdtYYzIocRxrCU0GCb6211ohtBSaXcrzNvr0ZcttAjarktlqndGN7txWY_0CXlbJSJ8CQiU0cblyIPbM9aPNKaRiUbZOC3Vav-b79PpzCk7WIFbP2W-S7dsPe-9LCVrqsStxApwzvpAiW33F3yrOkG_1Ssyb0BtC_P6wg"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/4917740733500782128",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVjNjVhZThjMDFhNjExZDYwZTA3MWRjYRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "4917740733500783302",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/customers",
+            "name": "projects/9847785945380024944/screens/4917740733500783302",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "4917740733500783302",
+          "sourceScreen": "projects/9847785945380024944/screens/4917740733500783302",
+          "x": 17050,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/customers?tab=customers",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\14-customers.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/2769042598762692218",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1U95DtmzoaewMW_ARFQRiVNp0U4UoIWq7GhaVmF9DKrRFN-T9lQruvWyyToCGvNnUAzzeUcbJ2deURvRJLAjCbvbhEWNKVuDMo-illYGL0TbIUB8VN7YtEr3oy7VWy994VNPA_WW_abqYgs7FLT6chC8vYG98bRl4CSdBNuae27CqTA3mCu-DfHri3VFoVX79W_BQuzqRsDE3c2LL8WHMXl7tdAFzQ-kC7hXOkPrs9mmAMYI1VuVEIS_PmgfNo-luRnBa9DuDrGkg"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/2769042598762689083",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVjZTMxMjcyMDMzMmNlMDQwZTI4ZDRmNxILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "2769042598762691257",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/customers?tab=customers",
+            "name": "projects/9847785945380024944/screens/2769042598762691257",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "2769042598762691257",
+          "sourceScreen": "projects/9847785945380024944/screens/2769042598762691257",
+          "x": 18430,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/chat",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\15-analyst.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/772560331425974455",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WSDLPFpk7qniQNx8slySnK2qLMX97bnz481Sphh1FGpd1pD-FgjcTv4rybHbYn1e3uKOcrVSkyZI-wI-0Xjf0r83I7qb-1VLRzP2M9E7mIHUw3sQbA5gh9rTuY83rKVN_wKW4S5-5ML1Iec_24EWlaUKFdAHeA9BkIFJEfn2Pr6pAXMZTYbOzUJUloG4sCdMFCeoSwZIKFVwMofyJW9ETqfXKRTbVEY2TrYBwnrng2Raqx7pe9IODvqdIepXL50_mIcBM-kpX8Rg"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/772560331425974452",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVkNWI0MmJjMDkyNWM3Mzc4NzBkNjRlMBILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "772560331425974458",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/chat",
+            "name": "projects/9847785945380024944/screens/772560331425974458",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "772560331425974458",
+          "sourceScreen": "projects/9847785945380024944/screens/772560331425974458",
+          "x": 19810,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/chat \u00b7 rich",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\16-analyst-rich.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/6784080363756104523",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1X1JbfJaMWZfVJSaJnu0f7mTw_pyFr1U2nz_b5B7q8IkWBJim0vOWyxWlMy0oKVrX4Bf4f3ZvPM3QTkhwTRKoXGOAoA3jB4z0Y2po9-RyKaHgN5TX_McsQHJ4asZA_mnGQ9ic0kbH15dGI4SMM3v58XJbTHCLi7fAbW1g4axubo4z5Q-gR5ScbR7bUIf2MnrDr-vKVCDZR0itYgK5Io4qrwanRX_OE68r82ij45u5ELlTaHKAqei7SzObx5GQGoKA08TRoftF5KYg"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/6784080363756102422",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVkZDMxZGE5MDkyNWQ2MjZmYTFiYWExMxILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "6784080363756102528",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/chat \u00b7 rich",
+            "name": "projects/9847785945380024944/screens/6784080363756102528",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "6784080363756102528",
+          "sourceScreen": "projects/9847785945380024944/screens/6784080363756102528",
+          "x": 21190,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/analytics",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\17-analytics.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/1448001222606656672",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WOSuTSuqnZUYrebikbZJUSSoV4LcGv9BY2EunPQc8GQfGNNfYn5pZ9Jt0xgd_rkQ3faCUyFOEQlZDEF3tOcfyVBtQnR8RZSverfXeiJQIec9LEwU4bvWYUsbfwmkeBTFzpK2hHQCh6C2cDVw37eiVZqJvRWhKGkAmsluraTRFhkMtu1GhhBowSeq5lgMWKMiIxhlKSGjkeIGw-BOz-2ECsKOX2Xp9t_Cg0oCpEzEvICRu4qvU2oT_AAKiGhJVLRXZfkDBYWICcuw"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/1448001222606656635",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVlNGVmZjU5MDczYWViYWNiYjFiZTQ5MhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "1448001222606656709",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/analytics",
+            "name": "projects/9847785945380024944/screens/1448001222606656709",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "1448001222606656709",
+          "sourceScreen": "projects/9847785945380024944/screens/1448001222606656709",
+          "x": 22570,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/settings",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\18-settings.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/12596261028431146172",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WyRox22bsja98M-jJyDmv3Gethe3ZNpkbJvlDSUGTdxfm2_3jlw2CIC1jFfsYLTWo6hrXCD7D_UarNwuZvhkYkXYSdfQsyfnDacHY_rDw7hdAhHxXfShFmiv7_EOrXpQuwfV07JJAl88HJT5eCqfhuhlGqssLKZLsQAncl-5ICthOsK1Ns_DIsAbDOCiu4USoWtTLV395cC80KpKCP0F2rmbW2FsoVfV2xC055UWtp4n7ic8h2r23GCw4gxVMVHwX9wfVAYruciw"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/12596261028431146027",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVlYjY4NGVmMDFiNGU5YTNiZTAxYTQxNxILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "12596261028431146317",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/settings",
+            "name": "projects/9847785945380024944/screens/12596261028431146317",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "12596261028431146317",
+          "sourceScreen": "projects/9847785945380024944/screens/12596261028431146317",
+          "x": 23950,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/settings \u00b7 edit",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\19-settings-edit.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/8297295686346127398",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1W-yz9JYQR4GbzEpEFRu8wBF6_-iq_YFR8N_sLPueWXCe9NYfuk2-h9nveaNrknZhJkNOQqryXbO9ZMnhuE9eo9lfoZBekjVabQAwS8zVM1Gz8BQRVChX2Kec_DoUd6CCvZG7BD7USsZWQGJULNU1MX7_NgMx23oLW2MAW_jOMw3zAkHra2AaOlvA9PMBUW8t5pdYA1v_Glvfm9Q8czIfMTz_Fa6c1hBo9k8dylzlKPaKTJA9eR9ZwMkjpj9-pEjj4H9BhM1-Sr"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/8297295686346126837",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVmMzc2N2YxMDdjNGQxODZlNDE0YTQ4MRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "8297295686346127959",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/settings \u00b7 edit",
+            "name": "projects/9847785945380024944/screens/8297295686346127959",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "8297295686346127959",
+          "sourceScreen": "projects/9847785945380024944/screens/8297295686346127959",
+          "x": 25330,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/settings \u00b7 onboarding",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\20-onboarding.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/3180079174689056699",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WJBAZ7WtGgOd7fsTnWt7ozNB0-MDXzkG2Rr_5t9-whF9zdaA7q9w61ZFu6OqqnfmeVK4h3BhSMw9XAmVkL0FwO6cEJfpgL3-zldw2dEpS7KurBqk0BDNdFVH_2t2SL_l-DL_3cxutd5IjqAww85bEBnijWzwtqIrM91R0tgpREiBwZpab8B3HkcJdJAz-8uCgvGcBr8URHaIt8VRaOiBH97shQVUtCvXvONbngLVIChCdg4381s04NmvO-NQPXd0hMP-ATouIZ"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/3180079174689056934",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzVmYzM2NmYzMDFhNjA5MzY5MDA5MTk1NRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "3180079174689056464",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/settings \u00b7 onboarding",
+            "name": "projects/9847785945380024944/screens/3180079174689056464",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "3180079174689056464",
+          "sourceScreen": "projects/9847785945380024944/screens/3180079174689056464",
+          "x": 26710,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/ \u00b7 command palette",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\21-command-palette.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/323097576473808985",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WnHQyZJdV6CAFvmxXIdyEGadYv__imTUY0j7cfm8_RvUPJ1FjNt3PkpshH5RUCu19a4l8TQ_CwuslWfT-TkpZ5yLB_nnlEBfclkqWeqhoNo3fUp4W3SOadnxfZqS9jCseSLAlSPBkitNrhBnQHkP7ZPJdyoZN1YomYg2b6cG5ysSGU9Jn3aFNZ9DWwRszknGN5o_5mtuGOFQFBaUxsgFHuHKNYdE9QVi0JYCakQT0FlviU5qtHioZTCwaA3t14sH70nGr_kdewQQ"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/323097576473812362",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzYwM2NkOGQxMDFlZTViMjk0ODJhNzk1YhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "323097576473809704",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/ \u00b7 command palette",
+            "name": "projects/9847785945380024944/screens/323097576473809704",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "323097576473809704",
+          "sourceScreen": "projects/9847785945380024944/screens/323097576473809704",
+          "x": 28090,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/ \u00b7 shortcuts",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\22-shortcut-help.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/524561615156889607",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1XBdgnD7EReth7qFnnC7SA6cv5xg9-KN0syVoPbTwAX8GNZ5RtSycMyx2btcc2vJuM_vECiFdJkTX0m6QuikvusUHN4uqM7LrKMtsqlMgah8cmWVHDr7NoE3pN2zDsxrcmxorG_h6PsYaeVnQuXbBHTlTJxaH4U2bKVf1b4L3624OL08vZmhVmcTwz7iYEkITpvm4D0Dc_smvJ7fJSGQnjvXeFxNV7wJSRIjVRdynBkEipV81qVM95NX1efgwi23yp6WJibiaLIFQ"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/524561615156887912",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzYwYjdkMjMxMDFiNGU4OTMyMjNiNzlkYhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "524561615156891302",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/ \u00b7 shortcuts",
+            "name": "projects/9847785945380024944/screens/524561615156891302",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "524561615156891302",
+          "sourceScreen": "projects/9847785945380024944/screens/524561615156891302",
+          "x": 29470,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/inventory \u00b7 edit product",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\23-edit-product.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/4006317090361289306",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WLbKRBcx4Yi01DApTELfYFNSjImVoiLldiNWOW4IX03I7tl8KJY7HxJ145Up_TjVGn9DgduU-DvdNIMo3gBxYzZeYYjHJn5H0dWvVNGgwchj73wVXEx4A3zU9UuLS9WWIpto7ZE5JxwtkT7-VNKaxbL9197YItkNJfHrX3sBqUa3KPOQC3CND7vbpJByuH7Ssn6ifJpr9jAG9OFShpzet26BXhVRbffVyL8udk1YvrHjqFVPSozmSx-Wd533IrYAJVGGqA9l71sA"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/4006317090361287121",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzYxM2JiNWFiMDAzMDNlMTJjMjAyYzg0ORILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "4006317090361287395",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/inventory \u00b7 edit product",
+            "name": "projects/9847785945380024944/screens/4006317090361287395",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "4006317090361287395",
+          "sourceScreen": "projects/9847785945380024944/screens/4006317090361287395",
+          "x": 30850,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bill \u00b7 item details",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\24-item-details.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/17806937287305887532",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1U1A1E_WRrVua9s2MUJXyO4Ea_05DtbwmYK9smAaVbiILdF9sPukPqmZgoZxzHpQwXmfXw8nYJQ3cJwZ1Ux6vYyNS0_XVvRpqiHz4u7yFnFd7Db7mB6McjdYpsjTfInIcQNht0fykYOMiFTrNGhVMHbRWBAEgFKZEWCJvlp3uwRCNX8AaTWBtsMg3sQWjEPyOBh1JyTtoyREPS7RM-btCISFZjYvt5EvKvqfbnwIbAk7-91rQgiO8U-zkjwZR6eyTq6Hx4YgztBbQ"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/17806937287305884601",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzYzMjgwNDMwMDJhOWIzNGVkODEzYzZiORILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "17806937287305886367",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bill \u00b7 item details",
+            "name": "projects/9847785945380024944/screens/17806937287305886367",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "17806937287305886367",
+          "sourceScreen": "projects/9847785945380024944/screens/17806937287305886367",
+          "x": 32230,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bill \u00b7 sq-ft calculator",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\25-sqft-dialog.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/5654342398815482078",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1VuSnjIOjvDJpdsZ3yyWB2Je1uOhHhsk_yF4kQ7eBIzQL-E95AoASiNDJqagofn5BH0MBUgtk7RkUEO4vRR0gznrJWH2Z_dGwffJIZcsvNuxtRX0CMEtJdik-dAkINLeBcsyzUFc9yTEHjwbn1mEdgg8R4zn2Voc7gVEQpi74EQX39vP72b9jE_sauHrI1Gb2K5bPFjG0n-kvHY6OiQVSqVcJ5HadDkP1gdeqj2Z__Kcr0SWIVxErkw-Y6U5MSU6XhIxKXSvR6V"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/5654342398815485359",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzYzYTZmM2Y3MDJhOTk1M2YwZjM5NTU3MhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "5654342398815482893",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bill \u00b7 sq-ft calculator",
+            "name": "projects/9847785945380024944/screens/5654342398815482893",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "5654342398815482893",
+          "sourceScreen": "projects/9847785945380024944/screens/5654342398815482893",
+          "x": 33610,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bill \u00b7 cart",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\26-bill-cart.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/10919322178503390890",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WhMKxmQnjF3Y4ECpGrY25uDhE1XBbldVQIHWa2Qog_9cUNoMuglD-3WK4Hnyp-sXADSP7q20hj6zP4H2Ex9zfna9aFX7etFXunQof_LTqUDVxmGt9UAqbboh09y9v7tYol6b6R6dCONbUqrZr-oUEBhaIlIkvupTxS0I-dk5R8NFYIGaqRYhq3HWH740ZTMTBLbF3l2uV5oagxoBp36p_mKyt3r42UO4ekoa1FHCzdB0vk5c23UK0pw2YU1bRcZAdcuk2oUwl1"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/10919322178503392031",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY0MzRkMTkwMDJkM2M1MjcxNTFkMTZiYhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "10919322178503389749",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bill \u00b7 cart",
+            "name": "projects/9847785945380024944/screens/10919322178503389749",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "10919322178503389749",
+          "sourceScreen": "projects/9847785945380024944/screens/10919322178503389749",
+          "x": 34990,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bill \u00b7 cart empty",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\27-bill-cart-empty.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/2549546453251804067",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WKx7L2b3O5jAXWUAbnFrNWuXZNHnjsl1QSvieDBGnBfSMCzmVtk1ZrHDu02xHg5jvRuctxb_ByittiV4sVlgw0Bm_5xeIujqk0uTtZgHq0jZhvB3pe-EUJ5Cw2AnKNILPjO9aB6Muv8-ibmviwNg7sLVShAx0L2LsnKmHHyLqMcxzZpTJGY40UWLVJex4F5WaxJ8Cc4nJruz-Zb3_GRb8-29huU4cAyQJ2GN7Ocp9syLRd3aalEGCPIrI29jvbyNUm1h_2Kk11"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/2549546453251803884",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY0YzQzYzAzMDJkM2M1MjcxNTFkMTZiYhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "2549546453251804250",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bill \u00b7 cart empty",
+            "name": "projects/9847785945380024944/screens/2549546453251804250",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "2549546453251804250",
+          "sourceScreen": "projects/9847785945380024944/screens/2549546453251804250",
+          "x": 36370,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bill \u00b7 clear confirm",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\28-clear-bill.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/18043350913326196061",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1UEs_rgDgIm7ULD1uWdNDWEiqrQF3fzPosn2zgImh2czyjFehqRe_7PWvkhTIX5l33nmnKDKw2OfBX07WufZhnddeszbf-3KSp17Sb0C-K2Jesfo4O-HRwE6_5r73CriXiwGLXPVRxp7sNQ_cSMPYDAMYUgIIYhFCTJjpLxvBE8aUyD4EWhSBzBXMRavy3Hh5BcnE_YGgNOTOuY6nje6qyfjrIy3IkLSBTOfwecQS2rxZbem315w-Zpnm2d6w_-ZaVG0NyRrutB3w"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/18043350913326198550",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY1M2MyZWQ4MDU0Y2ZjNTdlMTFjNzBjMRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "18043350913326197668",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bill \u00b7 clear confirm",
+            "name": "projects/9847785945380024944/screens/18043350913326197668",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "18043350913326197668",
+          "sourceScreen": "projects/9847785945380024944/screens/18043350913326197668",
+          "x": 37750,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/customers \u00b7 record payment",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\29-payment.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/10132719793361651696",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1XlWRJW6R0N6UVJnVBB4wK_3hI8ABseM7I6g_d0YmC-qdXN04SFuX1lqVnPbiJqDi-G1kbzdSaeuids-INlfyx4iJyRQVg6OzhShiDuwPOYZ4hz_HtHskQNxeR13etWrTh5uhAr-BQWhyJSj5tHhNMkHk4NYUDtSJq-JclugheP4DsaVTL8knD3LoIA2G407r825mRcVi16IZpLOJeoTEIDgF9uQR_DmmDCDcGY5ykxAgMTzlAjwziwXbknu3o9m0DAA47VOKgiLw"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/10132719793361650109",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY1YzJmM2JmMDJkM2M1MjcxNTFkMTZiYhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "10132719793361653283",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/customers \u00b7 record payment",
+            "name": "projects/9847785945380024944/screens/10132719793361653283",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "10132719793361653283",
+          "sourceScreen": "projects/9847785945380024944/screens/10132719793361653283",
+          "x": 39130,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/ \u00b7 naya item",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\30-naya-item.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/15135183417201121669",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1VYCCIAqKLE2RYErr1otXvhkMrcxPc2ZL3CwQEL-cVkTuxOrkVYv4l79orlugiJvylQi8qBa3ygIRjbfiUCHcQFqD_FsxDveT-4uqPffGT7aAPTAgaLaG1XgRzePdKiWZixYJvbt7-0Uq9ZrbTnyKf8uZ9E5mi7YC_vr-kP2sPi0UM0n57rbvYy2np2A1HIo1BrDar-D3mqZc9-Y7D_UuWEi3drp9saZy8KyAiJ5NZCZnB-gkBENF3OJ0FTDkU652GQrQj539En"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/15135183417201120722",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY2M2FiYjJiMDkyNWQ0ZWRhYjIwZTVkMhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "15135183417201122616",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/ \u00b7 naya item",
+            "name": "projects/9847785945380024944/screens/15135183417201122616",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "15135183417201122616",
+          "sourceScreen": "projects/9847785945380024944/screens/15135183417201122616",
+          "x": 40510,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/customers \u00b7 naya customer",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\31-naya-customer.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/7152791295808082239",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1V-o_XV3AJpTUCMWjhZVZHUosiXkEEifBDzvbQD86ewlyan3a_KGcDWUWD-Pf3OYsBJgW6bLK9xl5I0VLwP_20J3dZ-knhCUYLi4e9YuLpsY-l78FfcNoj32ehIAjAcQ_HYflMEhqXF3RY7qRfhRKSxXtrD8Jy4lCwsxe6TQxGQtO5GqgFS4azQdA-iygEVPToD18AeOoXpFRoFA7ybeid97tn4PgOIo91pxykICLbnLJCcEQn6N9aYW_GIu0It0NjS2ImvD60S4Q"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/7152791295808083380",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY2YjQ2ZWU4MDc3OTllZDFhMzA3MmU5ORILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "7152791295808085194",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/customers \u00b7 naya customer",
+            "name": "projects/9847785945380024944/screens/7152791295808085194",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "7152791295808085194",
+          "sourceScreen": "projects/9847785945380024944/screens/7152791295808085194",
+          "x": 41890,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/history \u00b7 PDF viewer",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\32-pdf-viewer.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/3165567980657119355",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1UIVqZwMhKH1xTJXxAM6N1k7ToksP5cyKhc5DAEH7hIxomGqjT95LfyFbII0XFayj6mS4Xo8Q9zDk6vBdP8gAjK13_ig5pDxqRUacqHXo009e9ZKp8ZPECjUi1ygtdRczhCvvU0XI6w4nDe6i4cNVX19iq0OnKQtynx3ciefDgrNNC0HlY5GkYxBa7WpExxrZGgXaN-D1utR-ARKdqM_JzfBuYjmGVwVom0mqjs8SrAHUME8R375dn2fj03BsctWD1vwvatjBAm6g"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/3165567980657120460",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY3MzA4NzRkMDczYWViYWNiYjFiZTQ5MhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "3165567980657122346",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/history \u00b7 PDF viewer",
+            "name": "projects/9847785945380024944/screens/3165567980657122346",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "3165567980657122346",
+          "sourceScreen": "projects/9847785945380024944/screens/3165567980657122346",
+          "x": 43270,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bill \u00b7 product search",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\33-product-search.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/2068541591594526617",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1V8jmA9jxiohnKlMroOBJUxdQiChsdXI1Gm4kFo05lM2V0DC9TiyvACYNFliUtPV5lr8x01qtFE_Fo7NQbH7Es5DMywR__AedcvNZV0707SuBBJQuAWcqhcpgS5OoTO9FhwG0urmxesFGholQgF6nZ8eOlLYW0mbvUomSwu_45QnZ4S-tYvyrfIXp03SIxNzSV3JKl6ywdGE-F7OUej7T1ZtW7Gy0ieCVcsZqI-Wsrf_YKPTD9fvFoXiu8Y1lYhCfU2q6MPwJ6mHw"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/2068541591594527254",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY3YWVjNjFlMDFhNjI4MTEzMTA4OWMyORILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "2068541591594525980",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bill \u00b7 product search",
+            "name": "projects/9847785945380024944/screens/2068541591594525980",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "2068541591594525980",
+          "sourceScreen": "projects/9847785945380024944/screens/2068541591594525980",
+          "x": 44650,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/bill \u00b7 customer search",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\34-customer-search.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/17848440657248203497",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1UnKagkmbPzdCxOzAbNtyr-sLseTm4UaBVUxiqmeK1NCLTJvxPikLZcTIPaGPTU3x1YvTbZVUQZZvE4Wdak8q1Elt7raexXjH6oryl-2SwYezEwddxOEwgN8JacaBFb4RLiCzCdZVNmG74W01YtUdOAHTQQjvvqHK7HroEG9YNlh8jOmhbDusSAim7BH4RYUc2z0A8t0cMrdXj_L4SRu-4fEkbF2pmQlnGLcRH5dMdkcF7ErVzebAryuYZe6QrME9zgh7lT4MEK"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/17848440657248203590",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY4MjFiNGI0MDZmMWMzMWU5OTJiMDcyYxILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "17848440657248203404",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/bill \u00b7 customer search",
+            "name": "projects/9847785945380024944/screens/17848440657248203404",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "17848440657248203404",
+          "sourceScreen": "projects/9847785945380024944/screens/17848440657248203404",
+          "x": 46030,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/returns \u00b7 invoice search",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\35-invoice-search.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/5113012504895675396",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1VUHbdioQw-LDdW_tvNQelaUGxfLOS3Pgy8LUNH_IKU9caSrkJU2-on67uUzw5yJCImVIgeQmFniyzE1i-m8CLYlsNyjMAjtJj_99Cwm68UwYzmzdVwKM5bLNX8KWPuezzccnQ9aVV5WvgPiXOAM7f7SXPga7EOSuOTZFJh47dhLUx3LpeVjgydL_Yv-q3K397llarECGSp78KgpKMvlbrsdipN3oHhImLcXtwGHmwCk_rxQ8JzeNIEXRPcULG4bGKx57uHcXH4Dw"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/5113012504895675773",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY4OTlhNGU3MDIwN2E0MGJhOTA3ODdjMRILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "5113012504895675019",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/returns \u00b7 invoice search",
+            "name": "projects/9847785945380024944/screens/5113012504895675019",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "5113012504895675019",
+          "sourceScreen": "projects/9847785945380024944/screens/5113012504895675019",
+          "x": 47410,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/ \u00b7 tile size select",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\36-tile-size.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/10507054895477024257",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WH7U1Wc8YMZ4pqf52dr3LPuZkikI4NBVEzFq1Wc7YeYcBKIyqCYjn44U6fkg_u1a-mNZfUGaCdketCn-GaMVjpLyFOfUaPjaf4__m9MtV3Wq8I3bXCx7cHiBm50eLbOwCMzka5b-Jam-l4xajs2Bixc6SuSxFAZtR01zdYQ74UBvamvf3uzaQZAuf3zO-nMoDYN3-RJuEQYv5YrM0wiOb3KHPBBCzK8ylsiIEqcYyMdmt4iRJcgX5pX0_b63qELKX5EK1Pi7-R"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/10507054895477023680",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY5MGQxYzQzMDJhOWEzZGY1ODA0NmUzNxILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "10507054895477024834",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/ \u00b7 tile size select",
+            "name": "projects/9847785945380024944/screens/10507054895477024834",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "10507054895477024834",
+          "sourceScreen": "projects/9847785945380024944/screens/10507054895477024834",
+          "x": 48790,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/ \u00b7 draft confirm",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\37-draft-card.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/5891915293269157174",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1XyGUGN9JYcuXKZsB9zv4-AgnsL8fCVPVgomOiC4D6R4v--6eLiFN0X5z0IpL1-htEF7TtFsRyjSWsuPBAxX4N0ZyELpQRHfxiMHn3KIg1tWR6SnEYCKB-rcipupb8xDLtmNvxEOon6EUzHcf8rl7ulZO6Tq0NarDZvP2V-mZZ6C9CzRL2712U9M4l8zFMVK8Ff9b5UZBIlbDRtzTo-4_XI2AHVU0D8BfZZrHy1JMB9tGyHtJbBBXnktD9tkQdFYpVwUB4IIsTWmg"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/5891915293269157301",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzY5OTA4ZDFlMDJhOWJkMTZmMjBhMDAyYhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "5891915293269157047",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/ \u00b7 draft confirm",
+            "name": "projects/9847785945380024944/screens/5891915293269157047",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "5891915293269157047",
+          "sourceScreen": "projects/9847785945380024944/screens/5891915293269157047",
+          "x": 50170,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  },
+  {
+    "title": "/ \u00b7 mobile shell",
+    "file": "C:\\Users\\shrav\\OneDrive\\Desktop\\Dukan_Saathi\\.stitch\\capture-html\\38-mobile-shell.html",
+    "result": {
+      "results": [
+        {
+          "screen": {
+            "screenshot": {
+              "name": "projects/9847785945380024944/files/7735993046846313887",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1VpJ0Q6cpLAxzSDEVruuMkvUGhkl0GUdbpfB6kHoHgTARMOiN2F4qvLvcj0ZLMiC5C76FOIH1j9xgo8qkxQjFNFBwQa1QZw12K2SYFtK3YA7-wZRn-pV7boVYhLnfuOGOnl95PAfIF76Mn9zP6bj--KYG8KJmqgpHETyWDFg21CrSAWLxTIcXa6sHxCzFeI9btmv4KuhCR7vOOAgIurBtf2hfcfCsByhQ8KjpCh6QNeie6Ri5T9Jz2Bjx-UnQNZWNEB426OgsWR"
+            },
+            "htmlCode": {
+              "name": "projects/9847785945380024944/files/7735993046846312984",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBKNARIhYXBwX2NvbXBhbmlvbl91c2VyX3VwbG9hZGVkX2ZpbGVzGmgKM3VzZXJfdXBsb2FkZWRfaHRtbF8wMDA2NTllMzZhMTNmNDAwMDFhNjM3YTViNDBlNTcwMhILEgcQx-D5jMEWGAGSASMKCnByb2plY3RfaWQSFUITOTg0Nzc4NTk0NTM4MDAyNDk0NA&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "7735993046846314790",
+            "generatedBy": "UserUploadedHtml: stitch::extract-static-html",
+            "width": "2560",
+            "height": "1600",
+            "title": "/ \u00b7 mobile shell",
+            "name": "projects/9847785945380024944/screens/7735993046846314790",
+            "theme": {},
+            "screenType": "DESIGN",
+            "isCreatedByClient": true,
+            "screenMetadata": {
+              "status": "COMPLETE",
+              "displayMode": "HTML"
+            }
+          }
+        }
+      ],
+      "screenInstances": [
+        {
+          "id": "7735993046846314790",
+          "sourceScreen": "projects/9847785945380024944/screens/7735993046846314790",
+          "x": 51550,
+          "width": 1280,
+          "height": 800
+        }
+      ]
+    }
+  }
+]

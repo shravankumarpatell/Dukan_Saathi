@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 export default function Kbd({ keys, className, tone = "default" }) {
   if (!keys) return null;
   const tones = {
-    default: "border-slate-300 bg-slate-100 text-slate-600",
+    default: "border-border bg-panel text-ink-muted",
     dark: "border-white/25 bg-white/15 text-white",
-    accent: "border-indigo-200 bg-indigo-50 text-indigo-700",
+    accent: "border-mint/30 bg-mint-soft text-mint-dark",
   };
   return (
     <kbd
       className={cn(
-        "inline-flex select-none items-center rounded border px-1.5 py-0.5 font-sans text-[10px] font-bold leading-none tracking-wide whitespace-nowrap",
+        "inline-flex select-none items-center rounded-control border px-1.5 py-0.5 font-sans text-[10px] font-bold leading-none tracking-wide whitespace-nowrap",
         tones[tone] || tones.default,
         className
       )}
