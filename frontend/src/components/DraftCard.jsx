@@ -9,7 +9,7 @@ import { Check, X } from "lucide-react";
 // Generic old->new draft confirmation card (for stock/payment/return/transfer/expense).
 export default function DraftCard() {
   const { draft, commitDraft, cancelDraft } = useApp();
-  const active = !!draft && draft.kind !== "sale" && draft.kind !== "purchase";
+  const active = !!draft && draft.kind !== "sale";
 
   // Exclusive so page form-flow / F9 cannot steal Esc or Ctrl+Enter while a
   // draft is waiting for Confirm.
@@ -67,14 +67,14 @@ export default function DraftCard() {
           <button
             data-testid="draft-cancel-btn"
             onClick={cancelDraft}
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-700 transition-transform active:scale-95"
+            className="flex items-center justify-center gap-2 rounded-control border border-border bg-white px-4 py-3 font-semibold text-ink-muted transition-transform active:scale-95"
           >
             <X className="h-4 w-4" /> Cancel <Kbd keys={KEYS.cancel} />
           </button>
           <button
             data-testid="draft-confirm-btn"
             onClick={commitDraft}
-            className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white shadow-md transition-transform active:scale-95 hover:bg-emerald-700"
+            className="flex items-center justify-center gap-2 rounded-control bg-emerald-600 px-4 py-3 font-semibold text-white shadow-md transition-transform active:scale-95 hover:bg-emerald-700"
           >
             <Check className="h-4 w-4" /> Confirm <Kbd keys={KEYS.confirmDraft} tone="dark" />
           </button>

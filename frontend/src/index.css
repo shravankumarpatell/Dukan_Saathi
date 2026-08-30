@@ -5,61 +5,400 @@
 body {
     margin: 0;
     font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-        sans-serif;
+        var(--font-sans), var(--font-hind), Inter, Hind, ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
 code {
     font-family:
-        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+        var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
     :root {
-        --background: 240 5% 97%;       /* #F8F8FA — warm off-white */
-        --foreground: 240 6% 10%;       /* #1C1C1E — Apple primary text */
-        --card: 0 0% 100%;              /* #FFFFFF */
-        --card-foreground: 240 6% 10%;
+        --background: 214 100% 96%;    /* #EAF2FF canvas */
+        --foreground: 215 55% 24%;     /* #1B365D navy */
+        --card: 0 0% 100%;
+        --card-foreground: 215 55% 24%;
         --popover: 0 0% 100%;
-        --popover-foreground: 240 6% 10%;
-        --primary: 239 84% 67%;         /* #4F46E5 — indigo-600 */
+        --popover-foreground: 215 55% 24%;
+        --primary: 221 83% 53%;        /* #2563EB */
         --primary-foreground: 0 0% 100%;
-        --secondary: 240 5% 96%;        /* #F4F4F5 */
-        --secondary-foreground: 240 6% 10%;
-        --muted: 240 5% 96%;
-        --muted-foreground: 240 4% 46%; /* #6E6E73 */
-        --accent: 240 5% 96%;
-        --accent-foreground: 240 6% 10%;
-        --destructive: 0 84% 60%;
+        --secondary: 214 100% 96%;     /* #EAF2FF */
+        --secondary-foreground: 215 55% 24%;
+        --muted: 216 100% 95%;
+        --muted-foreground: 213 38% 47%; /* #4A74A7 */
+        --accent: 224 76% 48%;         /* #1D4ED8 */
+        --accent-foreground: 0 0% 100%;
+        --destructive: 347 77% 50%;
         --destructive-foreground: 0 0% 100%;
-        --border: 240 6% 90%;           /* #E8E8EC — softer than default */
-        --input: 240 6% 90%;
-        --ring: 239 84% 67%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-    }
-}
+        --border: 214 70% 88%;
+        --input: 214 70% 88%;
+        --ring: 221 83% 53%;
+        --chart-1: 221 83% 53%;
+        --chart-2: 220 100% 75%;       /* #7DA8FF */
+        --chart-3: 213 38% 47%;
+        --chart-4: 215 55% 24%;        /* #1B365D */
+        --chart-5: 347 77% 50%;
+        --radius: 12px;
+        --control-radius: 8px;
+        --dense-radius: 6px;
 
-@layer base {
+        --ink: 27 54 93;
+        --ink-muted: 74 116 167;
+        --mint: 37 99 235;
+        --mint-soft: 199 221 255;
+        --mint-dark: 29 78 216;
+        --canvas: 234 242 255;
+        --surface: 27 54 93;
+        --panel: 255 255 255;
+        --hairline: 199 221 255;
+        --chrome: 27 54 93;
+
+        --slate-50: 248 250 252;
+        --slate-100: 241 245 249;
+        --slate-200: 226 232 240;
+        --slate-300: 203 213 225;
+        --slate-400: 148 163 184;
+        --slate-500: 100 116 139;
+        --slate-600: 71 85 105;
+        --slate-700: 51 65 85;
+        --slate-800: 35 78 120;
+        --slate-900: 27 54 93;
+
+        --chart-grid: #d7e6ff;
+        --chart-axis: #4a74a7;
+        --chart-tooltip-bg: #ffffff;
+        --chart-tooltip-border: #c7ddff;
+        --chart-tooltip-fg: #1b365d;
+        --chart-karcha: #4b5563;
+        --chart-navy: #1b365d;
+    }
+
+    html.dark {
+        color-scheme: dark;
+        --background: 222 47% 8%;      /* #0B1220 */
+        --foreground: 214 100% 96%;    /* ice */
+        --card: 221 43% 15%;           /* #162338 */
+        --card-foreground: 214 100% 96%;
+        --popover: 221 43% 15%;
+        --popover-foreground: 214 100% 96%;
+        --primary: 217 91% 60%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 222 40% 14%;
+        --secondary-foreground: 214 100% 96%;
+        --muted: 221 36% 18%;
+        --muted-foreground: 213 32% 72%;
+        --accent: 217 91% 60%;
+        --accent-foreground: 0 0% 100%;
+        --destructive: 347 77% 55%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 217 32% 28%;
+        --input: 217 32% 28%;
+        --ring: 217 91% 60%;
+        --chart-1: 217 91% 60%;
+        --chart-2: 220 80% 70%;
+        --chart-3: 213 32% 72%;
+        --chart-4: 214 100% 96%;
+        --chart-5: 347 77% 55%;
+
+        --ink: 232 240 255;
+        --ink-muted: 148 171 204;
+        --mint: 96 165 250;
+        --mint-soft: 30 58 95;
+        --mint-dark: 147 197 253;
+        --canvas: 11 18 32;
+        --surface: 27 54 93;
+        --panel: 22 35 56;
+        --hairline: 42 64 96;
+        --chrome: 12 24 44;
+
+        --slate-50: 18 30 50;
+        --slate-100: 22 36 58;
+        --slate-200: 42 64 96;
+        --slate-300: 58 82 118;
+        --slate-400: 139 163 199;
+        --slate-500: 148 171 204;
+        --slate-600: 186 202 224;
+        --slate-700: 210 222 240;
+        --slate-800: 220 230 245;
+        --slate-900: 232 240 255;
+
+        --chart-grid: #243656;
+        --chart-axis: #94abc8;
+        --chart-tooltip-bg: #162338;
+        --chart-tooltip-border: #2a4060;
+        --chart-tooltip-fg: #e8f0ff;
+        --chart-karcha: #94a3b8;
+        --chart-navy: #7da8ff;
+    }
+
     * {
         @apply border-border;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    html, body {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    *::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
+        background: transparent;
+    }
+    html {
+        color-scheme: light;
+    }
+    html.dark {
+        color-scheme: dark;
     }
     body {
-        @apply bg-background text-foreground;
+        @apply bg-background text-foreground antialiased;
     }
 
-    /* Prevent iOS Safari/Chrome from auto-zooming when a form field is focused.
-       Tailwind utilities (text-sm/text-xs) would otherwise win, so force >=16px. */
     input:not([type="checkbox"]):not([type="radio"]),
     select,
     textarea {
         font-size: 16px !important;
+        color: rgb(var(--ink));
+    }
+    input:not([type="checkbox"]):not([type="radio"]):not(.ds-bare-input),
+    select:not(.ds-bare-input),
+    textarea:not(.ds-bare-input) {
+        border-radius: var(--control-radius);
+        background-color: rgb(var(--panel));
+        color: rgb(var(--ink));
+    }
+
+    /* Chrome/Edge paint autofill yellow (light) or grey (dark) over our fields. */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    textarea:-webkit-autofill,
+    select:-webkit-autofill,
+    input:autofill {
+        -webkit-text-fill-color: rgb(var(--ink)) !important;
+        caret-color: rgb(var(--ink));
+        background-color: rgb(var(--panel)) !important;
+        box-shadow: 0 0 0 1000px rgb(var(--panel)) inset !important;
+        transition: background-color 99999s ease-out;
+    }
+}
+
+@layer utilities {
+    .rounded-dense {
+        border-radius: var(--dense-radius) !important;
+    }
+}
+
+@layer components {
+    .ds-mesh {
+        background-color: rgb(var(--canvas));
+        background-image:
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.14'/%3E%3C/svg%3E"),
+            radial-gradient(ellipse 80% 50% at 0% 0%, rgb(var(--mint) / 0.16), transparent 55%),
+            radial-gradient(ellipse 60% 40% at 100% 10%, rgb(125 168 255 / 0.22), transparent 50%),
+            radial-gradient(ellipse 50% 50% at 80% 100%, rgb(var(--mint-soft) / 0.45), transparent 55%);
+        background-blend-mode: overlay, normal, normal, normal;
+    }
+
+    .ds-glass {
+        background: rgb(var(--canvas) / 0.86);
+        border: 1px solid rgb(var(--hairline) / 0.95);
+        box-shadow: 0 1px 0 rgb(255 255 255 / 0.35);
+    }
+
+    html.dark .ds-glass {
+        box-shadow: 0 1px 0 rgb(0 0 0 / 0.25);
+    }
+
+    .ds-glass-dark {
+        background: rgb(var(--chrome));
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+    }
+
+    .ds-panel {
+        background-color: rgb(var(--panel));
+        border: 1px solid rgb(var(--hairline));
+        border-radius: var(--radius);
+        box-shadow: 0 1px 2px rgb(var(--surface) / 0.08);
+        color: rgb(var(--ink));
+    }
+    html.dark .ds-panel {
+        border-color: rgb(255 255 255 / 0.08);
+    }
+    .ds-palette-dialog {
+        border: none !important;
+        outline: none !important;
+        box-shadow: 0 24px 48px rgb(27 54 93 / 0.22);
+    }
+    html.dark .ds-palette-dialog {
+        box-shadow: 0 24px 48px rgb(0 0 0 / 0.45);
+    }
+
+    .ds-control {
+        border-radius: var(--control-radius);
+    }
+
+    /* One chrome only: wrapper holds border + radius; inner field stays square. */
+    .ds-combo {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+        border: 1px solid rgb(var(--hairline));
+        background: rgb(var(--panel));
+        border-radius: var(--control-radius);
+        padding: 0.5rem 0.75rem;
+        color: rgb(var(--ink));
+    }
+    .ds-combo:focus-within {
+        border-color: rgb(var(--mint));
+        box-shadow: none;
+    }
+    .ds-combo input,
+    .ds-bare-input {
+        appearance: none;
+        border: 0 !important;
+        border-radius: 0 !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        min-width: 0;
+        flex: 1 1 auto;
+        width: 100%;
+        color: inherit;
+    }
+
+    .ds-field {
+        width: 100%;
+        border: 1px solid rgb(var(--hairline));
+        background-color: rgb(var(--panel)) !important;
+        color: rgb(var(--ink));
+        border-radius: var(--control-radius);
+        padding: 0.5rem 0.75rem;
+    }
+    .ds-field::placeholder {
+        color: rgb(var(--ink-muted) / 0.7);
+    }
+    .ds-field:focus,
+    .ds-field:focus-visible {
+        outline: none;
+        border-color: rgb(var(--mint));
+    }
+
+    .ds-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        border-radius: 4px;
+        padding: 0.125rem 0.375rem;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.25;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+    }
+    .ds-chip-tile {
+        background: rgb(var(--mint) / 0.14);
+        color: rgb(var(--mint-dark));
+    }
+    .ds-chip-sanitary {
+        background: rgb(14 165 233 / 0.14);
+        color: rgb(3 105 161);
+    }
+    html.dark .ds-chip-sanitary {
+        background: rgb(12 74 110 / 0.5);
+        color: #7dd3fc;
+    }
+    .ds-chip-role {
+        background: rgb(var(--ink) / 0.08);
+        color: rgb(var(--ink));
+        border: 1px solid rgb(var(--hairline));
+    }
+    html.dark .ds-chip-role {
+        background: rgb(var(--ink) / 0.08);
+        color: rgb(var(--ink-muted));
+        border-color: rgb(var(--hairline));
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 1.1rem;
+        height: 1.1rem;
+        accent-color: rgb(var(--mint));
+        cursor: pointer;
+        flex-shrink: 0;
+        border-radius: 4px;
+    }
+    input[type="checkbox"]:hover,
+    input[type="radio"]:hover {
+        outline: 2px solid rgb(var(--mint) / 0.55);
+        outline-offset: 2px;
+    }
+    input[type="checkbox"]:focus-visible,
+    input[type="radio"]:focus-visible {
+        outline: 2px solid rgb(var(--mint));
+        outline-offset: 2px;
+    }
+}
+
+/* Hardcoded white surfaces used across screens become panels in dark mode.
+   Opacity variants (bg-white/10 on navy chrome) are left alone. */
+html.dark .bg-white {
+    background-color: rgb(var(--panel) / var(--tw-bg-opacity, 1));
+}
+html.dark .hover\:bg-white:hover,
+html.dark .group:hover .group-hover\:bg-white {
+    background-color: rgb(var(--panel));
+}
+html.dark .bg-white\/70 {
+    background-color: rgb(var(--panel) / 0.72);
+}
+html.dark .focus\:bg-white:focus,
+html.dark .focus-within\:bg-white:focus-within {
+    background-color: rgb(var(--panel));
+}
+html.dark .ring-offset-white {
+    --tw-ring-offset-color: rgb(var(--canvas));
+}
+
+html.dark .bg-rose-50 { background-color: rgb(136 19 55 / 0.35); }
+html.dark .bg-rose-50\/80 { background-color: rgb(136 19 55 / 0.28); }
+html.dark .text-rose-600, html.dark .text-rose-700, html.dark .text-rose-800, html.dark .text-rose-900 { color: #fda4af; }
+html.dark .border-rose-200 { border-color: rgb(251 113 133 / 0.35); }
+html.dark .bg-emerald-50 { background-color: rgb(6 78 59 / 0.4); }
+html.dark .text-emerald-600, html.dark .text-emerald-700, html.dark .text-emerald-800, html.dark .text-emerald-900 { color: #6ee7b7; }
+html.dark .border-emerald-200 { border-color: rgb(52 211 153 / 0.35); }
+html.dark .bg-amber-50, html.dark .bg-amber-100 { background-color: rgb(120 53 15 / 0.35); }
+html.dark .bg-emerald-100 { background-color: rgb(6 78 59 / 0.55); }
+html.dark .hover\:bg-rose-100:hover { background-color: rgb(136 19 55 / 0.5); }
+html.dark .bg-rose-100 { background-color: rgb(136 19 55 / 0.4); }
+html.dark .text-amber-700, html.dark .text-amber-800, html.dark .text-amber-900, html.dark .text-amber-950 { color: #fcd34d; }
+html.dark .border-amber-200 { border-color: rgb(251 191 36 / 0.35); }
+html.dark .bg-sky-50, html.dark .bg-sky-100 { background-color: rgb(12 74 110 / 0.45); }
+html.dark .text-sky-800 { color: #7dd3fc; }
+html.dark .bg-orange-50 { background-color: rgb(124 45 18 / 0.4); }
+
+@media (prefers-reduced-transparency: reduce) {
+    .ds-glass {
+        background: rgb(var(--canvas));
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    .ds-glass-dark {
+        background: rgb(var(--chrome));
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ds-mesh {
+        background-blend-mode: normal;
     }
 }

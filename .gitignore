@@ -22,6 +22,7 @@ node_modules/
 # Next.js
 /.next/
 /out/
+frontend/.next/
 next-env.d.ts
 *.tsbuildinfo
 
@@ -88,6 +89,8 @@ frontend/node_modules/.cache/default-development/4.pack
 frontend/node_modules/.cache/default-development/2.pack
 .env
 .env.*
+!.env.example
+!**/.env.example
 *.env
 credentials.json
 *.key
@@ -95,3 +98,18 @@ credentials.json
 frontend/node_modules/.cache/default-development/9.pack
 frontend/node_modules/.cache/default-development/14.pack
 frontend/node_modules/.cache/default-development/1.pack
+
+# Extraction eval: ignore supplier PDFs/images, gold JSON, and GEPA cache
+backend/eval/extraction/samples/*
+!backend/eval/extraction/samples/.gitkeep
+backend/eval/extraction/gold/*
+!backend/eval/extraction/gold/.gitkeep
+backend/eval/extraction/.gepa_cache/
+
+# Stitch live-UI import artifacts (inlined HTML, local Chrome profile)
+.stitch/capture-html/
+.stitch/chrome-profile/
+.stitch/capture-auth.json
+.stitch/_screens.json
+.stitch/_last.json
+.stitch/scripts/node_modules/

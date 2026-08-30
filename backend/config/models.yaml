@@ -1,5 +1,6 @@
 primary:
   provider: "google"
+  # Extraction / NLU. Shop chat analyst uses app.config GEMINI_MODEL + GOOGLE_CLOUD_LOCATION (asia-south1).
   model: "gemini-3.5-flash"
   temperature: 0.0
   max_retries: 2

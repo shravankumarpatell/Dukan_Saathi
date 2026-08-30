@@ -1,48 +1,41 @@
 from typing import Optional, List, Dict
-"""RAG retrieval service — FAISS index with Gemini embeddings."""
+"""RAG retrieval service — FAISS index with local hashed embeddings.
 
+Chat and vision use Vertex Gemini (ADC). Embeddings stay local so retrieval
+does not need a Gemini API key or a separate Vertex embedding endpoint.
+"""
+
+import hashlib
 import os
 os.environ["FAISS_DISABLE_CPU_FEATURES"] = "AVX2"
 import faiss
 import numpy as np
-import httpx
 
-from app.config import settings as app_settings
 from app.genai.config import settings
 from app.genai.logger import logger
 
-GEMINI_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+EMBED_DIM = 256
+
+
+def _hash_embed(text: str, dim: int = EMBED_DIM) -> np.ndarray:
+    vec = np.zeros(dim, dtype=np.float32)
+    for tok in (text or "").lower().split():
+        h = int(hashlib.md5(tok.encode("utf-8")).hexdigest(), 16)
+        vec[h % dim] += 1.0
+    n = np.linalg.norm(vec)
+    if n:
+        vec /= n
+    return vec
 
 
 class RetrievalService:
     def __init__(self):
-        self.dimension = 3072  # Gemini Embedding 001 output dimension
+        self.dimension = EMBED_DIM
         self.index = faiss.IndexFlatL2(self.dimension)
         self.documents = []
 
     async def _get_embeddings(self, texts: List[str]) -> np.ndarray:
-        """Get embeddings from Gemini's text-embedding API."""
-        model = settings.retrieval.embedding_model
-        url = f"{GEMINI_EMBED_URL}/{model}:batchEmbedContents?key={app_settings.GEMINI_API_KEY}"
-
-        requests_body = [
-            {"model": f"models/{model}", "content": {"parts": [{"text": t}]}}
-            for t in texts
-        ]
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                url,
-                json={"requests": requests_body},
-                headers={"Content-Type": "application/json"},
-            )
-            if resp.status_code != 200:
-                logger.error("Gemini embedding error %d: %s", resp.status_code, resp.text[:300])
-                raise RuntimeError(f"Gemini embedding API error {resp.status_code}")
-
-            data = resp.json()
-            embeddings = [e["values"] for e in data["embeddings"]]
-            return np.array(embeddings, dtype=np.float32)
+        return np.vstack([_hash_embed(t) for t in texts]).astype(np.float32)
 
     async def index_documents(self, chunks: List[str]):
         if not chunks:

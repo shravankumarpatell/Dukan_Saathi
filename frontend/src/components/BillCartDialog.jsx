@@ -3,9 +3,10 @@ import NumberInput from "@/components/NumberInput";
 import Kbd from "@/components/Kbd";
 import SqftDialog from "@/components/SqftDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import { itemAmount, money } from "@/lib/calc";
 import {
-  isBoxUnit, qtyFieldLabel, rateSuffix, productMetaLine, unitKindLabel,
+  isBoxUnit, qtyFieldLabel, rateSuffix, productMetaLine, unitKindLabel, unitKindChipClass,
   stockAvailPieces, clampSaleQtyFields, formatAvailLabel, lineSoldPieces,
 } from "@/lib/units";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
@@ -14,7 +15,7 @@ import { KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
 import { Trash2, ShoppingCart, Calculator } from "lucide-react";
 
-const NUM = "w-full rounded-lg border border-slate-300 px-1.5 py-1 text-sm text-right tabular-nums outline-none focus:ring-2 focus:ring-indigo-500";
+const NUM = "w-full rounded-dense border border-border bg-panel px-1.5 py-1 text-sm text-right tabular-nums outline-none focus:border-mint";
 const FLD = "w-[4.25rem]";
 const FLD_RATE = "w-[5.25rem]";
 const FLD_AMT = "w-[6.25rem]";
@@ -41,6 +42,7 @@ export default function BillCartDialog({
   onRequestClear,
   saving,
 }) {
+  const visible = useVisibleOpen(open);
   const itemsRef = useRef(null);
   const closeBtnRef = useRef(null);
   const [sqftFor, setSqftFor] = useState(null); // { index, item }
@@ -83,7 +85,7 @@ export default function BillCartDialog({
     let nextQty = String(res.boxesNeeded);
     let nextPcs = String(res.loosePieces);
     const wanted = (Number(res.boxesNeeded) || 0) * ppb + (Number(res.loosePieces) || 0);
-    const limitStock = type === "sale";
+    const limitStock = true;
 
     if (limitStock) {
       const p = products.find((x) => x.id === it.productId) || it;
@@ -128,7 +130,7 @@ export default function BillCartDialog({
     target.focus();
   };
 
-  useHotkeyScope(CART_SCOPE, { exclusive: true, enabled: open && !sqftOpen });
+  useHotkeyScope(CART_SCOPE, { exclusive: true, enabled: visible && !sqftOpen });
   useHotkeys(CART_SCOPE, [
     { keys: KEYS.cancel, label: "Close cart", handler: onClose },
     { keys: KEYS.save, label: "Save bill", handler: onSave, disabled: saving },
@@ -164,10 +166,10 @@ export default function BillCartDialog({
     },
   ]);
 
-  const flow = useFormFlow({ onSave: undefined, onCancel: onClose, enabled: open && !sqftOpen });
+  const flow = useFormFlow({ onSave: undefined, onCancel: onClose, enabled: visible && !sqftOpen });
 
   useEffect(() => {
-    if (!open) {
+    if (!visible) {
       setSqftFor(null);
       return undefined;
     }
@@ -177,7 +179,7 @@ export default function BillCartDialog({
       else closeBtnRef.current?.focus();
     }, 60);
     return () => clearTimeout(t);
-  }, [open]);
+  }, [visible]);
 
   const subtotal = items.reduce((s, it) => s + itemAmount(it), 0);
 
@@ -188,7 +190,7 @@ export default function BillCartDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(o) => !o && !sqftOpen && onClose()}>
+      <Dialog open={visible} onOpenChange={(o) => !o && !sqftOpen && onClose()}>
         <DialogContent
           data-testid="bill-cart-dialog"
           className="max-w-2xl"
@@ -223,14 +225,14 @@ export default function BillCartDialog({
                 <div
                   key={`${it.productId}-${i}`}
                   data-testid={`bill-item-${i}`}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-slate-200 px-2.5 py-2"
+                  className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-control border border-border px-2.5 py-2"
                 >
                   <div className="min-w-0 flex-1 basis-36">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <p className="min-w-0 truncate text-sm font-semibold text-slate-900" title={it.name}>
                         {it.name}
                       </p>
-                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${tile ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800"}`}>
+                      <span className={`shrink-0 ${unitKindChipClass(it)}`}>
                         {unitKindLabel(it)}
                       </span>
                     </div>
@@ -300,7 +302,7 @@ export default function BillCartDialog({
                             size: it.size || "",
                           },
                         })}
-                        className="mb-0.5 rounded-lg p-1.5 text-orange-600 hover:bg-orange-50"
+                        className="mb-0.5 rounded-lg p-1.5 text-mint hover:bg-mint-soft"
                       >
                         <Calculator className="h-4 w-4" />
                       </button>
@@ -321,20 +323,12 @@ export default function BillCartDialog({
             })}
           </div>
 
-          {items.length > 0 && (
-            <p className="hidden text-center text-[11px] text-slate-400 lg:block">
-              <Kbd keys="arrowup" /> <Kbd keys="arrowdown" /> line · <Kbd keys="enter" /> agla field ·{" "}
-              <Kbd keys={KEYS.sqftCalc} /> sq-ft · <Kbd keys={KEYS.deleteRow} /> hataayein
-            </p>
-          )}
-
           <div className="flex items-center justify-between border-t border-slate-100 pt-3">
             <div className="text-sm font-semibold text-slate-700">
               Subtotal{" "}
               <span className="tabular-nums text-slate-900" data-testid="bill-cart-subtotal">
                 {money(subtotal)}
               </span>
-              {type === "purchase" && <span className="ml-1 text-xs font-normal text-slate-400">(purchase)</span>}
             </div>
             <button
               ref={closeBtnRef}
@@ -342,7 +336,7 @@ export default function BillCartDialog({
               data-testid="bill-cart-close"
               data-flow-skip
               onClick={onClose}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-control border border-border bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-canvas"
             >
               Close <Kbd keys={KEYS.cancel} />
             </button>

@@ -1,0 +1,9 @@
+{
+  "id": "kamai-window",
+  "question": "aaj ki kamai",
+  "category": "metric_parity",
+  "route": "metric",
+  "metric": "kamai",
+  "sql": "SELECT ROUND(SUM(kamai), 2) AS kamai, ROUND(SUM(sales_gross), 2) AS sales_gross, ROUND(SUM(returns_total), 2) AS returns_total FROM v_daily WHERE bill_date >= :start_date AND bill_date <= :end_date",
+  "expect_from": "fixture_kamai"
+}

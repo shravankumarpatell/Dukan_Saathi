@@ -1,22 +1,28 @@
-from typing import Optional, List, Dict
 """Product API routes — CRUD, bulk import."""
 
+from typing import List, Optional
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
-from app.dependencies import get_current_user, AuthenticatedUser
-from app.database import get_db
-from app.common.errors import NotFoundError, ValidationError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.common.calc import round2
+from app.common.errors import NotFoundError
 from app.common.tile_sizes import normalize_tile_size
+from app.db import get_session
+from app.dependencies import AuthenticatedUser, get_current_user
+from app.orm import Product
+from app.persist import money, parse_uuid, product_dict, shop_uuid
 from app.products.models import (
-    ProductCreate, ProductUpdate, ProductResponse,
     BulkImportRequest,
+    ProductCreate,
+    ProductResponse,
+    ProductUpdate,
 )
+from app.shops.router import _get_or_create_shop
 
 router = APIRouter(prefix="/products", tags=["products"])
-
-
-def _products_ref(shop_id: str):
-    return get_db().collection("shops").document(shop_id).collection("products")
 
 
 def _normalize_unit_fields(data: dict, existing: Optional[dict] = None) -> dict:
@@ -32,52 +38,81 @@ def _normalize_unit_fields(data: dict, existing: Optional[dict] = None) -> dict:
         if "unit" in data or existing is None:
             data["unit"] = "box"
         if "piecesPerBox" in data or existing is None:
-            data["piecesPerBox"] = max(1, int(data.get("piecesPerBox") or (existing or {}).get("piecesPerBox") or 1))
+            data["piecesPerBox"] = max(
+                1,
+                int(data.get("piecesPerBox") or (existing or {}).get("piecesPerBox") or 1),
+            )
         if "size" in data or existing is None:
             mapped = normalize_tile_size(data.get("size") or "")
             data["size"] = mapped or str(data.get("size") or "").strip()
     return data
 
 
-def _to_response(doc_id: str, data: dict) -> ProductResponse:
-    """Convert a Firestore document to ProductResponse, merging legacy stock fields."""
-    # Auto-merge legacy showroom/godown into stockQty for reads
-    stock = (data.get("stockQty", 0) or 0) + (data.get("showroomQty", 0) or 0) + (data.get("godownQty", 0) or 0)
-    return ProductResponse(id=doc_id, **{
-        k: (stock if k == "stockQty" else data.get(k, ProductResponse.model_fields[k].default))
-        for k in ProductResponse.model_fields if k != "id"
-    })
+def _to_response(product: Product) -> ProductResponse:
+    d = product_dict(product)
+    return ProductResponse(**d)
+
+
+def _apply_fields(product: Product, data: dict) -> None:
+    mapping = {
+        "name": "name",
+        "code": "code",
+        "company": "company",
+        "size": "size",
+        "unit": "unit",
+        "piecesPerBox": "pieces_per_box",
+        "sellPrice": "sell_price",
+        "stockQty": "stock_qty",
+        "lowStockThreshold": "low_stock_threshold",
+    }
+    for src, dest in mapping.items():
+        if src in data and data[src] is not None:
+            setattr(product, dest, data[src])
 
 
 @router.get("", response_model=List[ProductResponse])
-async def list_products(user: AuthenticatedUser = Depends(get_current_user)):
+async def list_products(
+    user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
     """List all products for the authenticated shop."""
-    docs = _products_ref(user.uid).stream()
-    return [_to_response(d.id, d.to_dict()) for d in docs]
+    shop_id = shop_uuid(user.uid)
+    rows = (
+        await session.execute(select(Product).where(Product.shop_id == shop_id))
+    ).scalars().all()
+    return [_to_response(p) for p in rows]
 
 
 @router.post("", response_model=ProductResponse, status_code=201)
 async def create_product(
     body: ProductCreate,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     """Create a product on the fly — used by the quick-add flow while billing."""
+    shop = await _get_or_create_shop(session, user)
     data = body.model_dump()
     _normalize_unit_fields(data)
-    _, doc_ref = _products_ref(user.uid).add(data)
-    return _to_response(doc_ref.id, data)
+    product = Product(shop_id=shop.id)
+    _apply_fields(product, data)
+    session.add(product)
+    await session.flush()
+    return _to_response(product)
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
     product_id: str,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     """Get a single product by ID."""
-    snap = _products_ref(user.uid).document(product_id).get()
-    if not snap.exists:
+    shop_id = shop_uuid(user.uid)
+    pid = parse_uuid(product_id, "Product")
+    product = await session.get(Product, pid)
+    if product is None or product.shop_id != shop_id:
         raise NotFoundError("Product", product_id)
-    return _to_response(snap.id, snap.to_dict())
+    return _to_response(product)
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
@@ -85,83 +120,77 @@ async def update_product(
     product_id: str,
     body: ProductUpdate,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     """Update a product. Only provided fields are changed."""
-    ref = _products_ref(user.uid).document(product_id)
-    snap = ref.get()
-    if not snap.exists:
+    shop_id = shop_uuid(user.uid)
+    pid = parse_uuid(product_id, "Product")
+    product = await session.get(Product, pid)
+    if product is None or product.shop_id != shop_id:
         raise NotFoundError("Product", product_id)
 
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
-    existing = snap.to_dict() or {}
+    existing = product_dict(product)
     _normalize_unit_fields(patch, existing)
-    if patch:
-        ref.update(patch)
-
-    updated = ref.get().to_dict()
-    return _to_response(product_id, updated)
+    _apply_fields(product, patch)
+    await session.flush()
+    return _to_response(product)
 
 
 @router.delete("/{product_id}", status_code=204)
 async def delete_product(
     product_id: str,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     """Delete a product."""
-    ref = _products_ref(user.uid).document(product_id)
-    snap = ref.get()
-    if not snap.exists:
+    shop_id = shop_uuid(user.uid)
+    pid = parse_uuid(product_id, "Product")
+    product = await session.get(Product, pid)
+    if product is None or product.shop_id != shop_id:
         raise NotFoundError("Product", product_id)
-    ref.delete()
+    await session.delete(product)
 
 
 @router.post("/bulk", response_model=List[ProductResponse], status_code=201)
 async def bulk_import(
     body: BulkImportRequest,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     """Bulk import products — matches existing by code/name, creates new ones otherwise."""
-    products_col = _products_ref(user.uid)
-
-    # Fetch existing products for matching
-    existing = {d.id: d.to_dict() for d in products_col.stream()}
+    shop = await _get_or_create_shop(session, user)
+    existing_rows = (
+        await session.execute(select(Product).where(Product.shop_id == shop.id))
+    ).scalars().all()
+    existing = {p.id: p for p in existing_rows}
     results = []
 
     for row in body.rows:
-        # Try to match by code or name (case-insensitive)
-        matched_id = None
-        matched_data = None
-        for pid, pdata in existing.items():
-            if row.code and pdata.get("code", "").lower() == row.code.lower():
-                matched_id, matched_data = pid, pdata
+        matched: Optional[Product] = None
+        for product in existing.values():
+            if row.code and (product.code or "").lower() == row.code.lower():
+                matched = product
                 break
-            if pdata.get("name", "").lower() == row.name.lower():
-                matched_id, matched_data = pid, pdata
+            if (product.name or "").lower() == row.name.lower():
+                matched = product
                 break
 
-        if matched_id and matched_data:
-            # Update existing: add to stockQty, refresh price if one was given
-            current_stock = (
-                (matched_data.get("stockQty", 0) or 0)
-                + (matched_data.get("godownQty", 0) or 0)
-                + (matched_data.get("showroomQty", 0) or 0)
-            )
-            new_stock = current_stock + (row.qty or 0)
-            patch = {"stockQty": round2(new_stock), "godownQty": 0, "showroomQty": 0}
-            # Price is optional on supplier sheets — only overwrite when supplied
+        if matched:
+            new_stock = money(matched.stock_qty) + (row.qty or 0)
+            matched.stock_qty = round2(new_stock)
             if row.price > 0:
-                patch["sellPrice"] = row.price
-            # Also refresh unit / pcs-per-box when supplied on the row
+                matched.sell_price = row.price
             if row.unit in ("box", "piece"):
-                patch["unit"] = row.unit
-                patch["piecesPerBox"] = row.piecesPerBox
-                patch["size"] = row.size
-                _normalize_unit_fields(patch, matched_data)
-            products_col.document(matched_id).update(patch)
-            updated = products_col.document(matched_id).get().to_dict()
-            results.append(_to_response(matched_id, updated))
+                patch = {
+                    "unit": row.unit,
+                    "piecesPerBox": row.piecesPerBox,
+                    "size": row.size,
+                }
+                _normalize_unit_fields(patch, product_dict(matched))
+                _apply_fields(matched, patch)
+            results.append(matched)
         else:
-            # Create new product
             new_data = {
                 "name": row.name,
                 "code": row.code,
@@ -174,7 +203,12 @@ async def bulk_import(
                 "lowStockThreshold": 10,
             }
             _normalize_unit_fields(new_data)
-            _, doc_ref = products_col.add(new_data)
-            results.append(_to_response(doc_ref.id, new_data))
+            product = Product(shop_id=shop.id)
+            _apply_fields(product, new_data)
+            session.add(product)
+            await session.flush()
+            existing[product.id] = product
+            results.append(product)
 
-    return results
+    await session.flush()
+    return [_to_response(p) for p in results]

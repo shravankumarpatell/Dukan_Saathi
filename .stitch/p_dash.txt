@@ -1,0 +1,13 @@
+Edit THIS screen only: Dashboard of the existing DukanSaathi app (route /).
+
+Remove TilePOS Admin, Overview, Recent Sales tables that are not in the product.
+
+Ink sidebar #0B1220, shop name at top, search Jaayein kahin bhi.
+Nav EXACTLY: Dashboard (active), New Bill, Stock, Bill History, Returns, Add Stock, Udhari & Customers, AI Assistant, Analytics. Footer Settings, Shortcuts, user.
+
+Main: Namaste. Aaj ka hisaab ek nazar me.
+Four KPI tiles: Aaj ki kamayi, Aaj Bills, Total Udhari, Low Stock. Tabular rupees.
+Row of two cards: Add Expense (amount, note, Cash|Online, Add) and Daily Summary (date nav, Print Daily Summary PDF).
+Below: Quick Sq-ft Calculator (Length x Width / Direct sq-ft, tile size, pcs/box, wastage).
+
+Never invent Catalog or Records. IBM Plex. Mint #0D9488 for money accent only.

@@ -1,4 +1,4 @@
-// Demo seed data for tiles & sanitaryware showroom, used in DEMO mode (no Firebase).
+// Demo seed data for tiles & sanitaryware showroom (unused in production).
 export function seedData() {
   const now = Date.now();
   const day = 86400000;
@@ -31,7 +31,7 @@ export function seedData() {
       items: [{ productId: "p4", name: "Marble Finish Floor Tile", qty: 20, unit: "box", rate: 820, amount: 16400 }],
       discount: { type: "percent", value: 5 }, gstEnabled: true, gstRate: 18,
       subtotal: 16400, discountOff: 820, gstAmount: 2804.4, grandTotal: 18384.4,
-      payments: [{ mode: "online", amount: 18384.4 }], amountPaid: 18384.4, amountPending: 0, paymentStatus: "paid",ewayRequired: false, createdVia: "voice" },
+      payments: [{ mode: "online", amount: 18384.4 }], amountPaid: 18384.4, amountPending: 0, paymentStatus: "paid",ewayRequired: false, createdVia: "manual" },
     { id: "i3", invoiceNo: "GST20260003", date: iso(0), type: "sale", customerId: "c3", customerName: "Suresh",
       items: [{ productId: "p5", name: "Wash Basin Ivory", qty: 2, unit: "piece", rate: 1400, amount: 2800 }],
       discount: null, gstEnabled: true, gstRate: 18,
@@ -46,7 +46,7 @@ export function seedData() {
       items: [{ productId: "p1", name: "2130 Highlight", qty: 30, unit: "box", rate: 450, amount: 13500 }, { productId: "p7", name: "Wall Tile Glossy White", qty: 15, unit: "box", rate: 260, amount: 3900 }],
       discount: null, gstEnabled: true, gstRate: 18,
       subtotal: 17400, discountOff: 0, gstAmount: 3132, grandTotal: 20532,
-      payments: [{ mode: "cash", amount: 10000 }], amountPaid: 10000, amountPending: 10532, paymentStatus: "partial",ewayRequired: false, createdVia: "voice" },
+      payments: [{ mode: "cash", amount: 10000 }], amountPaid: 10000, amountPending: 10532, paymentStatus: "partial",ewayRequired: false, createdVia: "manual" },
   ];
 
   const expenses = [

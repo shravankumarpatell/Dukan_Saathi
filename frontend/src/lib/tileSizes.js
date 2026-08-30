@@ -81,6 +81,14 @@ for (const s of TILE_SIZES) {
   ["48x24in", "2x4 ft"],
   ["1x2ft", "12x24 in"],
   ["2x1ft", "12x24 in"],
+  ["60x120", "2x4 ft"],
+  ["60x120cm", "2x4 ft"],
+  ["120x60", "2x4 ft"],
+  ["60x60", "2x2 ft"],
+  ["60x60cm", "2x2 ft"],
+  ["80x160", "800x1600 mm"],
+  ["80x160cm", "800x1600 mm"],
+  ["160x80", "800x1600 mm"],
 ].forEach(([alias, value]) => {
   const s = VALUE_INDEX.get(value);
   if (s) ALIAS_INDEX.set(compactKey(alias), s);

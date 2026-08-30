@@ -12,6 +12,8 @@ import math
 # GST
 GST_DEFAULT = 18
 GST_SLABS = [0, 5, 12, 18, 28, 40]
+# PostgreSQL numeric(12, 2) — max storable money value.
+MAX_MONEY = 9_999_999_999.99
 
 
 def round2(n: float) -> float:
@@ -100,6 +102,31 @@ def cash_online_total(payments) -> float:
         if mode in ("cash", "online"):
             total += float(amount or 0)
     return round2(total)
+
+
+def validate_money_limit(value: float, label: str = "Amount") -> None:
+    """Reject values that would overflow numeric(12, 2) in Postgres."""
+    from app.common.errors import ValidationError
+
+    v = round2(value)
+    if abs(v) > MAX_MONEY:
+        raise ValidationError(
+            f"{label} ₹{v:,.2f} bahut bada hai — max ₹{MAX_MONEY:,.2f}. Rate ya qty check karein."
+        )
+
+
+def validate_bill_limits(totals: dict, items=None) -> None:
+    """Ensure line items and computed totals fit in numeric(12, 2)."""
+    for idx, it in enumerate(items or []):
+        amt = item_amount(it if isinstance(it, dict) else it.model_dump())
+        name = (it.get("name") if isinstance(it, dict) else getattr(it, "name", "")) or f"Line {idx + 1}"
+        validate_money_limit(amt, f"'{name}' amount")
+        rate = float((it.get("rate") if isinstance(it, dict) else getattr(it, "rate", 0)) or 0)
+        validate_money_limit(rate, f"'{name}' rate")
+    validate_money_limit(totals.get("subtotal", 0), "Subtotal")
+    validate_money_limit(totals.get("grandTotal", 0), "Bill total")
+    validate_money_limit(totals.get("amountPaid", 0), "Amount paid")
+    validate_money_limit(totals.get("amountPending", 0), "Pending amount")
 
 
 def validate_payment_split(grand_total: float, payments) -> None:
@@ -443,6 +470,69 @@ def allocate_return_across_invoices(
         leftover = 0.0
 
     return patches, detail, leftover
+
+
+def conversion_recorded_amount(target: str, old_credit: float, extra_detail: dict | None = None) -> float:
+    """Amount that actually moved off store credit onto the convert target.
+
+    cash: the whole credit slice is paid out.
+    adjust_udhari: only the udhari that was cleared; leftover stays store credit.
+    """
+    if target == "cash":
+        return round2(old_credit)
+    return round2((extra_detail or {}).get("udhariAdjusted") or 0)
+
+
+def apply_store_credit_conversion(
+    old_detail: dict,
+    target: str,
+    extra_detail: dict | None = None,
+) -> dict:
+    """Move only the store-credit slice. Prior udhari (and any existing cash) stay put.
+
+    cash: store credit becomes cash refund.
+    adjust_udhari: extra_detail is the allocation of that credit slice
+    (new udhari clears + leftover credit).
+    """
+    old_cash = round2((old_detail or {}).get("cash") or 0)
+    old_udhari = round2((old_detail or {}).get("udhariAdjusted") or 0)
+    old_credit = round2((old_detail or {}).get("storeCredit") or 0)
+    old_allocs = list((old_detail or {}).get("invoiceAllocations") or [])
+    if target == "cash":
+        return {
+            "cash": round2(old_cash + old_credit),
+            "udhariAdjusted": old_udhari,
+            "storeCredit": 0.0,
+            "invoiceAllocations": old_allocs,
+        }
+    extra = extra_detail or {
+        "cash": 0.0,
+        "udhariAdjusted": 0.0,
+        "storeCredit": old_credit,
+        "invoiceAllocations": [],
+    }
+    return {
+        "cash": round2(old_cash + (extra.get("cash") or 0)),
+        "udhariAdjusted": round2(old_udhari + (extra.get("udhariAdjusted") or 0)),
+        "storeCredit": round2(extra.get("storeCredit") or 0),
+        "invoiceAllocations": old_allocs + list(extra.get("invoiceAllocations") or []),
+    }
+
+
+def settlement_label_from_detail(detail: dict, fallback: str = "cash") -> str:
+    """Primary enum for mixed returns. Display always uses the split amounts."""
+    cash = round2((detail or {}).get("cash") or 0)
+    credit = round2((detail or {}).get("storeCredit") or 0)
+    udhari = round2((detail or {}).get("udhariAdjusted") or 0)
+    if cash > 0.01 and credit <= 0.01:
+        return "cash"
+    if credit > 0.01 and cash <= 0.01 and udhari <= 0.01:
+        return "store_credit"
+    if udhari > 0.01:
+        return "adjust_udhari"
+    if credit > 0.01:
+        return "store_credit"
+    return fallback or "cash"
 
 
 # Sq-ft calculator

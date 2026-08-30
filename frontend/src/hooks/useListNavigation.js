@@ -39,7 +39,9 @@ export function useListNavigation({ count, onSelect, onEscape, enabled = true } 
   }, [count]);
 
   useEffect(() => {
-    const row = listRef.current?.querySelector(`[data-list-index="${activeIndex}"]`);
+    const root = listRef.current;
+    if (!root || root.closest("[hidden]")) return;
+    const row = root.querySelector(`[data-list-index="${activeIndex}"]`);
     if (!row) return;
     // nearest + inline nearest: scroll the least amount, never sideways.
     row.scrollIntoView({ block: "nearest", inline: "nearest" });

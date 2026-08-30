@@ -1,5 +1,5 @@
 // Minimal service worker for installability + basic offline fallback.
-const CACHE = "dukansaathi-v2";
+const CACHE = "dukansaathi-v4";
 
 self.addEventListener("install", () => self.skipWaiting());
 

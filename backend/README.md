@@ -26,10 +26,29 @@ It heavily utilizes Pydantic for validation, YAML for dynamic configuration, FAI
    ```
 
 ## 4. Environment Variables
-Create a `.env` file in this directory based on `.env.example`:
+Copy `.env.example` to `.env`. Gemini uses **Vertex AI + Application Default Credentials** (no API key).
+
 ```
-OPENAI_API_KEY=sk-proj-your-key-here
+GOOGLE_GENAI_USE_VERTEXAI=true
+GOOGLE_CLOUD_PROJECT=your-gcp-project-id
+GOOGLE_CLOUD_LOCATION=asia-south1
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_STORE_PROMPTS=false
 ```
+
+On Windows (Git Bash or WSL):
+
+```bash
+bash <(curl -sSL https://storage.googleapis.com/cloud-samples-data/adc/setup_adc.sh)
+```
+
+Or with the Google Cloud SDK:
+
+```bash
+gcloud auth application-default login
+```
+
+Enable the Vertex AI API on that GCP project. On a VM, set `GOOGLE_APPLICATION_CREDENTIALS` to a service-account JSON instead of user ADC.
 
 ## 5. Configuration (YAML)
 All logic is configuration-driven. Modify files in the `config/` directory without changing Python code:

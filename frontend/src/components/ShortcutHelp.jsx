@@ -6,7 +6,7 @@ import Kbd from "@/components/Kbd";
 import { Keyboard } from "lucide-react";
 
 /**
- * The cheat sheet (Alt+K).
+ * The cheat sheet (Ctrl+K / ⌘K).
  *
  * `pageBindings` is a snapshot taken by Layout at the moment help was
  * requested — the dialog pushes an exclusive scope of its own, so reading the
@@ -22,7 +22,7 @@ export default function ShortcutHelp({ open, onOpenChange, pageBindings = [] }) 
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-auto" data-testid="shortcut-help">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Keyboard className="h-5 w-5 text-indigo-700" /> Keyboard shortcuts
+            <Keyboard className="h-5 w-5 text-mint-dark" /> Keyboard shortcuts
           </DialogTitle>
         </DialogHeader>
         <p className="-mt-2 text-sm text-slate-500">
@@ -56,7 +56,7 @@ export default function ShortcutHelp({ open, onOpenChange, pageBindings = [] }) 
 }
 
 const Section = ({ title, tone, children }) => (
-  <div className={`rounded-xl border p-3 ${tone === "accent" ? "border-indigo-200 bg-indigo-50/50" : "border-slate-200"}`}>
+  <div className={`rounded-2xl border p-3 ${tone === "accent" ? "border-mint/30 bg-mint-soft/50" : "border-border"}`}>
     <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">{title}</h4>
     <div className="grid gap-1 sm:grid-cols-2">{children}</div>
   </div>

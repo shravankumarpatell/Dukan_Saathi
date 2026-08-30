@@ -1,43 +1,46 @@
-import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+"use client";
+
+import { useEffect } from "react";
 import { Toaster } from "sonner";
 import { AppProvider, useApp } from "@/context/AppContext";
 import { HotkeyProvider } from "@/context/HotkeyContext";
 import { QuickCreateProvider } from "@/context/QuickCreateContext";
 import Layout from "@/components/Layout";
-import Login from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
-import Inventory from "@/pages/Inventory";
-import NewBill from "@/pages/NewBill";
-import Customers from "@/pages/Customers";
-import Returns from "@/pages/Returns";
-import Chat from "@/pages/Chat";
-import BulkUpload from "@/pages/BulkUpload";
-import Analytics from "@/pages/Analytics";
-import BillHistory from "@/pages/BillHistory";
-import Settings from "@/pages/Settings";
+import KeepAliveRoutes from "@/components/KeepAliveRoutes";
+import Login from "@/screens/Login";
+import Signup from "@/screens/Signup";
+import Settings from "@/screens/Settings";
+import { AppHistoryProvider, usePathname } from "@/context/AppHistoryContext";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import ThemeToggle from "@/components/ThemeToggle";
 
 function Shell() {
   const { user, authLoading, shop } = useApp();
+  const pathname = usePathname();
 
   // Wait until auth is resolved AND (if user is logged in) the shop profile is loaded
   if (authLoading || (user && !shop)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-100">
+      <div className="relative flex min-h-screen items-center justify-center bg-canvas">
+        <ThemeToggle className="absolute right-4 top-4" />
         <div className="text-center">
-          <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-900" />
-          <p className="font-display font-bold text-indigo-900">DukanSaathi</p>
+          <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-border border-t-mint" />
+          <p className="font-display font-semibold tracking-tight text-ink">DukanSaathi</p>
         </div>
       </div>
     );
   }
 
-  if (!user) return <Login />;
+  if (!user) {
+    if (pathname === "/signup") return <Signup />;
+    return <Login />;
+  }
 
   // Enforce onboarding for new signups (require at least a phone number)
   if (!shop.phone) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-100 px-4">
+      <div className="relative flex min-h-screen items-center justify-center bg-canvas px-4">
+        <ThemeToggle className="absolute right-4 top-4" />
         <div className="w-full max-w-xl">
           <Settings isOnboarding={true} />
         </div>
@@ -47,36 +50,44 @@ function Shell() {
 
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/bill" element={<NewBill />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/returns" element={<Returns />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/bulk" element={<BulkUpload />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/history" element={<BillHistory />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <KeepAliveRoutes />
     </Layout>
   );
 }
 
+function ThemedToaster() {
+  const { theme } = useTheme();
+  return <Toaster position="top-center" richColors theme={theme} />;
+}
+
 export default function App() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return undefined;
+    const register = () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    };
+    if (document.readyState === "complete") {
+      register();
+      return undefined;
+    }
+    window.addEventListener("load", register);
+    return () => window.removeEventListener("load", register);
+  }, []);
+
   return (
     <div className="App">
-      <BrowserRouter>
-        <AppProvider>
-          <HotkeyProvider>
-            <QuickCreateProvider>
-              <Shell />
-              <Toaster position="top-center" richColors />
-            </QuickCreateProvider>
-          </HotkeyProvider>
-        </AppProvider>
-      </BrowserRouter>
+      <AppHistoryProvider>
+        <ThemeProvider>
+          <AppProvider>
+            <HotkeyProvider>
+              <QuickCreateProvider>
+                <Shell />
+                <ThemedToaster />
+              </QuickCreateProvider>
+            </HotkeyProvider>
+          </AppProvider>
+        </ThemeProvider>
+      </AppHistoryProvider>
     </div>
   );
 }

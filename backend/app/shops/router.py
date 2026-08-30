@@ -1,10 +1,17 @@
 """Shop API routes."""
 
 import re
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
-from app.dependencies import get_current_user, AuthenticatedUser
-from app.database import get_db
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.common.errors import ValidationError
+from app.db import get_session
+from app.dependencies import AuthenticatedUser, get_current_user
+from app.orm import Shop
+from app.persist import shop_uuid
 from app.shops.models import ShopResponse, ShopUpdate
 
 router = APIRouter(prefix="/shops", tags=["shops"])
@@ -35,11 +42,7 @@ def _gstin_checksum_char(first14: str) -> str:
 
 
 def _validate_gst_fields(gst_enabled: bool, gstin: str) -> str:
-    """Normalize + structurally validate GSTIN when GST is enabled.
-
-    Checks format, state code, and mod-36 check digit. Does not call GSTN
-    to verify the taxpayer is currently registered.
-    """
+    """Normalize + structurally validate GSTIN when GST is enabled."""
     value = _normalize_gstin(gstin)
     if not gst_enabled:
         return value
@@ -57,57 +60,74 @@ def _validate_gst_fields(gst_enabled: bool, gstin: str) -> str:
     return value
 
 
+def _to_response(shop: Shop) -> ShopResponse:
+    return ShopResponse(
+        id=str(shop.id),
+        name=shop.name,
+        ownerName=shop.owner_name,
+        phone=shop.phone,
+        address=shop.address,
+        gstEnabled=shop.gst_enabled,
+        gstin=shop.gstin,
+    )
+
+
+async def _get_or_create_shop(session: AsyncSession, user: AuthenticatedUser) -> Shop:
+    shop_id = shop_uuid(user.uid)
+    shop = await session.get(Shop, shop_id)
+    if shop is None:
+        shop = Shop(
+            id=shop_id,
+            name=user.name or "My Shop",
+            owner_name=user.name or "",
+            phone="",
+            address="",
+            gst_enabled=True,
+            gstin="",
+            invoice_seq=1,
+        )
+        session.add(shop)
+        await session.flush()
+    return shop
+
+
 @router.get("/me", response_model=ShopResponse)
-async def get_my_shop(user: AuthenticatedUser = Depends(get_current_user)):
+async def get_my_shop(
+    user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
     """Get the current user's shop, creating it if it doesn't exist."""
-    db = get_db()
-    shop_ref = db.collection("shops").document(user.uid)
-    snap = shop_ref.get()
-
-    if not snap.exists:
-        shop_data = {
-            "name": user.name or "My Shop",
-            "ownerName": user.name or "",
-            "phone": "",
-            "address": "",
-            "gstEnabled": True,
-            "gstin": "",
-            "invoiceSeq": 1,
-        }
-        shop_ref.set(shop_data)
-        return ShopResponse(id=user.uid, **shop_data)
-
-    data = snap.to_dict()
-    return ShopResponse(id=user.uid, **{k: data.get(k, "") for k in ShopResponse.model_fields if k != "id"})
+    shop = await _get_or_create_shop(session, user)
+    return _to_response(shop)
 
 
 @router.put("/me", response_model=ShopResponse)
 async def update_my_shop(
     update: ShopUpdate,
     user: AuthenticatedUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     """Update shop settings. Only provided fields are updated."""
-    db = get_db()
-    shop_ref = db.collection("shops").document(user.uid)
-
-    # Ensure shop exists
-    snap = shop_ref.get()
-    if not snap.exists:
-        # Auto-create
-        await get_my_shop(user)
-        snap = shop_ref.get()
-
-    current = snap.to_dict() or {}
+    shop = await _get_or_create_shop(session, user)
     patch = {k: v for k, v in update.model_dump().items() if v is not None}
 
     if "gstEnabled" in patch or "gstin" in patch:
-        gst_enabled = bool(patch["gstEnabled"]) if "gstEnabled" in patch else bool(current.get("gstEnabled", True))
-        gstin_raw = patch["gstin"] if "gstin" in patch else (current.get("gstin") or "")
-        patch["gstin"] = _validate_gst_fields(gst_enabled, gstin_raw)
-        patch["gstEnabled"] = gst_enabled
+        gst_enabled = bool(patch["gstEnabled"]) if "gstEnabled" in patch else shop.gst_enabled
+        gstin_raw = patch["gstin"] if "gstin" in patch else shop.gstin
+        shop.gstin = _validate_gst_fields(gst_enabled, gstin_raw)
+        shop.gst_enabled = gst_enabled
+        patch.pop("gstEnabled", None)
+        patch.pop("gstin", None)
 
-    if patch:
-        shop_ref.update(patch)
+    field_map = {
+        "name": "name",
+        "ownerName": "owner_name",
+        "phone": "phone",
+        "address": "address",
+    }
+    for api_name, col in field_map.items():
+        if api_name in patch:
+            setattr(shop, col, patch[api_name])
 
-    updated = shop_ref.get().to_dict()
-    return ShopResponse(id=user.uid, **{k: updated.get(k, "") for k in ShopResponse.model_fields if k != "id"})
+    await session.flush()
+    return _to_response(shop)

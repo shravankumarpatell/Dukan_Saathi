@@ -1,0 +1,13 @@
+Edit THIS screen only: New Bill of existing DukanSaathi (route /bill). Title New Bill.
+
+Same sidebar, New Bill active. No TilePOS. No "Naya Bill" as product name in the header except Hinglish is ok as New Bill.
+
+Sale | Purchase segmented control.
+Customer name search + phone. Contractor checkbox.
+Add item catalog search.
+Cart with line qty and amounts in mono.
+Payment split: cash, online, udhari pending.
+Preview (outline) and Save (ink, large).
+Clear bill (rose, secondary).
+
+Desktop dense POS, not a two-column stock+bill marketplace.

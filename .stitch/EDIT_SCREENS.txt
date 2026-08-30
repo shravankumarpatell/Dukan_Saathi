@@ -1,0 +1,23 @@
+These screens are a REDESIGN of the existing DukanSaathi React POS — not a new product.
+
+DELETE all "TilePOS Admin", "TilePOS", "Catalog", "Records", "New Sale", "Inventory" as nav labels, and "Dukandar Phone Number" as the only login.
+
+Brand: DukanSaathi. Sidebar shop title can say "Aajana trading" style shop name. Never TilePOS.
+
+Sidebar labels EXACTLY, in this order:
+Dashboard, New Bill, Stock, Bill History, Returns, Add Stock, Udhari & Customers, AI Assistant, Analytics.
+Footer: Settings, Shortcuts, user chip, logout.
+Search field: "Jaayein kahin bhi…"
+Ink sidebar #0B1220, mint #0D9488, IBM Plex Sans.
+
+Login screen: left ink panel "The dukaan, as a ledger." Right card "Apni dukaan kholiye" with Continue with Google, then email + password, Sign in, Forgot password, Create account. Not phone-only.
+
+Dashboard: heading Namaste / Aaj ka hisaab ek nazar me. Four KPIs: Aaj ki kamayi, Aaj Bills, Total Udhari, Low Stock. Then Add Expense (amount, note, Cash/Online, Add) and Daily Summary (date, Print Daily Summary PDF). Then Quick Sq-ft Calculator.
+
+New Bill: Sale | Purchase. Customer name search + phone. Contractor checkbox. Add item search. Cart with qty. Payment split cash / online / udhari. Buttons Preview and Save.
+
+Stock: title Stock. Buttons Add Stock and Naya item. Search. List rows with product name, size, stock qty, price, LOW badge — not a fake "600x1200 Statuario" marketplace.
+
+AI chat: title Dukaan analyst. Strict | Rich toggle. Suggestions like "Ram ka last bill", "pichle mahine ki kamai". Composer at bottom.
+
+Keep desktop 1440-wide app chrome. High density, hairline borders, no glass, no orange.

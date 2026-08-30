@@ -1,4 +1,17 @@
 import Fuse from "fuse.js";
+import { stockAvailPieces } from "./units";
+
+/** In-stock first (by sales qty desc), then zero-stock at bottom. */
+export function sortProductsForSearch(products, salesQty = {}) {
+  return [...products].sort((a, b) => {
+    const aZero = stockAvailPieces(a) <= 0;
+    const bZero = stockAvailPieces(b) <= 0;
+    if (aZero !== bZero) return aZero ? 1 : -1;
+    const diff = (salesQty[b.id] || 0) - (salesQty[a.id] || 0);
+    if (diff !== 0) return diff;
+    return String(a.name || "").localeCompare(String(b.name || ""), "en", { sensitivity: "base" });
+  });
+}
 
 export function matchProduct(products, query) {
   if (!query) return { best: null, matches: [] };
@@ -31,14 +44,26 @@ export function matchCustomer(customers, query, phone) {
   };
 }
 
-export function searchProducts(products, query) {
-  if (!query || !query.trim()) return products.slice(0, 30);
-  const fuse = new Fuse(products, { keys: ["name", "code", "company", "size"], threshold: 0.4 });
-  return fuse.search(query).map((r) => r.item).slice(0, 30);
+export function searchProducts(products, query, salesQty = {}) {
+  let list;
+  if (!query || !query.trim()) {
+    list = products;
+  } else {
+    const fuse = new Fuse(products, { keys: ["name", "code", "company", "size"], threshold: 0.4 });
+    list = fuse.search(query).map((r) => r.item);
+  }
+  return sortProductsForSearch(list, salesQty).slice(0, 30);
 }
 
 export function searchCustomers(customers, query) {
   if (!query || !query.trim()) return customers.slice(0, 8);
   const fuse = new Fuse(customers, { keys: ["name", "phone"], threshold: 0.4 });
   return fuse.search(query).map((r) => r.item).slice(0, 8);
+}
+
+export function searchInvoices(invoices, query) {
+  const q = String(query || "").trim();
+  if (!q) return [];
+  const fuse = new Fuse(invoices, { keys: ["invoiceNo", "customerName"], threshold: 0.4 });
+  return fuse.search(q).map((r) => r.item).slice(0, 8);
 }

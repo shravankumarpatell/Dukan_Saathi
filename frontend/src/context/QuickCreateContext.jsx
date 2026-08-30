@@ -26,8 +26,8 @@ import { PackagePlus, UserPlus } from "lucide-react";
 
 const QuickCreateContext = createContext(null);
 
-const NUM = "w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-right tabular-nums outline-none focus:ring-2 focus:ring-indigo-500";
-const TXT = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500";
+const NUM = "ds-field text-sm text-right tabular-nums";
+const TXT = "ds-field text-sm";
 
 export function QuickCreateProvider({ children }) {
   const [request, setRequest] = useState(null);
@@ -92,13 +92,13 @@ function useQuickDialog({ scopeId, onSave, onCancel, busy, enterSaves = false })
   return flow;
 }
 
-function SaveBar({ busy, onSave, label, tone = "bg-emerald-600", saveKeys = KEYS.save }) {
+function SaveBar({ busy, onSave, label, tone = "bg-mint", saveKeys = KEYS.save }) {
   return (
     <button
       data-flow-skip
       onClick={onSave}
       disabled={busy}
-      className={`flex items-center justify-center gap-2 rounded-xl ${tone} px-4 py-3 font-semibold text-white active:scale-95 disabled:opacity-60`}
+      className={`flex items-center justify-center gap-2 rounded-control ${tone} px-4 py-3 font-semibold text-white active:scale-95 disabled:opacity-60`}
     >
       {busy ? "…" : label}
       {!busy && <Kbd keys={saveKeys} tone="dark" />}
@@ -166,9 +166,6 @@ function QuickProductDialog({ initialName, onDone }) {
             <PackagePlus className="h-5 w-5 text-emerald-600" /> Naya item
           </DialogTitle>
         </DialogHeader>
-        <p className="-mt-2 text-xs text-slate-500">
-          Pehle product type (←/→), Enter se name. <Kbd keys={KEYS.save} /> se save.
-        </p>
         <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className="grid grid-cols-2 gap-3">
           <UnitToggle
             value={f.unit}
@@ -236,12 +233,9 @@ function QuickCustomerDialog({ initialName, onDone }) {
       <DialogContent data-testid="quick-customer-dialog" onCloseAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-indigo-700" /> Naya customer
+            <UserPlus className="h-5 w-5 text-mint-dark" /> Naya customer
           </DialogTitle>
         </DialogHeader>
-        <p className="-mt-2 text-xs text-slate-500">
-          Enter se agla field; aakhri field par Enter se save. Bill waise ka waisa rahega.
-        </p>
         <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <label className="mb-1 block text-xs font-semibold text-slate-600">Name</label>
@@ -249,9 +243,9 @@ function QuickCustomerDialog({ initialName, onDone }) {
           </div>
           <div className="col-span-2">
             <label className="mb-1 block text-xs font-semibold text-slate-600">Phone (optional)</label>
-            <input data-testid="qc-phone" inputMode="numeric" maxLength={10} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} placeholder="98xxxxxxxx" className={TXT} />
+            <input data-testid="qc-phone" name="ds-qc-phone" inputMode="numeric" autoComplete="off" maxLength={10} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} placeholder="98xxxxxxxx" className={TXT} />
           </div>
-          <label className="col-span-2 flex items-center gap-2 text-sm text-slate-700">
+          <label className="col-span-2 flex items-center gap-2 text-sm text-ink">
             <input data-testid="qc-contractor" type="checkbox" checked={f.isContractor} onChange={(e) => setF({ ...f, isContractor: e.target.checked })} />
             Contractor / Dealer <Kbd keys={KEYS.toggleCheckbox} />
           </label>
@@ -262,7 +256,7 @@ function QuickCustomerDialog({ initialName, onDone }) {
             </div>
           )}
         </div>
-        <SaveBar busy={busy} onSave={submit} label="Add customer" tone="bg-indigo-900" saveKeys="enter" />
+        <SaveBar busy={busy} onSave={submit} label="Add customer" tone="bg-mint" saveKeys="enter" />
       </DialogContent>
     </Dialog>
   );

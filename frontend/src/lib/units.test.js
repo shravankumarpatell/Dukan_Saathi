@@ -1,7 +1,7 @@
 import {
   UNIT_BOX, UNIT_PIECE,
   applyCatalogUnitChange, normalizeProductUnitFields, productMetaLine,
-  isTileOnlyCatalogField,
+  isTileOnlyCatalogField, unitKindChipClass, CONTRACTOR_CHIP,
 } from "./units";
 import { itemAmount } from "./calc";
 
@@ -41,6 +41,13 @@ describe("catalog fields by type", () => {
     });
     expect(line).toBe("WB · Cera · Sanitary");
     expect(line).not.toMatch(/pcs\/box|should-hide/);
+  });
+
+  it("gives tiles, sanitary, and contractor distinct chip classes", () => {
+    expect(unitKindChipClass({ unit: UNIT_BOX })).toBe("ds-chip ds-chip-tile");
+    expect(unitKindChipClass({ unit: UNIT_PIECE })).toBe("ds-chip ds-chip-sanitary");
+    expect(CONTRACTOR_CHIP).toBe("ds-chip ds-chip-role");
+    expect(unitKindChipClass({ unit: UNIT_BOX })).not.toContain("ds-chip-role");
   });
 });
 

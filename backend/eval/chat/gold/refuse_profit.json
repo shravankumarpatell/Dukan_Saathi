@@ -1,0 +1,8 @@
+{
+  "id": "refuse-profit",
+  "question": "is mahine ka profit kitna hai",
+  "category": "refuse",
+  "route": "refuse",
+  "sql": null,
+  "expect": []
+}

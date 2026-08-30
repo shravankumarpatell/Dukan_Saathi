@@ -2,23 +2,33 @@
  * API Client — single HTTP layer between frontend and backend.
  *
  * Every data operation goes through this module. It:
- * - Attaches the Firebase ID token as Bearer authorization
+ * - Attaches the Supabase access token as Bearer authorization
  * - Provides consistent error handling
  * - Is the ONLY place that makes HTTP calls to the backend
  */
 
-import { getAuth } from "firebase/auth";
+import { supabase } from "@/supabase";
+import { getSessionToken } from "@/services/auth";
 
-const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.REACT_APP_API_URL ||
+  "http://localhost:8000/api";
 
 /**
- * Get the current Firebase ID token for authenticated requests.
+ * Get the current Supabase access token for authenticated requests.
  * Returns null if no user is signed in.
  */
 async function getToken() {
-  const user = getAuth().currentUser;
-  if (!user) return null;
-  return user.getIdToken();
+  return getSessionToken();
+}
+
+async function handleUnauthorized() {
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Session is already unusable; the auth listener will send the user to login.
+  }
 }
 
 /**
@@ -36,6 +46,9 @@ async function request(path, options = {}) {
   const res = await fetch(url, { ...options, headers });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      await handleUnauthorized();
+    }
     let errorMessage = `Request failed: ${res.status}`;
     try {
       const body = await res.json();
@@ -198,10 +211,10 @@ export async function extractStockSheet(base64, mimeType) {
 }
 
 /**
- * Stream a chat response from the backend Gemini proxy.
- * Yields text chunks as an async generator.
+ * Stream a shop-analyst answer from the backend (Vertex AI + ADC).
+ * Yields text chunks. Result rows stay on the server (tokenized planner + local template fill).
  */
-export async function* streamChat(messages, systemContext) {
+export async function* streamChat(messages) {
   const token = await getToken();
   const url = `${BASE_URL}/ai/chat`;
   const res = await fetch(url, {
@@ -210,10 +223,16 @@ export async function* streamChat(messages, systemContext) {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ messages, systemContext }),
+    body: JSON.stringify({
+      messages,
+      systemContext: "",
+    }),
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      await handleUnauthorized();
+    }
     throw new Error("Chat request failed");
   }
 
@@ -234,8 +253,12 @@ export async function* streamChat(messages, systemContext) {
       if (trimmed.startsWith("data:")) {
         try {
           const j = JSON.parse(trimmed.slice(5));
+          if (j.error) throw new Error(j.error);
           if (j.text) yield j.text;
-        } catch {}
+        } catch (err) {
+          if (err instanceof SyntaxError) continue;
+          throw err;
+        }
       }
     }
   }

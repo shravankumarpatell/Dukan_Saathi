@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import * as api from "@/services/api";
 import { onAuth, signOut as authSignOut } from "@/services/auth";
-import { speak } from "@/hooks/useSpeech";
 import { normalizeTileSize } from "@/lib/tileSizes";
 
 const AppContext = createContext(null);
@@ -85,7 +84,7 @@ export function AppProvider({ children }) {
     await authSignOut();
   }, []);
 
-  // ── Create a sale or purchase invoice — all logic is now SERVER-SIDE ──
+  // ── Create a sale invoice — all logic is now SERVER-SIDE ──
   const commitBill = useCallback(async (d) => {
     if (d.type === "return") {
       // Returns go through the dedicated returns endpoint
@@ -98,11 +97,10 @@ export function AppProvider({ children }) {
         customerName: d.customerName || "Walk-in",
       });
       await refresh();
-      speak("Return ho gaya.");
       return { invoice: inv, customer: null };
     }
 
-    // Sale or purchase — server computes totals, validates stock, manages everything
+    // Sale — server computes totals, validates stock, manages everything
     const inv = await api.createBill({
       type: d.type,
       items: (d.items || []).map((it) => ({
@@ -129,7 +127,6 @@ export function AppProvider({ children }) {
     });
 
     await refresh();
-    speak(d.type === "sale" ? "Bill ban gaya." : "Purchase save ho gayi.");
     return { invoice: inv, customer: null };
   }, [refresh]);
 
@@ -137,7 +134,7 @@ export function AppProvider({ children }) {
   const allocatePayment = useCallback(async (customerId, allocations, mode) => {
     const result = await api.allocatePayment(customerId, allocations, mode || "cash");
     await refresh();
-    return result.totalPaid;
+    return result;
   }, [refresh]);
 
   const reconcileCustomer = useCallback(async (customerId) => {
@@ -237,7 +234,7 @@ export function AppProvider({ children }) {
     products, customers, invoices, returns, expenses, refresh,
     draft, setDraft, commitDraft, cancelDraft: () => setDraft(null), commitBill, allocatePayment, reconcileCustomer,
     isDemo: false, geminiReady,
-    addProduct, updateProduct, convertStoreCreditReturn, addCustomer, speak,
+    addProduct, updateProduct, convertStoreCreditReturn, addCustomer,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

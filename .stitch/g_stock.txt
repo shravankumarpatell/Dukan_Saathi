@@ -1,0 +1,9 @@
+Follow .stitch/STITCH_PROMPT.md.
+
+Design ONE new desktop UI (1440×900) for EXISTING DukanSaathi, route /inventory. Title Stock. Stock F3 active. Same glass sidebar nav. Never TilePOS or Catalog. No mic.
+
+Buttons: Add Stock, Naya item.
+Search: name / code / company.
+SOLID list rows: product name, size/company, stock qty badge, price, LOW badge, chevron.
+Example SKUs: Pearl White, Ivory — not a marketplace photo grid.
+Inter + JetBrains Mono. Blue mesh behind. Glass chrome only.

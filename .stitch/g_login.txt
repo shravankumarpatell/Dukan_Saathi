@@ -1,0 +1,7 @@
+Follow .stitch/STITCH_PROMPT.md.
+
+Design ONE new desktop UI (1440×900) for EXISTING DukanSaathi, route /login. Product DukanSaathi. Never TilePOS, Velocity.com, Julian Bates, Catalog, voice, or a microphone.
+
+Split panel. Left #0B1220 with blue #1A5BFA glow. Mint/blue label DUKANSAATHI. Headline: The dukaan, as a ledger. Three lines: Instant data entry. GST-ready PDF bill. Photo se stock intake.
+Right: glass card (blur + white tint + inset highlight). Heading Apni dukaan kholiye. Continue with Google (dark). or. Email, Password. Sign in solid #1A5BFA. Forgot password · Create account.
+Inter + JetBrains Mono. No phone-only form. No Unsplash identity.

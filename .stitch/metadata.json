@@ -1,0 +1,14 @@
+{
+  "projectId": "9847785945380024944",
+  "name": "projects/9847785945380024944",
+  "title": "DukanSaathi — current UI",
+  "url": "https://stitch.withgoogle.com/projects/9847785945380024944",
+  "designSystem": "assets/700f24116a484787b77a7f368d72033f",
+  "glassProject": {
+    "projectId": "18417233498286958990",
+    "url": "https://stitch.withgoogle.com/projects/18417233498286958990",
+    "title": "DukanSaathi-Glass"
+  },
+  "importedScreens": 38,
+  "note": "This project is a full UI import (pages, popups, search dropdowns). Design here, then we will apply it to React."
+}

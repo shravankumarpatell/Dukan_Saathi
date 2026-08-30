@@ -1,39 +1,40 @@
 {
   "theme": "light",
-  "archetype": "Accessible Utility / Indian Retail (High Contrast, Earthy Tones)",
+  "archetype": "Trust Ledger ice POS for Indian retail",
   "typography": {
     "headings": {
-      "font": "Outfit, sans-serif",
-      "classes": "font-sans font-bold tracking-tight text-slate-900",
-      "instruction": "Do not use Inter for headings. Use Outfit for English contexts to give a sturdy, modern feel. Ensure bilingual (Hindi) text defaults to a highly readable fallback like 'Hind' or system sans-serif."
+      "font": "Inter, Hind, sans-serif",
+      "classes": "font-display font-semibold tracking-tight text-ink",
+      "instruction": "Inter for English. Hind fallback for Devanagari. Money uses font-mono tabular-nums (JetBrains Mono)."
     },
     "body": {
-      "font": "Manrope, sans-serif",
-      "classes": "font-sans font-medium text-slate-700",
-      "instruction": "Manrope is mandatory for body and tables. It has excellent numerical legibility which is critical for billing, GST calculations, and stock counts."
+      "font": "Inter, Hind, sans-serif",
+      "classes": "font-sans font-medium text-ink-muted",
+      "instruction": "Inter for UI. JetBrains Mono for rupee amounts, quantities, and kbd."
     },
     "hierarchy": {
-      "h1": "text-3xl md:text-4xl",
-      "h2": "text-2xl md:text-3xl",
-      "h3": "text-xl md:text-2xl",
-      "h4": "text-lg",
-      "body": "text-base",
-      "small": "text-sm",
-      "tiny": "text-xs uppercase tracking-widest"
+      "h1": "text-2xl md:text-3xl",
+      "h2": "text-xl md:text-2xl",
+      "h3": "text-lg",
+      "h4": "text-base font-semibold",
+      "body": "text-sm",
+      "small": "text-xs",
+      "tiny": "text-[11px] uppercase tracking-widest text-ink-muted"
     }
   },
   "colors": {
     "primary": {
-      "DEFAULT": "#312E81",
-      "light": "#4338CA",
+      "DEFAULT": "#1B365D",
+      "light": "#1B365D",
       "foreground": "#FFFFFF",
-      "usage": "Top navigation bars, main action buttons (except voice), and active states."
+      "usage": "Headings and navy chrome. Tailwind: ink / surface"
     },
-    "accent_voice": {
-      "DEFAULT": "#EA580C",
-      "light": "#F97316",
+    "accent_money": {
+      "DEFAULT": "#2563EB",
+      "light": "#1D4ED8",
+      "soft": "#C7DDFF",
       "foreground": "#FFFFFF",
-      "usage": "RESERVED strictly for the Push-to-Talk microphone button and voice-activated highlights. Represents energy and attention."
+      "usage": "Primary CTA, FAB, kamai. Tailwind: mint / mint-soft / mint-dark"
     },
     "status": {
       "success": "#059669",
@@ -44,74 +45,68 @@
       "draft_bg": "#FEF3C7"
     },
     "background": {
-      "app": "#F5F5F4",
+      "app": "#EAF2FF",
       "card": "#FFFFFF",
-      "nav": "#FFFFFF"
+      "nav": "navy #1B365D sidebar over ice mesh"
     },
-    "instructions_to_main_agent": "Use standard Tailwind colors matching these hex codes (indigo-900 for primary, orange-600 for accent, stone-100 for background). Do NOT use generic gradients. Keep colors flat and high-contrast."
+    "instructions_to_main_agent": "Follow .stitch/DESIGN.md. Solid navy chrome (ds-glass-dark). Solid ds-panel for tables (12px). Controls 8px radius. Primary CTAs bg-mint #2563EB. No voice. Canvas is ds-mesh #EAF2FF."
   },
   "layouts": {
+    "desktop_ledger": {
+      "structure": "Navy sidebar 260px + ice mesh canvas. Sticky ice top bar."
+    },
     "mobile_first_pos": {
-      "structure": "Fixed Top Header (Status/Shop Name) + Scrollable Main Content + Fixed Bottom Navigation Bar/Actions.",
-      "voice_fab": "A massive, prominent, absolute-positioned Push-to-Talk button anchored slightly above the bottom navigation. It must be accessible via thumb at all times."
+      "structure": "Fixed Top Header + Scrollable Main + Fixed Bottom Navigation. New Bill FAB is blue (mint token)."
     },
     "grids": {
-      "dashboard": "grid-cols-2 md:grid-cols-4 gap-3 md:gap-4. Prioritize density.",
-      "inventory_table": "Full-width table, cardless container, striped rows (bg-slate-50 for even rows). Minimize cell padding (p-2) to maximize data density.",
-      "split_payment": "Bento-style 2-column grid for Cash vs. Online vs. Udhari input fields."
+      "dashboard": "Single KPI ledger strip (2x2 mobile, 4-col desktop). Values in font-mono.",
+      "inventory_table": "Full-width, striped rows, dense cells.",
+      "split_payment": "2-column grid for Cash vs Online vs Udhari."
     },
-    "spacing": "Dense on tables and lists, generous (p-4 or p-6) on Voice Draft cards to isolate focus."
+    "spacing": "Dense on tables, comfortable on KPI cards (p-4)."
   },
   "components": {
-    "voice_fab": {
-      "style": "h-16 w-16 rounded-full bg-orange-600 shadow-xl flex items-center justify-center text-white ring-4 ring-orange-600/30",
-      "active_state": "animate-pulse ring-8 ring-orange-500/50 scale-105"
+    "new_bill_fab": {
+      "style": "h-16 w-16 rounded-full bg-mint text-white ring-4 ring-mint/20"
     },
     "draft_confirmation_card": {
       "style": "border-2 border-amber-500 bg-amber-50 rounded-lg p-4 shadow-md",
       "content": "Must clearly show 'Old Value' with strikethrough -> 'New Value' in bold green. Two distinct CTA buttons: 'Confirm (Tick)' and 'Cancel (Cross)'."
     },
     "pdf_preview_modal": {
-      "style": "max-w-3xl mx-auto bg-stone-200 p-2 md:p-4 rounded-xl",
-      "content": "The actual A4 aspect ratio preview of the jsPDF output centered like a physical piece of paper. Add a shadow-xl to the paper."
+      "style": "max-w-3xl mx-auto bg-canvas p-2 md:p-4 rounded-xl",
+      "content": "A4 preview of the jsPDF output centered like paper."
     },
     "badges": {
-      "low_stock": "bg-rose-100 text-rose-700 px-2 py-1 rounded-md text-xs font-bold border border-rose-200",
-      "godown": "bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-xs font-bold",
-      "showroom": "bg-teal-100 text-teal-700 px-2 py-1 rounded-md text-xs font-bold"
+      "low_stock": "bg-rose-100 text-rose-700 px-2 py-1 rounded-control text-xs font-bold border border-rose-200",
+      "godown": "bg-mint-soft text-mint-dark px-2 py-1 rounded-control text-xs font-bold",
+      "showroom": "bg-slate-100 text-ink px-2 py-1 rounded-control text-xs font-bold"
     },
-    "instructions": "Use Shadcn components heavily customized for density. Override Shadcn Card padding from p-6 to p-3/p-4 for mobile."
+    "instructions": "Use Shadcn with density overrides. Card padding p-4. Primary button is mint (Trust Ledger #2563EB). Cards 12px, controls 8px."
   },
   "motion": {
     "interactions": "All buttons must have active:scale-95 and transition-transform. Do NOT use 'transition: all'.",
-    "voice_active": "Implement a CSS radar pulse keyframe animation or framer-motion ripple effect originating from the Mic button when the user is speaking.",
-    "draft_appearance": "Draft cards must slide up from the bottom (translate-y-10 to translate-y-0 with opacity) to demand immediate attention."
+    "voice_active": "Removed. App is not a voice assistant.",
+    "draft_appearance": "Draft cards slide up from the bottom."
   },
   "visual_enhancers": {
-    "borders": "Use hard 1px borders (border-slate-200) instead of soft shadows for data lists. This creates a functional, 'Tally-like' reliable aesthetic.",
-    "glassmorphism": "Use sparingly. Only for the live transcript floating bar (backdrop-blur-md bg-slate-900/80 text-white) to ensure it's readable over any background."
+    "borders": "Hairline #C7DDFF on solid panels. Navy chrome uses white/8 edge.",
+    "glassmorphism": "Headers use translucent ice. Sidebar is solid navy. Never frost tables or cart rows. prefers-reduced-transparency: solid fill."
   },
   "accessibility": {
-    "contrast": "Ensure minimum 4.5:1 ratio. Orange accent MUST have white text.",
-    "bilingual": "Keep UI text concise to accommodate both Hindi and English character widths. Devanagari script is taller; ensure line-heights are 'leading-relaxed' in lists.",
-    "data_testid": "MANDATORY on all buttons, forms, and draft cards. e.g. data-testid='voice-mic-button', data-testid='draft-confirm-btn'."
+    "contrast": "Minimum 4.5:1. Ink/navy buttons use white text.",
+    "bilingual": "Keep UI text concise. Devanagari needs leading-relaxed in lists.",
+    "data_testid": "MANDATORY on all buttons, forms, and draft cards."
   },
   "media": {
-    "images": [
-      {
-        "url": "https://images.unsplash.com/photo-1785216346524-38260d16f87f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHwxfHxpbmRpYW4lMjBzaG9wa2VlcGVyJTIwcmV0YWlsfGVufDB8fHx8MTc4NjI3NTM1OHww&ixlib=rb-4.1.0&q=85",
-        "category": "Login/Onboarding Background",
-        "description": "Indian shopkeeper in a retail environment. Use with a heavy gradient overlay (bg-indigo-950/80) for the login or landing screen."
-      }
-    ],
-    "icons": "Use lucide-react. Standardize on solid/bold variants for primary actions, thin variants for secondary data."
+    "icons": "lucide-react. Primary actions medium weight, secondary thin."
   },
   "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
     "NEVER use generic centered layouts for data apps. Left-align text, right-align currency/numbers.",
-    "NEVER use completely transparent backgrounds for overlays, modals, or bottom nav bars. Always use solid or heavily blurred glass.",
+    "Primary actions are Trust Ledger blue (mint token #2563EB). Canvas is ice #EAF2FF. Sidebar is navy #1B365D.",
     "You MUST NOT apply universal transitions (e.g. `transition: all`). Target specific properties.",
-    "The 'Push-to-Talk' workflow is the soul of this app. The Mic button must be visually dominant on the screen.",
-    "Every draft (stock update, billing, udhari payment) MUST pause the app flow and require a manual click to confirm. This is the 'confirm-before-commit' rule.",
-    "Always add `data-testid` to interactive elements."
+    "Every draft MUST pause the app flow and require a manual click to confirm.",
+    "Always add `data-testid` to interactive elements.",
+    "Do not replace pages with Stitch HTML. Map DESIGN.md tokens into existing React."
   ]
 }

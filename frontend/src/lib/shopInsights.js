@@ -28,8 +28,12 @@ export function emptyStats() {
     salesRevenue: 0,
     cashCollected: 0,
     onlineCollected: 0,
+    cashIn: 0,
+    onlineIn: 0,
     udhariAdded: 0,
     udhariCollected: 0,
+    convertCash: 0,
+    convertUdhari: 0,
     expensesTotal: 0,
     cashExpenses: 0,
     onlineExpenses: 0,
@@ -68,7 +72,8 @@ export function avgBill(stats) {
 /** Paisa that actually came in vs sale booked (includes old udhari collected). */
 export function collectionRate(stats) {
   const booked = Number(stats?.salesGross) || 0;
-  const inHand = (Number(stats?.cashCollected) || 0) + (Number(stats?.onlineCollected) || 0);
+  const inHand = (Number(stats?.cashIn ?? stats?.cashCollected) || 0)
+    + (Number(stats?.onlineIn ?? stats?.onlineCollected) || 0);
   if (booked <= 0) return null;
   return round2((inHand / booked) * 100);
 }
@@ -140,6 +145,20 @@ function purchasesInRange(invoices, start, end) {
 
 function expensesInRange(expenses, start, end) {
   return (expenses || []).filter((e) => inLocalRange(e.date, start, end));
+}
+
+/** productId → total units sold (all sale bills). Used for catalog search ranking. */
+export function productSalesQtyMap(invoices) {
+  const map = {};
+  for (const iv of invoices || []) {
+    if (iv.type !== "sale") continue;
+    for (const it of iv.items || []) {
+      const id = it.productId;
+      if (!id) continue;
+      map[id] = round2((map[id] || 0) + lineUnits(it));
+    }
+  }
+  return map;
 }
 
 export function topProducts(sales, { limit = 6 } = {}) {

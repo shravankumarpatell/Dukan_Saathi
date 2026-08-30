@@ -1,0 +1,9 @@
+{
+  "id": "bachat-window",
+  "question": "aaj kitna bachat hua",
+  "category": "metric_parity",
+  "route": "metric",
+  "metric": "bachat",
+  "sql": "SELECT ROUND(SUM(kamai), 2) AS kamai, ROUND(SUM(karcha), 2) AS karcha, ROUND(SUM(bachat), 2) AS bachat FROM v_daily WHERE bill_date >= :start_date AND bill_date <= :end_date",
+  "expect_from": "fixture_bachat"
+}

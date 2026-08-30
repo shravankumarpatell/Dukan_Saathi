@@ -1,0 +1,9 @@
+Edit THIS screen only: AI Assistant of existing DukanSaathi (route /chat). Title Dukaan analyst.
+
+Same sidebar, AI Assistant active. No TilePOS. No "Saathi AI" marketing mascot.
+
+Header: Dukaan analyst. Subtitle: numbers from Postgres, Gemini only sees schema.
+Toggle Strict | Rich.
+Empty state suggestions: Ram ka last bill · pichle mahine ki kamai · sabse zyada udhari kiska · low stock kaunsa.
+Composer at bottom, Send button ink.
+Keep chat bubbles simple. IBM Plex. Ink sidebar.

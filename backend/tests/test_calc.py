@@ -9,10 +9,12 @@ from app.common.calc import (
     round2, item_amount, compute_bill_totals, gen_invoice_no,
     calculate_sold_pieces, validate_stock_availability,
     compute_stock_deduction, compute_stock_addition, sqft_calc,
-    validate_payment_split, cash_online_total, format_stock_pieces_label,
+    validate_payment_split, validate_bill_limits, cash_online_total, format_stock_pieces_label,
     payment_status, apply_payment_to_invoice, remove_return_adjust_payments,
     remaining_returnable_by_product, remaining_returnable_amount,
     recompute_customer_total_pending, allocate_return_across_invoices,
+    apply_store_credit_conversion, settlement_label_from_detail,
+    conversion_recorded_amount,
 )
 from app.common.errors import ValidationError
 
@@ -295,6 +297,18 @@ class TestPaymentSplit:
         assert t["paymentStatus"] == "paid"
 
 
+class TestBillLimits:
+    def test_oversized_grand_total_rejected(self):
+        totals = {"subtotal": 70_297_297_227, "grandTotal": 70_297_297_227, "amountPaid": 0, "amountPending": 70_297_297_227}
+        with pytest.raises(ValidationError, match="bahut bada"):
+            validate_bill_limits(totals, [{"name": "Tile", "qty": 1, "rate": 70_297_297_227, "unit": "box"}])
+
+    def test_normal_total_allowed(self):
+        items = [{"name": "Tile", "qty": 10, "rate": 450, "unit": "box", "piecesPerBox": 4}]
+        totals = compute_bill_totals({"items": items, "gstEnabled": False, "payments": []})
+        validate_bill_limits(totals, items)
+
+
 class TestLedgerHelpers:
     def test_payment_status_thresholds(self):
         assert payment_status(0, 100) == "pending"
@@ -418,4 +432,42 @@ class TestLedgerHelpers:
         assert detail["udhariAdjusted"] == 600
         assert detail["cash"] == 400
         assert patches[0]["fields"]["amountPending"] == 0
+
+    def test_convert_credit_slice_to_cash_keeps_udhari(self):
+        old = {
+            "cash": 0,
+            "udhariAdjusted": 500,
+            "storeCredit": 500,
+            "invoiceAllocations": [{"invoiceNo": "INV-UDH", "amount": 500}],
+        }
+        detail = apply_store_credit_conversion(old, "cash")
+        assert detail["udhariAdjusted"] == 500
+        assert detail["cash"] == 500
+        assert detail["storeCredit"] == 0
+        assert detail["invoiceAllocations"] == old["invoiceAllocations"]
+        assert settlement_label_from_detail(detail) == "cash"
+
+    def test_convert_credit_slice_to_udhari_merges(self):
+        old = {
+            "cash": 0,
+            "udhariAdjusted": 500,
+            "storeCredit": 400,
+            "invoiceAllocations": [{"invoiceNo": "INV1", "amount": 500}],
+        }
+        extra = {
+            "cash": 0,
+            "udhariAdjusted": 300,
+            "storeCredit": 100,
+            "invoiceAllocations": [{"invoiceNo": "INV2", "amount": 300}],
+        }
+        detail = apply_store_credit_conversion(old, "adjust_udhari", extra)
+        assert detail["udhariAdjusted"] == 800
+        assert detail["storeCredit"] == 100
+        assert detail["cash"] == 0
+        assert len(detail["invoiceAllocations"]) == 2
+
+    def test_conversion_recorded_amount_is_absorbed_udhari_not_full_credit(self):
+        extra = {"udhariAdjusted": 100, "storeCredit": 900, "cash": 0}
+        assert conversion_recorded_amount("adjust_udhari", 1000, extra) == 100
+        assert conversion_recorded_amount("cash", 1000, extra) == 1000
 

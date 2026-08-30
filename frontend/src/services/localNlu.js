@@ -55,10 +55,10 @@ export function localParse(transcript) {
     };
   }
 
-  // Purchase (stock-in)
+  // Stock-in phrases → steer to Add Stock (no purchase invoice intent).
   if (/(kharida|khareeda|purchase|stock.?in|aaya|mangaya|order aya)/i.test(lower)) {
     return {
-      intent: "purchase", language,
+      intent: "unknown", language,
       entities: { product: cleanProduct(text), qty: extractQty(text) },
     };
   }

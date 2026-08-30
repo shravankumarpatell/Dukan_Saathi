@@ -1,0 +1,8 @@
+{
+  "id": "top-udhari",
+  "question": "sabse zyada udhari kiska",
+  "category": "superlative",
+  "route": "sql",
+  "sql": "SELECT name, udhari FROM v_customer_balance ORDER BY udhari DESC",
+  "expect_from": "fixture_udhari"
+}
