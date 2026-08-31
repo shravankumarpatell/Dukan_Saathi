@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, forwardRef, useImperativeH
 import { searchCustomers } from "@/lib/fuzzy";
 import { money } from "@/lib/calc";
 import { useListNavigation } from "@/hooks/useListNavigation";
+import { useTapSelect } from "@/hooks/useTapSelect";
 import { KEYS } from "@/lib/keymap";
 import Kbd from "@/components/Kbd";
 import { Search, UserPlus } from "lucide-react";
@@ -22,6 +23,7 @@ const CustomerSearch = forwardRef(function CustomerSearch(
   const exact = results.find((c) => c.name.toLowerCase() === typed.toLowerCase());
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
+  const tap = useTapSelect();
 
   const showCreate = !!typed && !exact;
   const rows = useMemo(
@@ -115,8 +117,9 @@ const CustomerSearch = forwardRef(function CustomerSearch(
             const next = e.relatedTarget;
             if (next && wrapperRef.current?.contains(next)) return;
             window.setTimeout(() => {
+              if (tap.holdOpenRef.current) return;
               if (!wrapperRef.current?.contains(document.activeElement)) setOpen(false);
-            }, 150);
+            }, 180);
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder || "Search existing or type a new name…"}
@@ -130,6 +133,8 @@ const CustomerSearch = forwardRef(function CustomerSearch(
           role="listbox"
           ref={nav.listRef}
           className="absolute z-[60] mt-1 max-h-64 w-full overflow-auto overscroll-contain rounded-lg border border-border bg-panel shadow-lg touch-manipulation"
+          onScroll={tap.cancel}
+          onPointerCancel={tap.releaseHold}
         >
           {rows.map((row, i) => {
             const active = i === activeIndex;
@@ -148,7 +153,8 @@ const CustomerSearch = forwardRef(function CustomerSearch(
                   {...common}
                   type="button"
                   data-testid="customer-add-new"
-                  onPointerDown={(e) => { e.preventDefault(); createNew(); }}
+                  onPointerDown={tap.arm}
+                  onPointerUp={(e) => tap.commit(e, createNew)}
                   className={`flex w-full min-h-11 items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-mint-dark ${active ? "bg-mint-soft" : ""}`}
                 >
                   <UserPlus className="h-4 w-4 shrink-0" />
@@ -165,7 +171,8 @@ const CustomerSearch = forwardRef(function CustomerSearch(
                 {...common}
                 type="button"
                 data-testid={`customer-option-${c.id}`}
-                onPointerDown={(e) => { e.preventDefault(); selectRow(i); }}
+                onPointerDown={tap.arm}
+                onPointerUp={(e) => tap.commit(e, () => selectRow(i))}
                 className={`flex w-full min-h-11 items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left ${active ? "bg-mint-soft" : ""}`}
               >
                 <div className="min-w-0">

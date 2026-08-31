@@ -4,6 +4,7 @@ import { money, piecesBreakdown } from "@/lib/calc";
 import { productSalesQtyMap } from "@/lib/shopInsights";
 import { formatStockLabel, unitKindLabel, unitKindChipClass, rateSuffix, productMetaLine, stockAvailPieces } from "@/lib/units";
 import { useListNavigation } from "@/hooks/useListNavigation";
+import { useTapSelect } from "@/hooks/useTapSelect";
 import { KEYS } from "@/lib/keymap";
 import Kbd from "@/components/Kbd";
 import { Search, PlusCircle } from "lucide-react";
@@ -28,6 +29,7 @@ const ProductSearch = forwardRef(function ProductSearch(
   const results = useMemo(() => searchProducts(products, q, salesQty), [products, q, salesQty]);
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
+  const tap = useTapSelect();
 
   const isOutOfStock = useCallback((p) => stockAvailPieces(p) <= 0, []);
 
@@ -147,13 +149,12 @@ const ProductSearch = forwardRef(function ProductSearch(
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onBlur={(e) => {
-            // iOS leaves relatedTarget null when tapping a list row; delay so
-            // pointerdown on the option can pick before we close.
             const next = e.relatedTarget;
             if (next && wrapperRef.current?.contains(next)) return;
             window.setTimeout(() => {
+              if (tap.holdOpenRef.current) return;
               if (!wrapperRef.current?.contains(document.activeElement)) setOpen(false);
-            }, 150);
+            }, 180);
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
@@ -168,6 +169,8 @@ const ProductSearch = forwardRef(function ProductSearch(
           role="listbox"
           ref={nav.listRef}
           className="absolute z-[60] mt-1 max-h-72 w-full overflow-auto overscroll-contain rounded-lg border border-border bg-panel shadow-lg touch-manipulation"
+          onScroll={tap.cancel}
+          onPointerCancel={tap.releaseHold}
         >
           {rows.length === 0 && <div className="px-3 py-4 text-sm text-slate-500">No products found.</div>}
 
@@ -188,7 +191,8 @@ const ProductSearch = forwardRef(function ProductSearch(
                   {...common}
                   type="button"
                   data-testid="product-add-new"
-                  onPointerDown={(e) => { e.preventDefault(); createNew(); }}
+                  onPointerDown={tap.arm}
+                  onPointerUp={(e) => tap.commit(e, createNew)}
                   className={`flex w-full min-h-11 items-center gap-2 border-b border-slate-100 px-3 py-2.5 text-left font-semibold text-emerald-800 ${active ? "bg-emerald-100" : "bg-emerald-50"}`}
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
@@ -209,7 +213,8 @@ const ProductSearch = forwardRef(function ProductSearch(
                 type="button"
                 data-testid={`product-option-${p.id}`}
                 disabled={row.disabled}
-                onPointerDown={(e) => { e.preventDefault(); if (!row.disabled) selectRow(i); }}
+                onPointerDown={tap.arm}
+                onPointerUp={(e) => tap.commit(e, () => { if (!row.disabled) selectRow(i); })}
                 className={`flex w-full min-h-11 items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left transition-colors ${
                   row.disabled ? "cursor-not-allowed opacity-40" : active ? "bg-mint-soft" : ""
                 } ${row.outOfStock ? "bg-slate-50/80" : ""}`}
