@@ -59,15 +59,17 @@ const CustomerSearch = forwardRef(function CustomerSearch(
 
   useEffect(() => {
     function handleClickOutside(e) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false);
+      const root = wrapperRef.current;
+      if (!root) return;
+      const path = typeof e.composedPath === "function" ? e.composedPath() : [];
+      if (root.contains(e.target) || path.includes(root)) return;
+      setOpen(false);
     }
     if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("touchstart", handleClickOutside);
+      document.addEventListener("pointerdown", handleClickOutside);
     }
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("pointerdown", handleClickOutside);
     };
   }, [open]);
 
@@ -110,9 +112,11 @@ const CustomerSearch = forwardRef(function CustomerSearch(
           onChange={(e) => { onChangeText(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onBlur={(e) => {
-            // Close when focus leaves the combobox (e.g. cart close focused
-            // customer briefly, then View cart — list must not stay open).
-            if (!wrapperRef.current?.contains(e.relatedTarget)) setOpen(false);
+            const next = e.relatedTarget;
+            if (next && wrapperRef.current?.contains(next)) return;
+            window.setTimeout(() => {
+              if (!wrapperRef.current?.contains(document.activeElement)) setOpen(false);
+            }, 150);
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder || "Search existing or type a new name…"}
@@ -125,7 +129,7 @@ const CustomerSearch = forwardRef(function CustomerSearch(
           id="customer-search-list"
           role="listbox"
           ref={nav.listRef}
-          className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-panel shadow-lg"
+          className="absolute z-[60] mt-1 max-h-64 w-full overflow-auto overscroll-contain rounded-lg border border-border bg-panel shadow-lg touch-manipulation"
         >
           {rows.map((row, i) => {
             const active = i === activeIndex;
@@ -144,8 +148,8 @@ const CustomerSearch = forwardRef(function CustomerSearch(
                   {...common}
                   type="button"
                   data-testid="customer-add-new"
-                  onMouseDown={(e) => { e.preventDefault(); createNew(); }}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-mint-dark ${active ? "bg-mint-soft" : ""}`}
+                  onPointerDown={(e) => { e.preventDefault(); createNew(); }}
+                  className={`flex w-full min-h-11 items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-mint-dark ${active ? "bg-mint-soft" : ""}`}
                 >
                   <UserPlus className="h-4 w-4 shrink-0" />
                   <span className="flex-1">Add new: "{typed}"</span>
@@ -161,8 +165,8 @@ const CustomerSearch = forwardRef(function CustomerSearch(
                 {...common}
                 type="button"
                 data-testid={`customer-option-${c.id}`}
-                onMouseDown={(e) => { e.preventDefault(); selectRow(i); }}
-                className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left ${active ? "bg-mint-soft" : ""}`}
+                onPointerDown={(e) => { e.preventDefault(); selectRow(i); }}
+                className={`flex w-full min-h-11 items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left ${active ? "bg-mint-soft" : ""}`}
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-900">{c.name}</p>

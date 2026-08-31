@@ -76,15 +76,17 @@ const ProductSearch = forwardRef(function ProductSearch(
 
   useEffect(() => {
     function handleClickOutside(e) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false);
+      const root = wrapperRef.current;
+      if (!root) return;
+      const path = typeof e.composedPath === "function" ? e.composedPath() : [];
+      if (root.contains(e.target) || path.includes(root)) return;
+      setOpen(false);
     }
     if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("touchstart", handleClickOutside);
+      document.addEventListener("pointerdown", handleClickOutside);
     }
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("pointerdown", handleClickOutside);
     };
   }, [open]);
 
@@ -145,7 +147,13 @@ const ProductSearch = forwardRef(function ProductSearch(
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onBlur={(e) => {
-            if (!wrapperRef.current?.contains(e.relatedTarget)) setOpen(false);
+            // iOS leaves relatedTarget null when tapping a list row; delay so
+            // pointerdown on the option can pick before we close.
+            const next = e.relatedTarget;
+            if (next && wrapperRef.current?.contains(next)) return;
+            window.setTimeout(() => {
+              if (!wrapperRef.current?.contains(document.activeElement)) setOpen(false);
+            }, 150);
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
@@ -159,7 +167,7 @@ const ProductSearch = forwardRef(function ProductSearch(
           id="product-search-list"
           role="listbox"
           ref={nav.listRef}
-          className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-panel shadow-lg"
+          className="absolute z-[60] mt-1 max-h-72 w-full overflow-auto overscroll-contain rounded-lg border border-border bg-panel shadow-lg touch-manipulation"
         >
           {rows.length === 0 && <div className="px-3 py-4 text-sm text-slate-500">No products found.</div>}
 
@@ -180,8 +188,8 @@ const ProductSearch = forwardRef(function ProductSearch(
                   {...common}
                   type="button"
                   data-testid="product-add-new"
-                  onClick={createNew}
-                  className={`flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2.5 text-left font-semibold text-emerald-800 ${active ? "bg-emerald-100" : "bg-emerald-50"}`}
+                  onPointerDown={(e) => { e.preventDefault(); createNew(); }}
+                  className={`flex w-full min-h-11 items-center gap-2 border-b border-slate-100 px-3 py-2.5 text-left font-semibold text-emerald-800 ${active ? "bg-emerald-100" : "bg-emerald-50"}`}
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
                   <span className="flex-1 text-sm">Naya item add karein{q.trim() ? `: “${q.trim()}”` : ""}</span>
@@ -201,8 +209,8 @@ const ProductSearch = forwardRef(function ProductSearch(
                 type="button"
                 data-testid={`product-option-${p.id}`}
                 disabled={row.disabled}
-                onClick={() => selectRow(i)}
-                className={`flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left transition-colors ${
+                onPointerDown={(e) => { e.preventDefault(); if (!row.disabled) selectRow(i); }}
+                className={`flex w-full min-h-11 items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left transition-colors ${
                   row.disabled ? "cursor-not-allowed opacity-40" : active ? "bg-mint-soft" : ""
                 } ${row.outOfStock ? "bg-slate-50/80" : ""}`}
               >
