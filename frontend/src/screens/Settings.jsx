@@ -7,7 +7,7 @@ import { usePageFocus } from "@/hooks/usePageFocus";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { validateGstin } from "@/lib/gstin";
 import { toast } from "sonner";
-import { Store, Pencil } from "lucide-react";
+import { Store, Pencil, LogOut } from "lucide-react";
 
 function shopToForm(shop) {
   return {
@@ -21,7 +21,7 @@ function shopToForm(shop) {
 }
 
 export default function Settings({ isOnboarding = false }) {
-  const { shop, saveShop } = useApp();
+  const { shop, saveShop, logout, user } = useApp();
   const [form, setForm] = useState(() => shopToForm(shop));
   const [editing, setEditing] = useState(!!isOnboarding);
   const editBtnRef = useRef(null);
@@ -191,6 +191,21 @@ export default function Settings({ isOnboarding = false }) {
             </button>
           </div>
         ) : null}
+      </div>
+
+      <div className="ds-panel space-y-3 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Account</p>
+        {user?.email && (
+          <p className="truncate text-sm text-ink">{user.email}</p>
+        )}
+        <button
+          type="button"
+          data-testid="logout-settings-btn"
+          onClick={logout}
+          className="flex w-full items-center justify-center gap-2 rounded-control border border-border px-4 py-3 font-semibold text-ink active:scale-95"
+        >
+          <LogOut className="h-4 w-4" /> Sign out
+        </button>
       </div>
     </div>
   );

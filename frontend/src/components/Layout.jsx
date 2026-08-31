@@ -191,6 +191,15 @@ export default function Layout({ children }) {
               <Search className="h-4 w-4" />
             </button>
             <ThemeToggle />
+            <button
+              type="button"
+              data-testid="logout-mobile-btn"
+              onClick={signOutUser}
+              aria-label="Sign out"
+              className="flex h-8 w-8 items-center justify-center rounded-control text-ink-muted hover:bg-canvas/60 hover:text-ink"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
             <AppLink href="/settings" data-testid="settings-link" aria-label="Settings" className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-xs font-semibold text-white transition-transform active:scale-95">
               {(user?.name || "S").charAt(0).toUpperCase()}
             </AppLink>

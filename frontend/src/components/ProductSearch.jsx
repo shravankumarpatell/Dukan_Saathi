@@ -160,7 +160,7 @@ const ProductSearch = forwardRef(function ProductSearch(
           placeholder={placeholder}
           className="ds-bare-input w-full text-sm placeholder:text-slate-400"
         />
-        <Kbd keys={KEYS.quickCreate} className="hidden sm:inline-flex" />
+        <Kbd keys={KEYS.quickCreate} />
       </div>
 
       {open && (

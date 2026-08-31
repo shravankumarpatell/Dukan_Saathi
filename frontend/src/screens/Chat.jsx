@@ -308,7 +308,7 @@ export default function Chat() {
               <Send className="h-4 w-4 translate-x-px" />
             </button>
           </div>
-          <p className="mt-2 px-0.5 text-[11px] text-ink-muted">
+          <p className="mt-2 hidden px-0.5 text-[11px] text-ink-muted lg:block">
             Enter se bhejo · Clear <Kbd keys={KEYS.chatClear} />
           </p>
         </div>

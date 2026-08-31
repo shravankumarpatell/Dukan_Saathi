@@ -3,8 +3,8 @@ import { formatBinding } from "@/lib/hotkeys";
 import { cn } from "@/lib/utils";
 
 /**
- * On-screen key hint. Discoverability matters as much as the shortcut itself —
- * shopkeepers won't read a manual, so every button that has a shortcut shows it.
+ * On-screen key hint. Hidden below `lg` (phone / tablet); keyboard-first
+ * shopkeepers on desktop still see the chord on every action.
  */
 export default function Kbd({ keys, className, tone = "default" }) {
   if (!keys) return null;
@@ -16,9 +16,10 @@ export default function Kbd({ keys, className, tone = "default" }) {
   return (
     <kbd
       className={cn(
-        "inline-flex select-none items-center rounded-control border px-1.5 py-0.5 font-sans text-[10px] font-bold leading-none tracking-wide whitespace-nowrap",
+        "select-none items-center rounded-control border px-1.5 py-0.5 font-sans text-[10px] font-bold leading-none tracking-wide whitespace-nowrap",
         tones[tone] || tones.default,
-        className
+        className,
+        "hidden lg:inline-flex"
       )}
     >
       {formatBinding(keys)}
