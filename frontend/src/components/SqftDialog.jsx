@@ -111,7 +111,7 @@ export default function SqftDialog({ sqftFor, onClose, onApply }) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="gap-4 sm:max-w-xl" data-testid="sqft-dialog" onCloseAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="z-[70] gap-4 sm:max-w-xl" overlayClassName="z-[65]" data-testid="sqft-dialog" onCloseAutoFocus={(e) => e.preventDefault()}>
         <div ref={flow.containerRef} onKeyDown={handleSqftKeys} className="space-y-4">
           <DialogHeader>
             <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
@@ -181,8 +181,14 @@ export default function SqftDialog({ sqftFor, onClose, onApply }) {
           </div>
         </div>
         <button
+          type="button"
           data-testid="sqft-apply-btn"
-          onClick={() => onApply(res)}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onApply(res);
+          }}
           className="flex items-center justify-center gap-2 rounded-control bg-mint px-4 py-3 font-semibold text-white hover:bg-mint-dark active:scale-95"
         >
           Use {res.boxesNeeded} box + {res.loosePieces} pc

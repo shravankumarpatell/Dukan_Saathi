@@ -47,6 +47,7 @@ export default function BillCartDialog({
   const closeBtnRef = useRef(null);
   const [sqftFor, setSqftFor] = useState(null); // { index, item }
   const sqftOpen = !!sqftFor;
+  const ignoreDismissRef = useRef(false);
 
   const focusedRow = () => {
     const row = document.activeElement?.dataset?.row;
@@ -111,10 +112,12 @@ export default function BillCartDialog({
     }
 
     updItem(i, { qty: nextQty, pieces: nextPcs, amount: undefined });
+    ignoreDismissRef.current = true;
     setSqftFor(null);
-    setTimeout(() => {
+    window.setTimeout(() => {
       itemsRef.current?.querySelector(`[data-row="${i}"][data-cell="rate"]`)?.focus();
-    }, 60);
+      ignoreDismissRef.current = false;
+    }, 280);
   }, [sqftFor, items, type, products, updItem]);
 
   const onItemsKeyDown = (e) => {
@@ -190,11 +193,14 @@ export default function BillCartDialog({
 
   return (
     <>
-      <Dialog open={visible} onOpenChange={(o) => !o && !sqftOpen && onClose()}>
+      <Dialog open={visible} onOpenChange={(o) => { if (!o && (sqftOpen || ignoreDismissRef.current)) return; if (!o) onClose(); }}>
         <DialogContent
           data-testid="bill-cart-dialog"
           className="max-w-2xl"
           onCloseAutoFocus={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => { if (sqftOpen || ignoreDismissRef.current) e.preventDefault(); }}
+          onInteractOutside={(e) => { if (sqftOpen || ignoreDismissRef.current) e.preventDefault(); }}
+          onFocusOutside={(e) => { if (sqftOpen || ignoreDismissRef.current) e.preventDefault(); }}
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

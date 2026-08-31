@@ -726,6 +726,7 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
   const [rate, setRate] = useState("");
   const [sqftOpen, setSqftOpen] = useState(false);
   const rateRef = useRef(null);
+  const ignoreDismissRef = useRef(false);
   const open = useVisibleOpen(!!product);
   const limitStock = true;
 
@@ -778,9 +779,14 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
     }
     setQty(nextQty);
     setPieces(nextPcs);
+    ignoreDismissRef.current = true;
     setSqftOpen(false);
-    // Qty/Pcs filled — park the caret on Rate so Enter can finish the add.
-    setTimeout(() => rateRef.current?.focus(), 60);
+    // Keep the product sheet open; the nested-dialog tap would otherwise
+    // click-through the overlay and close it before Rate can be focused.
+    window.setTimeout(() => {
+      rateRef.current?.focus();
+      ignoreDismissRef.current = false;
+    }, 280);
   }, [product, ppb, limitStock, availPieces, availLabel]);
 
   const submit = useCallback(() => {
@@ -835,8 +841,27 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className="gap-3" data-testid="item-details-dialog" onCloseAutoFocus={(e) => e.preventDefault()}>
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          if (!o && (sqftOpen || ignoreDismissRef.current)) return;
+          if (!o) onClose();
+        }}
+      >
+        <DialogContent
+          className="gap-3"
+          data-testid="item-details-dialog"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => {
+            if (sqftOpen || ignoreDismissRef.current) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (sqftOpen || ignoreDismissRef.current) e.preventDefault();
+          }}
+          onFocusOutside={(e) => {
+            if (sqftOpen || ignoreDismissRef.current) e.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="flex flex-wrap items-center gap-2 pr-8 text-left text-ink">
               {product.name}
