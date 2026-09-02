@@ -10,6 +10,7 @@ import { usePageFocus } from "@/hooks/usePageFocus";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { UNIT_BOX, UNIT_PIECE, normalizeUnit } from "@/lib/units";
 import { normalizeTileSize } from "@/lib/tileSizes";
+import { mapExtractedPiecesPerBox } from "@/lib/bulkFill";
 
 export default function BulkUpload() {
   const { setDraft, draft } = useApp();
@@ -105,7 +106,7 @@ export default function BulkUpload() {
           ...r,
           unit,
           size: tile ? (normalizeTileSize(r.size) || "") : "",
-          piecesPerBox: tile ? (r.piecesPerBox || "") : 1,
+          piecesPerBox: tile ? mapExtractedPiecesPerBox(unit, r.piecesPerBox) : 1,
           price: r.price ?? "",
         };
       });

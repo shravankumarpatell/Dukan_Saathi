@@ -1,15 +1,15 @@
 primary:
   provider: "google"
   # Extraction / NLU. Shop chat analyst uses app.config GEMINI_MODEL.
-  model: "gemini-3.6-flash"
+  model: "gemini-3.5-flash-lite"
   temperature: 0.0
   max_retries: 2
   timeout_seconds: 30
 
 fallback:
   provider: "google"
-  # Gemini 2.5/2.0 are closed to new Google AI Studio projects.
-  model: "gemini-3.5-flash"
+  # Alternate lite model if 3.5-flash-lite is unavailable.
+  model: "gemini-3.1-flash-lite"
   temperature: 0.0
   max_retries: 1
   timeout_seconds: 60

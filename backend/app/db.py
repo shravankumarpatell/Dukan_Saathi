@@ -30,6 +30,19 @@ def _normalize_url(url: str) -> str:
     return url
 
 
+def _postgres_pool_kwargs(*, pool_size: int, max_overflow: int) -> dict:
+    # Supabase session-mode pooler (port 5432) caps clients (~15 on small plans).
+    # Keep SQLAlchemy well under that: local reload + Oracle + this process share the cap.
+    return {
+        "pool_size": pool_size,
+        "max_overflow": max_overflow,
+        "pool_pre_ping": True,
+        "pool_recycle": 180,
+        "pool_timeout": 30,
+        "pool_use_lifo": True,
+    }
+
+
 def get_engine() -> AsyncEngine:
     global _engine, _session_factory
     if _engine is None:
@@ -40,9 +53,7 @@ def get_engine() -> AsyncEngine:
             kwargs["connect_args"] = {"check_same_thread": False}
             kwargs["poolclass"] = StaticPool
         else:
-            kwargs["pool_size"] = 5
-            kwargs["max_overflow"] = 10
-            kwargs["pool_pre_ping"] = True
+            kwargs.update(_postgres_pool_kwargs(pool_size=2, max_overflow=1))
         _engine = create_async_engine(url, **kwargs)
         _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
@@ -55,23 +66,21 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 def get_analyst_engine() -> AsyncEngine:
-    """Separate pool for read-only analyst queries so chat cannot starve billing."""
+    """Read-only analyst queries. Shares the billing engine unless ANALYST_DATABASE_URL differs."""
     global _analyst_engine, _analyst_session_factory
     if _analyst_engine is None:
         raw = settings.ANALYST_DATABASE_URL or settings.DATABASE_URL
         url = _normalize_url(raw)
-        kwargs: dict = {"echo": False}
-        if url.startswith("sqlite"):
-            kwargs["connect_args"] = {"check_same_thread": False}
-            kwargs["poolclass"] = StaticPool
-            # Share the in-memory writer DB in tests.
+        main_url = _normalize_url(settings.DATABASE_URL)
+        if url.startswith("sqlite") or url == main_url:
+            # Same database as billing — do not open a second pool (Supabase
+            # session pooler is tiny; a second engine would double clients).
             _analyst_engine = get_engine()
             _analyst_session_factory = get_session_factory()
             return _analyst_engine
-        kwargs["pool_size"] = 3
-        kwargs["max_overflow"] = 2
-        kwargs["pool_pre_ping"] = True
-        _analyst_engine = create_async_engine(url, **kwargs)
+        _analyst_engine = create_async_engine(
+            url, echo=False, **_postgres_pool_kwargs(pool_size=1, max_overflow=1)
+        )
         _analyst_session_factory = async_sessionmaker(
             _analyst_engine, expire_on_commit=False
         )

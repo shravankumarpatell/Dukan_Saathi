@@ -4,8 +4,8 @@ from app.genai.prompts import PromptBuilder
 
 def test_settings_loaded():
     assert settings.app.app_name == "DukanSaathi GenAI Backend"
-    assert settings.models.primary.model == "gemini-3.6-flash"
-    assert settings.models.fallback.model == "gemini-3.5-flash"
+    assert settings.models.primary.model == "gemini-3.5-flash-lite"
+    assert settings.models.fallback.model == "gemini-3.1-flash-lite"
     assert settings.retrieval.top_k == 5
     assert len(settings.prompt_extraction.constraints) > 0
     assert "{tile_sizes}" in settings.prompt_extraction.instructions

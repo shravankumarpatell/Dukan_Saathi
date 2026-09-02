@@ -76,6 +76,7 @@ export const KEYS = {
   deleteRow: "alt+x",
   /** Clear / reset the whole New Bill form (with confirm). */
   clearBill: "alt+shift+c",
+  fillDown: "alt+shift+d",
   focusSearch: "/",
   confirmDraft: "mod+enter",
   toggleCheckbox: "alt+enter",
@@ -143,6 +144,7 @@ export const SHORTCUT_GUIDE = [
       { keys: KEYS.preview, label: "Preview / print PDF" },
       { keys: KEYS.openOriginal, label: "Open selected original invoice (Returns)" },
       { keys: KEYS.deleteRow, label: "Delete current line (New Bill: opens cart, or deletes focused cart row)" },
+      { keys: KEYS.fillDown, label: "Add Stock: fill column down (Shift+click range, or from current cell)" },
       { keys: KEYS.clearBill, label: "Clear / reset New Bill (asks for confirmation)" },
       { keys: KEYS.sqftCalc, label: "Sq-ft calculator (Dashboard, or while adding a tile item)" },
       { keys: "arrowleft", label: "Highlight previous option (cash/online / type / settlement)" },

@@ -32,7 +32,7 @@ Copy `.env.example` to `.env`. Gemini uses **Vertex AI + Application Default Cre
 GOOGLE_GENAI_USE_VERTEXAI=true
 GOOGLE_CLOUD_PROJECT=your-gcp-project-id
 GOOGLE_CLOUD_LOCATION=asia-south1
-GEMINI_MODEL=gemini-3.6-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
 GEMINI_STORE_PROMPTS=false
 ```
 
