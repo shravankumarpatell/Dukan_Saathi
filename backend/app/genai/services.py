@@ -1,6 +1,7 @@
 from typing import List, Tuple
 """GenAI business services — extraction, NLU, and chat. Prompts live in YAML."""
 
+from app.common.errors import ValidationError
 from app.genai.logger import logger
 from app.genai.llm import LLMClient
 from app.genai.schemas import StockExtractResult, NluResult, ChatMessage
@@ -23,6 +24,11 @@ from app.genai.stock_extract import (
 _normalize_mime = normalize_mime
 _normalize_row = normalize_row
 
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+SUPPORTED_MIMES = frozenset(
+    {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"}
+)
+
 
 class ExtractionService:
     @staticmethod
@@ -30,7 +36,21 @@ class ExtractionService:
         logger.info("Starting stock-sheet extraction")
         mime = normalize_mime(mime_type)
         raw = decode_payload(image_base64)
-        pdf_text = extract_pdf_text(raw) if mime == "application/pdf" else ""
+        if not raw:
+            raise ValidationError("File padh nahi paya — image/PDF dobara select karein.")
+        if len(raw) > MAX_UPLOAD_BYTES:
+            raise ValidationError(
+                f"File bahut badi hai ({len(raw) / 1_000_000:.1f} MB). "
+                f"{MAX_UPLOAD_BYTES // 1_000_000} MB se chhoti file bhejein."
+            )
+        if mime not in SUPPORTED_MIMES:
+            raise ValidationError("Sirf JPG, PNG, WEBP ya PDF support hai.")
+        try:
+            pdf_text = extract_pdf_text(raw) if mime == "application/pdf" else ""
+        except Exception as exc:
+            # Scanned / malformed PDF — vision path still works without a text layer.
+            logger.warning("PDF text layer failed (%s); continuing with vision only", type(exc).__name__)
+            pdf_text = ""
         prompt = PromptBuilder.build(
             load_extraction_prompt(),
             {"tile_sizes": TILE_SIZE_PROMPT},

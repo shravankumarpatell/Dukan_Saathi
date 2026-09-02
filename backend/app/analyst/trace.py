@@ -63,5 +63,5 @@ async def write_trace(
                 },
             )
             await session.commit()
-    except Exception:
-        logger.debug("trace persist skipped", exc_info=True)
+    except Exception as exc:
+        logger.warning("analyst trace persist skipped (%s)", type(exc).__name__)

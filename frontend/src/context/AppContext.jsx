@@ -1,21 +1,31 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import * as api from "@/services/api";
+import { errorMessage } from "@/services/apiError";
 import { onAuth, signOut as authSignOut } from "@/services/auth";
 import { normalizeTileSize } from "@/lib/tileSizes";
 
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
 
+/** If Supabase never answers (blocked network, bad keys), stop the boot spinner. */
+const AUTH_BOOT_TIMEOUT_MS = 12_000;
+
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [shop, setShop] = useState(null);
+  // Set when /shops/me (or auth itself) fails during boot → Shell shows a retry screen.
+  const [bootError, setBootError] = useState(null);
+  // Set when the background list loads fail; screens keep rendering stale data + a hint.
+  const [dataError, setDataError] = useState(null);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [returns, setReturns] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [draft, setDraft] = useState(null);
+  const userRef = useRef(null);
 
   // Put caret at end (never select-all) when a text field is focused.
   useEffect(() => {
@@ -30,38 +40,73 @@ export function AppProvider({ children }) {
   }, []);
 
   // ── Load all data from backend ──
-  const loadAll = useCallback(async () => {
-    try {
-      const [p, c, i, e] = await Promise.all([
-        api.listProducts(),
-        api.listCustomers(),
-        api.listInvoices(),
-        api.listExpenses(),
-      ]);
-      setProducts(p);
-      setCustomers(c);
-      setInvoices(i);
-      setExpenses(e);
-    } catch (err) {
-      console.error("Failed to load data:", err);
+  // Each list is fetched independently: one failing endpoint must not blank
+  // the others. Failures are surfaced (toast + dataError), never swallowed.
+  const loadAll = useCallback(async ({ silent = false } = {}) => {
+    const results = await Promise.allSettled([
+      api.listProducts(),
+      api.listCustomers(),
+      api.listInvoices(),
+      api.listExpenses(),
+    ]);
+    const [p, c, i, e] = results;
+    if (p.status === "fulfilled") setProducts(p.value);
+    if (c.status === "fulfilled") setCustomers(c.value);
+    if (i.status === "fulfilled") setInvoices(i.value);
+    if (e.status === "fulfilled") setExpenses(e.value);
+
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length === 0) {
+      setDataError(null);
+      return true;
     }
+    const first = failed[0].reason;
+    // eslint-disable-next-line no-console
+    console.error("Failed to load data:", ...failed.map((r) => r.reason));
+    // A 401 already signed the user out; no toast needed on top of the login screen.
+    if (first?.status !== 401) {
+      setDataError(first);
+      if (!silent) toast.error(errorMessage(first));
+    }
+    return false;
   }, []);
+
+  const bootShop = useCallback(async (u) => {
+    setBootError(null);
+    try {
+      const s = await api.getShop();
+      setShop(s);
+      await loadAll({ silent: true });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to initialize shop:", err);
+      if (err?.status === 401) return; // signed out by the API layer → login screen
+      setBootError(err);
+    }
+  }, [loadAll]);
 
   // ── Auth listener ──
   useEffect(() => {
+    let settled = false;
+    const bootTimer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setAuthLoading(false);
+      setBootError(new Error("Login check nahi ho paya. Internet check karke dobara try karein."));
+    }, AUTH_BOOT_TIMEOUT_MS);
+
     const unsub = onAuth(async (u) => {
+      settled = true;
+      clearTimeout(bootTimer);
+      userRef.current = u;
       setUser(u);
       setAuthLoading(false);
       if (u) {
-        try {
-          const s = await api.getShop();
-          setShop(s);
-          await loadAll();
-        } catch (err) {
-          console.error("Failed to initialize shop:", err);
-        }
+        await bootShop(u);
       } else {
         setShop(null);
+        setBootError(null);
+        setDataError(null);
         setProducts([]);
         setCustomers([]);
         setInvoices([]);
@@ -69,10 +114,23 @@ export function AppProvider({ children }) {
         setExpenses([]);
       }
     });
-    return unsub;
-  }, [loadAll]);
+    return () => {
+      clearTimeout(bootTimer);
+      unsub();
+    };
+  }, [bootShop]);
 
   const refresh = useCallback(() => loadAll(), [loadAll]);
+
+  /** Retry from the boot error screen (server down at startup, etc.). */
+  const retryBoot = useCallback(async () => {
+    if (userRef.current) {
+      await bootShop(userRef.current);
+    } else {
+      // Auth itself never resolved — a reload re-runs the Supabase handshake.
+      window.location.reload();
+    }
+  }, [bootShop]);
 
   const saveShop = useCallback(async (patch) => {
     const s = await api.updateShop(patch);
@@ -231,6 +289,7 @@ export function AppProvider({ children }) {
 
   const value = {
     user, authLoading, shop, saveShop, logout,
+    bootError, retryBoot, dataError,
     products, customers, invoices, returns, expenses, refresh,
     draft, setDraft, commitDraft, cancelDraft: () => setDraft(null), commitBill, allocatePayment, reconcileCustomer,
     isDemo: false, geminiReady,

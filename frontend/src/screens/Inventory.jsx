@@ -22,6 +22,7 @@ import { usePageFocus } from "@/hooks/usePageFocus";
 import { useQuickCreate } from "@/context/QuickCreateContext";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
+import { errorMessage } from "@/services/apiError";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import { Search, Upload, X, Package } from "lucide-react";
@@ -77,7 +78,13 @@ export default function Inventory() {
       delete clean.showroomQty;
       delete clean.godownQty;
     }
-    await updateProduct(form.id, clean);
+    try {
+      await updateProduct(form.id, clean);
+    } catch (err) {
+      // Keep the edit form open so nothing typed is lost.
+      toast.error(errorMessage(err, "Product update nahi hua. Dobara try karein."));
+      return;
+    }
     toast.success("Product update ho gaya");
     setForm(null);
     focusStart();

@@ -7,6 +7,7 @@ All endpoints use Vertex Gemini via Application Default Credentials.
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 import time
 
+from app.common.errors import AppError, classify_exception
 from app.dependencies import get_current_user, AuthenticatedUser
 from app.gemini.client import is_configured
 from app.genai.schemas import ExtractRequest, ExtractResponse, ChatRequest, ChatResponse
@@ -44,12 +45,16 @@ async def extract_invoice(req: ExtractRequest, user: AuthenticatedUser = Depends
             data=result.model_dump(),
             fallback_used=False,
         )
+    except AppError:
+        raise  # 400 bad file / 504 Gemini timeout — handled globally
     except ApplicationError as e:
-        logger.error("Extraction API failure: %s %s", e, e.details)
-        raise HTTPException(status_code=500, detail={"error": e.message, "details": e.details})
+        # Both Gemini models failed: the dependency is unavailable, not our bug.
+        logger.error("Extraction API failure: %s %s", e.message, e.details, exc_info=e)
+        raise HTTPException(status_code=503, detail={"error": e.message, "details": e.details})
     except Exception as e:
-        logger.error("Extraction API unhandled failure: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error during extraction")
+        status_code, message, type_name = classify_exception(e)
+        logger.error("Extraction API unhandled failure -> %s %s", status_code, type_name, exc_info=e)
+        raise HTTPException(status_code=status_code, detail=message)
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -65,9 +70,12 @@ async def chat(req: ChatRequest, user: AuthenticatedUser = Depends(get_current_u
             response=response,
             retrieved_context_chunks=chunks_used,
         )
+    except AppError:
+        raise
     except Exception as e:
-        logger.error("Chat API failure: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error during chat")
+        status_code, message, type_name = classify_exception(e)
+        logger.error("Chat API failure -> %s %s", status_code, type_name, exc_info=e)
+        raise HTTPException(status_code=status_code, detail=message)
 
 
 @router.post("/index-documents")

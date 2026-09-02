@@ -8,4 +8,6 @@ services:
       - .env
     volumes:
       - .:/app
-    command: uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+    # Dev compose: reload on, so file edits restart the worker. Do not use --reload
+    # in production — it runs two processes, each with its own DB pool.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

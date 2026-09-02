@@ -7,6 +7,7 @@ import { usePageFocus } from "@/hooks/usePageFocus";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { validateGstin } from "@/lib/gstin";
 import { toast } from "sonner";
+import { errorMessage } from "@/services/apiError";
 import { Store, Pencil, LogOut } from "lucide-react";
 
 function shopToForm(shop) {
@@ -47,10 +48,16 @@ export default function Settings({ isOnboarding = false }) {
     const gstCheck = validateGstin(form.gstin, { required: !!form.gstEnabled });
     if (!gstCheck.ok) return toast.error(gstCheck.error);
 
-    await saveShop({
-      ...form,
-      gstin: form.gstEnabled ? gstCheck.gstin : gstCheck.gstin,
-    });
+    try {
+      await saveShop({
+        ...form,
+        gstin: form.gstEnabled ? gstCheck.gstin : gstCheck.gstin,
+      });
+    } catch (err) {
+      // Keep the form open with the user's edits so they can retry.
+      toast.error(errorMessage(err, "Shop details save nahi hue. Dobara try karein."));
+      return;
+    }
     toast.success(isOnboarding ? "Shop setup complete!" : "Shop details saved");
     if (!isOnboarding) {
       setEditing(false);

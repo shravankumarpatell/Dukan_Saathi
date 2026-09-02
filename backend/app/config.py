@@ -38,6 +38,19 @@ class Settings:
         "true",
         "yes",
     )
+    # Upstream time budgets (seconds). Gemini calls are wrapped in asyncio.wait_for
+    # so a hung model call ends with a 504 instead of holding the worker forever.
+    GEMINI_TIMEOUT_S: float = float(os.environ.get("GEMINI_TIMEOUT_S", "60"))
+    # Whole /ai/chat answer (entity lookup + planner + SQL + template).
+    CHAT_TIMEOUT_S: float = float(os.environ.get("CHAT_TIMEOUT_S", "120"))
+
+    # SQLAlchemy pool (per process). Defaults suit the Supabase transaction
+    # pooler (6543). On the session pooler (5432, ~15 clients) use 2 / 1.
+    DB_POOL_SIZE: int = int(os.environ.get("DB_POOL_SIZE", "5"))
+    DB_MAX_OVERFLOW: int = int(os.environ.get("DB_MAX_OVERFLOW", "3"))
+    DB_POOL_TIMEOUT_S: int = int(os.environ.get("DB_POOL_TIMEOUT_S", "10"))
+    DB_CONNECT_TIMEOUT_S: int = int(os.environ.get("DB_CONNECT_TIMEOUT_S", "10"))
+
     ANALYST_DATABASE_URL: str = os.environ.get("ANALYST_DATABASE_URL", "")
     ANALYST_ROW_LIMIT: int = int(os.environ.get("ANALYST_ROW_LIMIT", "80"))
     ANALYST_STATEMENT_TIMEOUT_MS: int = int(os.environ.get("ANALYST_STATEMENT_TIMEOUT_MS", "2000"))

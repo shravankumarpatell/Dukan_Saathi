@@ -1,21 +1,40 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useApp } from "@/context/AppContext";
 import { money } from "@/lib/calc";
+import { errorMessage } from "@/services/apiError";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import Kbd from "@/components/Kbd";
-import { Check, X } from "lucide-react";
+import { Check, X, Loader2 } from "lucide-react";
 
 // Generic old->new draft confirmation card (for stock/payment/return/transfer/expense).
 export default function DraftCard() {
   const { draft, commitDraft, cancelDraft } = useApp();
   const active = !!draft && draft.kind !== "sale";
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+
+  // Confirm once; on failure keep the draft so the user can fix/retry, and say why.
+  const confirm = useCallback(async () => {
+    if (busyRef.current || !draft) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await commitDraft();
+    } catch (err) {
+      toast.error(errorMessage(err, "Save nahi hua. Dobara try karein."));
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }, [commitDraft, draft]);
 
   // Exclusive so page form-flow / F9 cannot steal Esc or Ctrl+Enter while a
   // draft is waiting for Confirm.
   useHotkeyScope(SCOPES.DRAFT, { exclusive: true, enabled: active });
   useHotkeys(SCOPES.DRAFT, [
-    { keys: KEYS.confirmDraft, label: "Confirm this draft", handler: commitDraft, allowInInput: true },
+    { keys: KEYS.confirmDraft, label: "Confirm this draft", handler: confirm, allowInInput: true },
     { keys: KEYS.cancel, label: "Cancel this draft", handler: cancelDraft },
   ]);
 
@@ -73,10 +92,11 @@ export default function DraftCard() {
           </button>
           <button
             data-testid="draft-confirm-btn"
-            onClick={commitDraft}
-            className="flex items-center justify-center gap-2 rounded-control bg-emerald-600 px-4 py-3 font-semibold text-white shadow-md transition-transform active:scale-95 hover:bg-emerald-700"
+            onClick={confirm}
+            disabled={busy}
+            className="flex items-center justify-center gap-2 rounded-control bg-emerald-600 px-4 py-3 font-semibold text-white shadow-md transition-transform active:scale-95 hover:bg-emerald-700 disabled:opacity-60"
           >
-            <Check className="h-4 w-4" /> Confirm <Kbd keys={KEYS.confirmDraft} tone="dark" />
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Confirm <Kbd keys={KEYS.confirmDraft} tone="dark" />
           </button>
         </div>
       </div>

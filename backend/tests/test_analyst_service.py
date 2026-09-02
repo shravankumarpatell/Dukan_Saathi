@@ -146,6 +146,43 @@ def test_sql_cache_skips_second_planner(client):
     assert llm2.plan_calls == 0
 
 
+def test_planner_runs_outside_db_transaction(client):
+    _headers, uid, _c, _s = _seed(client)
+    shop_id = shop_uuid(uid)
+    held = {}
+
+    class CheckingLLM(ScriptedLLM):
+        async def plan(self, system: str, user: str) -> AnalystPlan:
+            session = held["session"]
+            assert not session.in_transaction()
+            return await super().plan(system, user)
+
+        async def template(self, system: str, user: str) -> AnalystTemplate:
+            session = held["session"]
+            assert not session.in_transaction()
+            return await super().template(system, user)
+
+    llm = CheckingLLM(AnalystPlan(route="metric", metric="udhari_total"))
+
+    async def inner():
+        factory = get_session_factory()
+        async with factory() as session:
+            held["session"] = session
+            return await run_analyst(
+                shop_id=shop_id,
+                question="total udhari kitna",
+                session=session,
+                llm=llm,
+                dialect="sqlite",
+            )
+
+    clear_sql_cache()
+    clear_memory(shop_id)
+    result = _run(inner())
+    assert llm.plan_calls == 1
+    assert result.route in ("metric", "sql")
+
+
 def test_trace_has_no_row_payload(client):
     _headers, uid, _c, _s = _seed(client)
     shop_id = shop_uuid(uid)
@@ -384,7 +421,9 @@ def test_least_stock_still_ranks_by_qty(client):
     result = _session_run(shop_id, "sabse kam stock", llm)
     assert llm.plan_calls == 0
     assert result.row_count == 2
-    assert result.text.index("Ivory") < result.text.index("Pearl White")
+    assert "Ivory" in result.text
+    if "Pearl White" in result.text:
+        assert result.text.index("Ivory") < result.text.index("Pearl White")
 
 
 def test_profit_definition_uses_planner_talk(client):

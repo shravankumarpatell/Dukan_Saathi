@@ -14,20 +14,34 @@ import Chat from "@/screens/Chat";
 import BulkUpload from "@/screens/BulkUpload";
 import BillHistory from "@/screens/BillHistory";
 import Settings from "@/screens/Settings";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import ErrorState from "@/components/ErrorState";
 
-const Analytics = dynamic(() => import("@/screens/Analytics"), { ssr: false });
+// If the analytics chunk fails to download (flaky network / new deploy), show
+// a retry instead of a blank page. Retry re-requests the chunk.
+const Analytics = dynamic(() => import("@/screens/Analytics"), {
+  ssr: false,
+  loading: ({ error, retry }) =>
+    error ? (
+      <ErrorState error={error} title="Analytics load nahi hua" onRetry={retry} />
+    ) : (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-mint" />
+      </div>
+    ),
+});
 
 const PAGES = [
-  { path: "/", Page: Dashboard },
-  { path: "/inventory", Page: Inventory },
-  { path: "/bill", Page: NewBill },
-  { path: "/customers", Page: Customers },
-  { path: "/returns", Page: Returns },
-  { path: "/chat", Page: Chat },
-  { path: "/bulk", Page: BulkUpload },
-  { path: "/analytics", Page: Analytics },
-  { path: "/history", Page: BillHistory },
-  { path: "/settings", Page: Settings },
+  { path: "/", Page: Dashboard, label: "Dashboard" },
+  { path: "/inventory", Page: Inventory, label: "Stock" },
+  { path: "/bill", Page: NewBill, label: "Bill" },
+  { path: "/customers", Page: Customers, label: "Customers" },
+  { path: "/returns", Page: Returns, label: "Returns" },
+  { path: "/chat", Page: Chat, label: "AI Saathi" },
+  { path: "/bulk", Page: BulkUpload, label: "Add Stock" },
+  { path: "/analytics", Page: Analytics, label: "Analytics" },
+  { path: "/history", Page: BillHistory, label: "Bill History" },
+  { path: "/settings", Page: Settings, label: "Settings" },
 ];
 
 const KNOWN = new Set(PAGES.map((p) => p.path));
@@ -58,7 +72,7 @@ export default function KeepAliveRoutes() {
 
   return (
     <>
-      {PAGES.map(({ path, Page }) => {
+      {PAGES.map(({ path, Page, label }) => {
         const active = pathname === path;
         if (!visited.has(path) && !active) return null;
         return (
@@ -73,7 +87,10 @@ export default function KeepAliveRoutes() {
                 path === "/chat" && active ? "flex h-full min-h-0 flex-col" : undefined
               }
             >
-              <Page />
+              {/* One crashed screen must not take the sidebar / other screens down. */}
+              <ErrorBoundary name={label}>
+                <Page />
+              </ErrorBoundary>
             </div>
           </PageKeepAliveProvider>
         );

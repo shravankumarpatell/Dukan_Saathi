@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from dataclasses import dataclass
@@ -13,6 +14,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session_factory
+
+logger = logging.getLogger(__name__)
 
 REUSE_THRESHOLD = 0.95
 GUIDE_THRESHOLD = 0.60
@@ -77,8 +80,14 @@ async def lookup_sql(
             sc = _score(norm, str(row["question_norm"]))
             if best is None or sc > best.score:
                 best = CacheHit(sql=str(row["sql"]), score=sc, reuse=sc >= REUSE_THRESHOLD)
-    except Exception:
-        pass
+    except Exception as exc:
+        # Cache is an optimisation: fall back to in-memory hits, but say so.
+        logger.warning("analyst_sql_cache lookup skipped (%s)", type(exc).__name__)
+        try:
+            if session.in_transaction():
+                await session.rollback()
+        except Exception:
+            logger.debug("rollback after cache lookup failure failed", exc_info=True)
     if best and best.score >= GUIDE_THRESHOLD:
         return best
     return None
@@ -116,5 +125,5 @@ async def store_sql(
                 },
             )
             await own.commit()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("analyst_sql_cache store skipped (%s)", type(exc).__name__)

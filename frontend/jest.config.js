@@ -1,6 +1,6 @@
 module.exports = {
   testEnvironment: "jsdom",
-  testMatch: ["**/src/lib/**/*.test.js"],
+  testMatch: ["**/src/lib/**/*.test.js", "**/src/services/**/*.test.js"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },

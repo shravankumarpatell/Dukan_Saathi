@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import logging
+import socket
+import urllib.error
 from typing import Optional
 
 import jwt
 from fastapi import Depends, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 from pydantic import BaseModel
 
+from app.common.errors import ServiceUnavailableError
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -18,6 +22,17 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 _jwks_client: PyJWKClient | None = None
+
+# JWKS fetch is a blocking urllib call; bound it so a slow Supabase Auth
+# endpoint cannot stall the worker.
+_JWKS_TIMEOUT_S = 5
+
+# Errors that mean "we could not reach the key server", not "bad token".
+_NETWORK_ERRORS = (urllib.error.URLError, socket.timeout, TimeoutError, ConnectionError, OSError)
+
+
+class AuthUnavailable(Exception):
+    """Could not verify the token because Supabase Auth was unreachable."""
 
 
 class AuthenticatedUser(BaseModel):
@@ -35,7 +50,7 @@ def _jwks() -> PyJWKClient:
         url = settings.supabase_jwks_url
         if not url:
             raise RuntimeError("SUPABASE_JWKS_URL or SUPABASE_URL is not configured")
-        _jwks_client = PyJWKClient(url, cache_keys=True, lifespan=600)
+        _jwks_client = PyJWKClient(url, cache_keys=True, lifespan=600, timeout=_JWKS_TIMEOUT_S)
     return _jwks_client
 
 
@@ -71,9 +86,19 @@ def decode_supabase_token(token: str) -> dict:
 
     try:
         signing_key = _jwks().get_signing_key_from_jwt(token)
+    except jwt.PyJWKClientConnectionError as exc:
+        raise AuthUnavailable(str(exc)) from exc
+    except _NETWORK_ERRORS as exc:
+        raise AuthUnavailable(str(exc)) from exc
     except Exception:
+        # Unknown kid (key rotation) or stale cache — rebuild once and retry.
         reset_jwks_client()
-        signing_key = _jwks().get_signing_key_from_jwt(token)
+        try:
+            signing_key = _jwks().get_signing_key_from_jwt(token)
+        except jwt.PyJWKClientConnectionError as exc:
+            raise AuthUnavailable(str(exc)) from exc
+        except _NETWORK_ERRORS as exc:
+            raise AuthUnavailable(str(exc)) from exc
 
     return jwt.decode(
         token,
@@ -116,10 +141,18 @@ async def get_current_user(
         )
     token = credentials.credentials
     try:
-        decoded = decode_supabase_token(token)
+        # decode_supabase_token may hit the network (JWKS refresh) — keep it
+        # off the event loop.
+        decoded = await run_in_threadpool(decode_supabase_token, token)
         return user_from_claims(decoded)
+    except AuthUnavailable as exc:
+        # Not the user's fault: do NOT sign them out (a 401 would). 503 + retry.
+        logger.error("Auth key server unreachable: %s", exc)
+        raise ServiceUnavailableError(
+            "Login verify nahi ho paya (auth server down). Thodi der baad try karein."
+        ) from exc
     except Exception as exc:
-        logger.warning("Token verification failed: %s", exc)
+        logger.warning("Token verification failed: %s", type(exc).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired authentication token",

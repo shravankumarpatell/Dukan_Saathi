@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 import logging
 import asyncio
 from typing import Any, AsyncIterator, Optional
 
 from app.config import settings
-from app.common.errors import ValidationError
+from app.common.errors import UpstreamTimeoutError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,12 @@ def _strip_data_uri(b64: str) -> str:
 def _image_part(image_base64: str, mime: str):
     from google.genai import types
 
-    raw = base64.b64decode(_strip_data_uri(image_base64))
+    try:
+        raw = base64.b64decode(_strip_data_uri(image_base64), validate=False)
+    except (ValueError, binascii.Error) as exc:
+        raise ValidationError("File padh nahi paya — image/PDF dobara select karein.") from exc
+    if not raw:
+        raise ValidationError("File khali hai — image/PDF dobara select karein.")
     mime = (mime or "image/jpeg").split(";")[0].strip() or "image/jpeg"
     if hasattr(types.Part, "from_bytes"):
         return types.Part.from_bytes(data=raw, mime_type=mime)
@@ -243,9 +249,14 @@ async def generate_content(
     json_mode: bool = False,
     response_schema: Optional[dict] = None,
 ) -> str:
-    """Non-streaming generate. Returns concatenated text."""
+    """Non-streaming generate. Returns concatenated text.
+
+    Raises :class:`UpstreamTimeoutError` (504) when Gemini does not answer
+    within ``GEMINI_TIMEOUT_S``; other SDK errors propagate and are classified
+    by the global handler (429 → 503 "AI busy", etc.).
+    """
     client = get_client()
-    timeout_s = 90.0
+    timeout_s = float(settings.GEMINI_TIMEOUT_S)
     model_id = model or settings.GEMINI_MODEL
     contents = _build_contents(
         user_text=user_text,
@@ -273,16 +284,23 @@ async def generate_content(
             _call(include_thinking=True, schema=response_schema),
             timeout=timeout_s,
         )
-    except asyncio.TimeoutError:
-        logger.error("Gemini generate_content timed out after %.0fs", timeout_s)
-        raise
+    except asyncio.TimeoutError as exc:
+        logger.error("Gemini generate_content timed out after %.0fs (model=%s)", timeout_s, model_id)
+        raise UpstreamTimeoutError() from exc
     except Exception as exc:
-        logger.warning("Gemini generate failed (%s); retrying simpler config", exc)
+        logger.warning(
+            "Gemini generate failed (%s: %s); retrying simpler config",
+            type(exc).__name__,
+            str(exc)[:300],
+        )
         try:
             response = await asyncio.wait_for(
                 _call(include_thinking=False, schema=None),
                 timeout=timeout_s,
             )
+        except asyncio.TimeoutError as exc2:
+            logger.error("Gemini retry timed out after %.0fs (model=%s)", timeout_s, model_id)
+            raise UpstreamTimeoutError() from exc2
         except Exception:
             raise exc
 
@@ -321,7 +339,17 @@ async def stream_content(
             temperature=temperature,
         ),
     )
-    async for chunk in _aiter_stream(stream):
+    # Per-chunk idle timeout: a stalled stream must not pin the worker forever.
+    idle_s = float(settings.GEMINI_TIMEOUT_S)
+    it = _aiter_stream(stream).__aiter__()
+    while True:
+        try:
+            chunk = await asyncio.wait_for(it.__anext__(), timeout=idle_s)
+        except StopAsyncIteration:
+            return
+        except asyncio.TimeoutError as exc:
+            logger.error("Gemini stream stalled for %.0fs (model=%s)", idle_s, model_id)
+            raise UpstreamTimeoutError() from exc
         text = _chunk_text(chunk)
         if text:
             yield text

@@ -3,13 +3,14 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
 import * as api from "@/services/api";
+import { errorMessage } from "@/services/apiError";
 import Kbd from "@/components/Kbd";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { usePageFocus } from "@/hooks/usePageFocus";
 import { usePageKeepAlive } from "@/context/PageKeepAliveContext";
 import { SCOPES, KEYS } from "@/lib/keymap";
 import { buildChatSuggestions } from "@/lib/chatSuggestions";
-import { Send, Bot, Sparkles, Eraser } from "lucide-react";
+import { Send, Bot, Sparkles, Eraser, RefreshCw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -136,17 +137,24 @@ export default function Chat() {
           return c;
         });
       }
-    } catch {
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[chat]", err);
+      const reason = errorMessage(err, "Jawab nahi aa paya. Thodi der baad dobara try karein.");
+      const ref = err?.requestId ? `\n\n_ref: ${err.requestId}_` : "";
       setMessages((m) => {
         const c = [...m];
+        const partial = (c[c.length - 1]?.content || "").trim();
         c[c.length - 1] = {
           role: "assistant",
-          content: "Jawab nahi aa paya. Thodi der baad dobara try karein.",
+          content: partial ? `${partial}\n\n_${reason}_${ref}` : `${reason}${ref}`,
+          failed: true,
         };
         return c;
       });
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
     requestAnimationFrame(() => {
       inputRef.current?.focus();
       focusStart(40);
@@ -154,6 +162,22 @@ export default function Chat() {
   }, [busy, messages, resetIdle, focusStart]);
 
   const send = useCallback(() => sendText(input), [input, sendText]);
+
+  const sendTextRef = useRef(sendText);
+  useEffect(() => {
+    sendTextRef.current = sendText;
+  }, [sendText]);
+
+  // Re-ask the last question after a failed answer (drops the failed pair first).
+  const retryLast = useCallback(() => {
+    if (busy) return;
+    const lastUserIdx = messages.map((m) => m.role).lastIndexOf("user");
+    if (lastUserIdx < 0) return;
+    const question = messages[lastUserIdx].content;
+    setMessages(messages.slice(0, lastUserIdx));
+    // sendText reads `messages` from its closure; defer one tick so it sees the trimmed list.
+    setTimeout(() => sendTextRef.current(question), 0);
+  }, [busy, messages]);
 
   useHotkeyScope(SCOPES.CHAT);
   useHotkeys(SCOPES.CHAT, [
@@ -270,6 +294,17 @@ export default function Chat() {
                         <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
                           {m.content || "…"}
                         </ReactMarkdown>
+                        {m.failed && isLastAssistant && !busy ? (
+                          <button
+                            type="button"
+                            data-testid="chat-retry"
+                            onClick={retryLast}
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-control border border-border bg-canvas px-2.5 py-1.5 text-xs font-semibold text-ink-muted transition-colors hover:border-mint/40 hover:text-ink"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Dobara poochho
+                          </button>
+                        ) : null}
                       </div>
                     )}
                   </div>

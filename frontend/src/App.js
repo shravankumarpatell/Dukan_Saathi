@@ -13,10 +13,45 @@ import Settings from "@/screens/Settings";
 import { AppHistoryProvider, usePathname } from "@/context/AppHistoryContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import ErrorState from "@/components/ErrorState";
+import GlobalErrorListeners from "@/components/GlobalErrorListeners";
+
+function BootError({ error, onRetry, onLogout }) {
+  return (
+    <div className="relative flex min-h-screen items-center justify-center bg-canvas px-4">
+      <ThemeToggle className="absolute right-4 top-4" />
+      <div className="ds-panel w-full max-w-md">
+        <ErrorState
+          error={error}
+          title="Dukaan load nahi ho payi"
+          onRetry={onRetry}
+          testId="boot-error"
+        />
+        {onLogout ? (
+          <div className="pb-5 text-center">
+            <button
+              type="button"
+              onClick={onLogout}
+              className="text-xs font-semibold text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+            >
+              Dusre account se login karein
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function Shell() {
-  const { user, authLoading, shop } = useApp();
+  const { user, authLoading, shop, bootError, retryBoot, logout } = useApp();
   const pathname = usePathname();
+
+  // Backend / auth unreachable at startup: show a retry screen, never an endless spinner.
+  if (bootError && (!user || !shop)) {
+    return <BootError error={bootError} onRetry={retryBoot} onLogout={user ? logout : null} />;
+  }
 
   // Wait until auth is resolved AND (if user is logged in) the shop profile is loaded
   if (authLoading || (user && !shop)) {
@@ -78,14 +113,17 @@ export default function App() {
     <div className="App">
       <AppHistoryProvider>
         <ThemeProvider>
-          <AppProvider>
-            <HotkeyProvider>
-              <QuickCreateProvider>
-                <Shell />
-                <ThemedToaster />
-              </QuickCreateProvider>
-            </HotkeyProvider>
-          </AppProvider>
+          <ErrorBoundary name="DukanSaathi" fullScreen>
+            <AppProvider>
+              <HotkeyProvider>
+                <QuickCreateProvider>
+                  <GlobalErrorListeners />
+                  <Shell />
+                  <ThemedToaster />
+                </QuickCreateProvider>
+              </HotkeyProvider>
+            </AppProvider>
+          </ErrorBoundary>
         </ThemeProvider>
       </AppHistoryProvider>
     </div>

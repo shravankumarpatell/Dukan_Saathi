@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -31,15 +32,23 @@ def _normalize_url(url: str) -> str:
 
 
 def _postgres_pool_kwargs(*, pool_size: int, max_overflow: int) -> dict:
-    # Supabase session-mode pooler (port 5432) caps clients (~15 on small plans).
-    # Keep SQLAlchemy well under that: local reload + Oracle + this process share the cap.
+    # Sized for the Supabase *transaction* pooler (port 6543). If you must use
+    # the session pooler (5432, ~15 clients total) lower DB_POOL_SIZE /
+    # DB_MAX_OVERFLOW so local + VM together stay under that cap.
+    #
+    # pool_timeout is short on purpose: a request that cannot get a connection
+    # in 10s fails fast with a 503 (see app.common.errors) instead of piling up
+    # behind a stuck pool for 30s each — that pile-up is what made the whole
+    # API unusable when chat sessions were left idle-in-transaction.
     return {
         "pool_size": pool_size,
         "max_overflow": max_overflow,
         "pool_pre_ping": True,
         "pool_recycle": 180,
-        "pool_timeout": 30,
+        "pool_timeout": settings.DB_POOL_TIMEOUT_S,
         "pool_use_lifo": True,
+        # psycopg: give up on a dead pooler instead of hanging the request.
+        "connect_args": {"connect_timeout": settings.DB_CONNECT_TIMEOUT_S},
     }
 
 
@@ -53,7 +62,12 @@ def get_engine() -> AsyncEngine:
             kwargs["connect_args"] = {"check_same_thread": False}
             kwargs["poolclass"] = StaticPool
         else:
-            kwargs.update(_postgres_pool_kwargs(pool_size=2, max_overflow=1))
+            kwargs.update(
+                _postgres_pool_kwargs(
+                    pool_size=settings.DB_POOL_SIZE,
+                    max_overflow=settings.DB_MAX_OVERFLOW,
+                )
+            )
         _engine = create_async_engine(url, **kwargs)
         _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
@@ -111,6 +125,25 @@ async def init_db() -> None:
     get_engine()
 
 
+async def db_ping(timeout_s: float = 5.0) -> tuple[bool, str]:
+    """``SELECT 1`` with a hard timeout. Never raises — for health/startup logs."""
+    import asyncio
+
+    from sqlalchemy import text
+
+    async def _ping():
+        async with get_engine().connect() as conn:
+            await conn.execute(text("SELECT 1"))
+
+    try:
+        await asyncio.wait_for(_ping(), timeout=timeout_s)
+        return True, get_engine().dialect.name
+    except asyncio.TimeoutError:
+        return False, f"timeout after {timeout_s:.0f}s"
+    except Exception as exc:  # any driver/pool error → reported, not raised
+        return False, f"{type(exc).__name__}: {str(exc)[:200]}"
+
+
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     factory = get_session_factory()
     async with factory() as session:
@@ -120,3 +153,35 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+
+
+@asynccontextmanager
+async def brief_session(session: AsyncSession | None = None):
+    """Short DB burst. Always ends the transaction before the caller waits on Gemini.
+
+    If ``session`` is passed (tests), it is reused and rolled back on exit so
+    Postgres is not left *idle in transaction*. If omitted, a new session is
+    opened and closed here — the pool connection is released.
+    """
+    if session is not None:
+        try:
+            yield session
+        finally:
+            if session.in_transaction():
+                await session.rollback()
+        return
+    factory = get_session_factory()
+    async with factory() as own:
+        try:
+            yield own
+            if own.in_transaction():
+                await own.commit()
+        except Exception:
+            if own.in_transaction():
+                await own.rollback()
+            raise
+
+
+def sql_dialect() -> str:
+    name = get_engine().dialect.name
+    return "postgres" if name == "postgresql" else "sqlite"

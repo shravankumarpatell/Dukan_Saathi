@@ -12,6 +12,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db import brief_session
 from app.analyst.cache import lookup_sql, store_sql
 from app.analyst.executor import ExecError, execute_select
 from app.analyst.guard import GuardError, guard_sql
@@ -60,6 +61,8 @@ from app.analyst.talk import (
     talk_text,
 )
 from app.analyst.trace import write_trace
+
+logger = logging.getLogger(__name__)
 
 SQL_PRODUCT_FOCUS_KAMAI = (
     "SELECT product_name, qty_sold, kamai FROM v_product_sales WHERE product_id = :p1"
@@ -131,6 +134,8 @@ def _focus_sql(question: str, chosen: list[EntityHit]) -> str | None:
         return SQL_PRODUCT_FOCUS_KAMAI
     return SQL_PRODUCT_FOCUS_KAMAI
 
+
+class AnalystLLM(Protocol):
     async def plan(self, system: str, user: str) -> AnalystPlan: ...
 
     async def repair(self, system: str, user: str) -> AnalystPlan: ...
@@ -267,8 +272,8 @@ async def run_analyst(
     *,
     shop_id: UUID,
     question: str,
-    session: AsyncSession,
     llm: AnalystLLM,
+    session: AsyncSession | None = None,
     dialect: str = "sqlite",
     prior_questions: list[str] | None = None,
 ) -> AnalystResult:
@@ -316,56 +321,64 @@ async def run_analyst(
         )
 
     window = resolve_dates(question, memory_window=mem.window)
-    if local in CATALOG_KINDS:
-        raw_hits: list = []
-        chosen: list = []
-        ambiguous: list = []
-        include_phone = False
-        tokenized = tokenize_question(question, [])
-    else:
-        raw_hits = await resolve_entities(session, shop_id, question, dialect=dialect)
-        chosen, ambiguous = pick_entities(raw_hits)
-        if mem.entities and not chosen:
-            chosen = list(mem.entities)
-        chosen = merge_focus_product(chosen, mem.focus_product, question)
-        # Resolve name-only focus to a real product id for SQL binds.
-        fixed: list[EntityHit] = []
-        for e in chosen:
-            if e.kind == "product" and not e.id:
-                fixed.append(await _ensure_product_id(session, shop_id, e, dialect))
-            else:
-                fixed.append(e)
-        chosen = fixed
-        include_phone = wants_phone(question)
-        tokenized = tokenize_question(question, chosen)
     today = shop_today().isoformat()
+    raw_hits: list = []
+    chosen: list = []
+    ambiguous: list = []
+    include_phone = False
+    tokenized = tokenize_question(question, [])
+    cached = None
+    identity = None
+    focus_sql = None
 
-    if (
-        ambiguous
-        and not is_shop_aggregate_question(question)
-        and not refers_to_prior_product(question)
-        and not re.search(r"\b[123]\b", question or "")
-    ):
-        text = _clarify_text(ambiguous)
-        await write_trace(
-            shop_id,
-            question_tokenized=tokenized,
-            route="clarify",
-            sql=None,
-            row_count=0,
-            latency_ms=int((time.perf_counter() - t0) * 1000),
-            repaired=False,
-            cache_hit=False,
-        )
-        return AnalystResult(
-            text=text,
-            sql=None,
-            row_count=0,
-            route="clarify",
-            assumptions="",
-            debug={"route": "clarify", "rowCount": 0},
-            outbound=[],
-        )
+    async with brief_session(session) as db:
+        if local not in CATALOG_KINDS:
+            raw_hits = await resolve_entities(db, shop_id, question, dialect=dialect)
+            chosen, ambiguous = pick_entities(raw_hits)
+            if mem.entities and not chosen:
+                chosen = list(mem.entities)
+            chosen = merge_focus_product(chosen, mem.focus_product, question)
+            fixed: list[EntityHit] = []
+            for e in chosen:
+                if e.kind == "product" and not e.id:
+                    fixed.append(await _ensure_product_id(db, shop_id, e, dialect))
+                else:
+                    fixed.append(e)
+            chosen = fixed
+            include_phone = wants_phone(question)
+            tokenized = tokenize_question(question, chosen)
+
+        if (
+            ambiguous
+            and not is_shop_aggregate_question(question)
+            and not refers_to_prior_product(question)
+            and not re.search(r"\b[123]\b", question or "")
+        ):
+            text = _clarify_text(ambiguous)
+            await write_trace(
+                shop_id,
+                question_tokenized=tokenized,
+                route="clarify",
+                sql=None,
+                row_count=0,
+                latency_ms=int((time.perf_counter() - t0) * 1000),
+                repaired=False,
+                cache_hit=False,
+            )
+            return AnalystResult(
+                text=text,
+                sql=None,
+                row_count=0,
+                route="clarify",
+                assumptions="",
+                debug={"route": "clarify", "rowCount": 0},
+                outbound=[],
+            )
+
+        identity = identity_sql(local) if local else None
+        focus_sql = None if identity else _focus_sql(question, chosen)
+        if not identity and not focus_sql:
+            cached = await lookup_sql(db, shop_id, tokenized)
 
     params: dict = {
         "start_date": window.start.isoformat(),
@@ -374,8 +387,6 @@ async def run_analyst(
     }
     params = _bind_entity_params("", chosen, params, dialect)
 
-    identity = identity_sql(local) if local else None
-    focus_sql = None if identity else _focus_sql(question, chosen)
     user_msg = ""
     plan: AnalystPlan | None = None
     metric_used = ""
@@ -405,7 +416,6 @@ async def run_analyst(
             logger.warning("planner payload scrubbed: %s", leaks)
         outbound.append(user_msg)
 
-        cached = await lookup_sql(session, shop_id, tokenized)
         plan = None
 
         if cached and cached.reuse:
@@ -551,8 +561,8 @@ async def run_analyst(
                     sql, mparams = compile_metric(plan.metric, window, chosen)
                     params.update(mparams)
                     metric_used = resolve_metric_name(plan.metric) or plan.metric
-            except Exception:
-                sql = sql
+            except Exception as exc:
+                logger.warning("planner repair failed (%s); keeping previous SQL", type(exc).__name__)
 
     if not executed:
         text = "Yeh data se nikal nahi paya."
@@ -570,7 +580,8 @@ async def run_analyst(
     cols, rows = drop_blank_columns(cols, rows)
     focus = focus_from_result_rows(cols, rows, question=question, chosen=chosen)
     if focus and not focus.id:
-        focus = await _ensure_product_id(session, shop_id, focus, dialect)
+        async with brief_session(session) as db:
+            focus = await _ensure_product_id(db, shop_id, focus, dialect)
     cols, rows = public_result_set(cols, rows)
 
     footnote = ""
@@ -604,7 +615,7 @@ async def run_analyst(
     # Empty result is a real answer — do not repair; interpret with shop rules.
     # Rows never leave the server: Gemini only sees column shape + placeholders.
     tpl: AnalystTemplate | None = None
-    skip_template = (not rows) or (not should_show_table(cols, rows))
+    skip_template = (not rows) or (not should_show_table(cols, rows, question=question))
     if skip_template:
         tpl = None
     else:
@@ -644,8 +655,8 @@ async def run_analyst(
     )
     try:
         await store_sql(None, shop_id, tokenized, source_sql)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("store_sql failed (%s)", type(exc).__name__)
 
     await write_trace(
         shop_id,
@@ -672,8 +683,8 @@ async def stream_analyst_answer(
     *,
     shop_id: UUID,
     question: str,
-    session: AsyncSession,
     llm: AnalystLLM,
+    session: AsyncSession | None = None,
     dialect: str = "sqlite",
     prior_questions: list[str] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
