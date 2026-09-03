@@ -13,7 +13,7 @@ import Kbd from "@/components/Kbd";
 import { useGlobalHotkeys } from "@/hooks/useHotkeys";
 import { useHotkeyContext } from "@/context/HotkeyContext";
 import { NAV_ITEMS, NAV_BOTTOM, KEYS } from "@/lib/keymap";
-import { LayoutDashboard, Package, Undo2, Bot, Plus, LogOut, Keyboard, Search } from "lucide-react";
+import { LayoutDashboard, Package, Undo2, Plus, LogOut, Keyboard, Search, Ruler } from "lucide-react";
 import { signOut as signOutUser } from "@/services/auth";
 import { LOGOUT } from "@/constants/testIds/auth";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -24,8 +24,8 @@ const MOBILE_LEFT = [
   { to: "/inventory", label: "Stock", icon: Package },
 ];
 const MOBILE_RIGHT = [
+  { to: "/slab", label: "Slab", icon: Ruler },
   { to: "/returns", label: "Returns", icon: Undo2 },
-  { to: "/chat", label: "AI Saathi", icon: Bot },
 ];
 
 const mobileNavCls = ({ isActive }) =>

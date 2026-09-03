@@ -278,7 +278,7 @@ export default function BulkUpload() {
         /* ── Extracting: staged progress 0–100% ── */
         <div
           data-testid="bulk-progress"
-          className="rounded-2xl border border-mint/40 bg-white px-4 py-4"
+          className="rounded-2xl border border-mint/40 bg-panel px-4 py-4"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}
@@ -305,7 +305,7 @@ export default function BulkUpload() {
         </div>
       ) : pendingFile ? (
         /* ── File staged: confirm before spending an AI call ── */
-        <div data-testid="bulk-file-staged" className="rounded-2xl border-2 border-mint/40 bg-white p-3">
+        <div data-testid="bulk-file-staged" className="rounded-2xl border-2 border-mint/40 bg-panel p-3">
           <div className="flex items-center gap-3">
             {preview && !isPdf ? (
               <img src={preview} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-slate-200 object-cover" />
@@ -354,7 +354,7 @@ export default function BulkUpload() {
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           className={`flex min-h-[5.5rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
-            dragOver ? "border-mint bg-mint-soft" : "border-mint/40 bg-white hover:bg-mint-soft"
+            dragOver ? "border-mint bg-mint-soft" : "border-mint/40 bg-panel hover:bg-mint-soft"
           }`}
         >
           <Upload className="h-7 w-7 text-mint" />

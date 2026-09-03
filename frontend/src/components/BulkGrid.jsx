@@ -411,11 +411,11 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
     const showPpb = catalogShowsPpb(r);
     const unitOptions = suggestedUnits(r.category);
     const base = mobile
-      ? "min-h-11 w-full rounded-control border border-border bg-white px-3 py-2 text-sm outline-none focus:border-mint focus:ring-2 focus:ring-mint/20"
-      : "min-h-11 w-full rounded-control border border-transparent bg-transparent px-2 py-2 text-sm focus:border-mint focus:bg-white focus:ring-2 focus:ring-mint/20 outline-none transition-all placeholder:text-slate-300";
+      ? "min-h-11 w-full rounded-control border border-border bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-mint focus:ring-2 focus:ring-mint/20"
+      : "min-h-11 w-full rounded-control border border-transparent bg-transparent px-2 py-2 text-sm text-ink focus:border-mint focus:bg-panel focus:ring-2 focus:ring-mint/20 outline-none transition-all placeholder:text-slate-300";
     const selectCls = mobile
       ? `${base} font-semibold`
-      : "min-h-11 w-full rounded-control border border-transparent bg-transparent px-1 py-2 text-xs font-semibold outline-none focus:border-mint focus:bg-white focus:ring-2 focus:ring-mint/20";
+      : "min-h-11 w-full rounded-control border border-transparent bg-transparent px-1 py-2 text-xs font-semibold text-ink outline-none focus:border-mint focus:bg-panel focus:ring-2 focus:ring-mint/20";
 
     if (field === "category") {
       return (
@@ -465,8 +465,8 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
           onPaste={(e) => handlePaste(e, r.id, fieldIdx)}
           onKeyDown={(e) => handleKeyDown(e, r.id, fieldIdx)}
           className={mobile
-            ? "flex min-h-11 w-full items-center gap-1 rounded-control border border-border bg-white px-2 py-1 focus-within:border-mint focus-within:ring-2 focus-within:ring-mint/20"
-            : "flex min-h-11 min-w-[150px] items-center gap-1 rounded-control border border-transparent bg-transparent px-1 py-1 focus-within:border-mint/40 focus-within:bg-white focus-within:ring-2 focus-within:ring-mint/20"}
+            ? "flex min-h-11 w-full items-center gap-1 rounded-control border border-border bg-panel px-2 py-1 focus-within:border-mint focus-within:ring-2 focus-within:ring-mint/20"
+            : "flex min-h-11 min-w-[150px] items-center gap-1 rounded-control border border-transparent bg-transparent px-1 py-1 focus-within:border-mint/40 focus-within:bg-panel focus-within:ring-2 focus-within:ring-mint/20"}
           inputClassName="w-full bg-transparent text-sm outline-none placeholder:text-slate-300"
         />
       );
@@ -609,7 +609,7 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
                 data-testid="bulk-edit-apply-empty"
                 onClick={() => applyBulk("empty")}
                 disabled={emptyTargets.length === 0}
-                className="flex-1 whitespace-nowrap rounded-control border border-border bg-white px-3 py-2.5 text-sm font-semibold text-ink disabled:opacity-50 sm:flex-none"
+                className="flex-1 whitespace-nowrap rounded-control border border-border bg-panel px-3 py-2.5 text-sm font-semibold text-ink disabled:opacity-50 sm:flex-none"
                 title="Sirf khali cells bharo"
               >
                 Khali pe ({emptyTargets.length})
@@ -655,7 +655,7 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
                 <div
                   key={r.id}
                   data-testid={`bulk-card-${r.id}`}
-                  className={`flex items-center gap-2 px-3 py-2.5 ${isChecked ? "bg-mint-soft/40" : missing.length ? "bg-rose-50/60" : ""}`}
+                  className={`flex items-center gap-2 px-3 py-2.5 ${isChecked ? "bg-mint-soft/40" : ""}`}
                 >
                   <RowCheckbox id={r.id} index={index} />
                   <button
@@ -670,7 +670,7 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
                         {r.name || "Naya item — naam daalo"}
                       </p>
                       <p className="truncate text-[11px] text-slate-500">
-                        {missing.length ? <span className="font-semibold text-rose-600">Missing: {missing.join(", ")}</span> : (summary || "—")}
+                        {missing.length ? <span className="font-semibold text-rose-700 dark:text-rose-300">Missing: {missing.join(", ")}</span> : (summary || "—")}
                       </p>
                     </div>
                     <span className={`shrink-0 font-mono text-sm font-bold tabular-nums ${Number(r.qty) > 0 ? "text-ink" : "text-rose-500"}`}>
@@ -765,7 +765,7 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
                     type="button"
                     data-testid={`bulk-card-done-${r.id}`}
                     onClick={() => setExpandedId(null)}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-control border border-border bg-white px-3 py-2.5 text-sm font-semibold text-ink"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-control border border-border bg-panel px-3 py-2.5 text-sm font-semibold text-ink"
                   >
                     <Check className="h-4 w-4" /> Done
                   </button>
@@ -844,7 +844,7 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
                         "p-1",
                         selected ? "bg-mint-soft" : "",
                         stickyName
-                          ? `sticky left-0 z-10 shadow-[4px_0_8px_-4px_rgba(27,54,93,0.12)] ${selected ? "bg-mint-soft" : isChecked ? "bg-mint-soft/40" : "bg-white group-hover:bg-slate-50/50"}`
+                          ? `sticky left-0 z-10 shadow-[4px_0_8px_-4px_rgba(27,54,93,0.12)] ${selected ? "bg-mint-soft" : isChecked ? "bg-mint-soft/40" : "bg-panel group-hover:bg-slate-50/50"}`
                           : "",
                       ].filter(Boolean).join(" ");
                       return (
