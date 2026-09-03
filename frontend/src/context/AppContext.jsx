@@ -4,6 +4,7 @@ import * as api from "@/services/api";
 import { errorMessage } from "@/services/apiError";
 import { onAuth, signOut as authSignOut } from "@/services/auth";
 import { normalizeTileSize } from "@/lib/tileSizes";
+import { normalizeProductUnitFields, normalizeUnit, catalogShowsPpb, catalogShowsSize } from "@/lib/units";
 
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -169,7 +170,13 @@ export function AppProvider({ children }) {
         unit: it.unit || "box",
         rate: Number(it.rate) || 0,
         piecesPerBox: Number(it.piecesPerBox) || 1,
-        size: it.unit === "piece" ? "" : (it.size || ""),
+        size: it.size || "",
+        productUnit: it.productUnit || undefined,
+        packQty: it.packQty != null ? Number(it.packQty) : undefined,
+        lotNo: it.lotNo || "",
+        measureUnit: it.measureUnit || "ft",
+        areaUnit: it.areaUnit || "sqft",
+        measurements: Array.isArray(it.measurements) ? it.measurements : [],
       })),
       gstEnabled: !!d.gstEnabled,
       gstRate: Number(d.gstRate) || 18,
@@ -180,6 +187,7 @@ export function AppProvider({ children }) {
       customerPhone: d.customerPhone || "",
       isContractor: !!d.isContractor,
       siteNote: d.siteNote || "",
+      vehicleNo: d.vehicleNo || "",
       createdVia: d.createdVia || "manual",
       language: d.language || "hi",
     });
@@ -215,16 +223,26 @@ export function AppProvider({ children }) {
       });
     } else if (draft.kind === "bulk_stock") {
       await api.bulkImportProducts(
-        draft.rows.map((r) => ({
-          name: r.name || "",
-          code: r.code || "",
-          company: r.company || "",
-          size: r.unit === "piece" ? "" : (normalizeTileSize(r.size) || r.size || ""),
-          unit: r.unit === "piece" ? "piece" : "box",
-          piecesPerBox: r.unit === "piece" ? 1 : (Number(r.piecesPerBox) || 1),
-          qty: Number(r.qty) || 0,
-          price: Number(r.price) || 0,
-        }))
+        draft.rows.map((r) => {
+          const unit = normalizeUnit(r.unit);
+          const category = r.category || "";
+          const asProduct = { unit, category };
+          return {
+            name: r.name || "",
+            code: r.code || "",
+            company: r.company || "",
+            size: catalogShowsSize(asProduct)
+              ? (normalizeTileSize(r.size) || r.size || "")
+              : (unit === "piece" ? "" : (r.size || "")),
+            unit,
+            category,
+            allowedUnits: r.allowedUnits || [],
+            piecesPerBox: catalogShowsPpb(asProduct) ? (Number(r.piecesPerBox) || 1) : 1,
+            packQty: Number(r.packQty) || 1,
+            qty: Number(r.qty) || 0,
+            price: Number(r.price) || 0,
+          };
+        })
       );
     }
 
@@ -250,29 +268,32 @@ export function AppProvider({ children }) {
   // ── Products ──
   // Creation happens from Add Stock (bulk) or the quick-add while billing.
   const addProduct = useCallback(async (p) => {
-    const unit = p.unit === "piece" ? "piece" : "box";
+    const clean = normalizeProductUnitFields(p);
     const saved = await api.createProduct({
-      name: (p.name || "").trim(),
-      code: p.code || "",
-      company: p.company || "",
-      size: unit === "piece" ? "" : (normalizeTileSize(p.size) || p.size || ""),
-      unit,
-      piecesPerBox: unit === "piece" ? 1 : Math.max(1, Number(p.piecesPerBox) || 1),
-      sellPrice: Number(p.sellPrice) || 0,
-      stockQty: Number(p.stockQty) || 0,
-      lowStockThreshold: Number(p.lowStockThreshold) || 0,
+      name: (clean.name || "").trim(),
+      code: clean.code || "",
+      company: clean.company || "",
+      size: clean.size || "",
+      unit: clean.unit,
+      category: clean.category,
+      allowedUnits: clean.allowedUnits,
+      piecesPerBox: clean.piecesPerBox,
+      packQty: Number(clean.packQty) || 1,
+      sellPrice: Number(clean.sellPrice) || 0,
+      stockQty: Number(clean.stockQty) || 0,
+      lowStockThreshold: Number(clean.lowStockThreshold) || 0,
     });
     await refresh();
     return saved;
   }, [refresh]);
 
   const updateProduct = useCallback(async (id, p) => {
-    const unit = p.unit === "piece" ? "piece" : "box";
+    const clean = normalizeProductUnitFields(p);
     await api.updateProduct(id, {
-      ...p,
-      unit,
-      size: unit === "piece" ? "" : (normalizeTileSize(p.size) || p.size || ""),
-      piecesPerBox: unit === "piece" ? 1 : Math.max(1, Number(p.piecesPerBox) || 1),
+      ...clean,
+      size: clean.size || "",
+      piecesPerBox: clean.piecesPerBox,
+      packQty: Number(clean.packQty) || 1,
     });
     await refresh();
   }, [refresh]);

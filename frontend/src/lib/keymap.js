@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Package, Undo2, Bot, Plus,
+  LayoutDashboard, Package, Undo2, Bot, Plus, Ruler,
   ReceiptText, Users, Upload, BarChart3, Settings,
 } from "lucide-react";
 
@@ -36,6 +36,7 @@ export const SCOPES = {
   RETURNS: "page:returns",
   HISTORY: "page:history",
   BULK: "page:bulk",
+  SLAB: "page:slab",
   ANALYTICS: "page:analytics",
   SETTINGS: "page:settings",
   CHAT: "page:chat",
@@ -58,6 +59,7 @@ export const KEYS = {
   gotoHistory: "F4",
   gotoReturns: "alt+r",
   gotoBulk: "alt+n",
+  gotoSlab: "alt+l",
   gotoCustomers: "alt+u",
   gotoChat: "alt+a",
   gotoAnalytics: "alt+i",
@@ -93,6 +95,7 @@ export const NAV_ITEMS = [
   { to: "/bill", label: "New Bill", icon: Plus, keys: KEYS.gotoBill, keywords: "invoice sale bill banao" },
   { to: "/inventory", label: "Stock", icon: Package, keys: KEYS.gotoStock, keywords: "inventory items products maal tiles sanitary" },
   { to: "/history", label: "Bill History", icon: ReceiptText, keys: KEYS.gotoHistory, keywords: "invoices past bills receipts" },
+  { to: "/slab", label: "Slab Estimate", icon: Ruler, keys: KEYS.gotoSlab, keywords: "slab stone marble granite naap estimate paththar sheet" },
   { to: "/returns", label: "Returns", icon: Undo2, keys: KEYS.gotoReturns, keywords: "return refund wapas store credit" },
   { to: "/bulk", label: "Add Stock", icon: Upload, keys: KEYS.gotoBulk, keywords: "bulk upload intake supplier maal" },
   { to: "/customers", label: "Udhari & Customers", icon: Users, keys: KEYS.gotoCustomers, keywords: "udhari credit grahak party ledger customers" },
@@ -118,6 +121,7 @@ export const SHORTCUT_GUIDE = [
       { keys: KEYS.palette, label: "Search anywhere (bills, items, customers, screens)" },
       { keys: KEYS.gotoDashboard, label: "Dashboard" },
       { keys: KEYS.gotoBill, label: "New bill" },
+      { keys: KEYS.gotoSlab, label: "Slab estimate" },
       { keys: KEYS.gotoStock, label: "Stock" },
       { keys: KEYS.gotoHistory, label: "Bill history" },
       { keys: KEYS.gotoReturns, label: "Returns" },
@@ -145,7 +149,7 @@ export const SHORTCUT_GUIDE = [
       { keys: KEYS.openOriginal, label: "Open selected original invoice (Returns)" },
       { keys: KEYS.deleteRow, label: "Delete current line (New Bill: opens cart, or deletes focused cart row)" },
       { keys: KEYS.fillDown, label: "Add Stock: fill column down (Shift+click range, or from current cell)" },
-      { keys: KEYS.clearBill, label: "Clear / reset New Bill (asks for confirmation)" },
+      { keys: KEYS.clearBill, label: "Clear / reset New Bill or Slab Estimate (asks for confirmation)" },
       { keys: KEYS.sqftCalc, label: "Sq-ft calculator (Dashboard, or while adding a tile item)" },
       { keys: "arrowleft", label: "Highlight previous option (cash/online / type / settlement)" },
       { keys: "arrowright", label: "Highlight next option" },

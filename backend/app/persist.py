@@ -55,7 +55,10 @@ def product_dict(product: Product) -> dict:
         "company": product.company,
         "size": product.size,
         "unit": product.unit,
+        "category": product.category or "tiles",
+        "allowedUnits": list(product.allowed_units or []),
         "piecesPerBox": product.pieces_per_box,
+        "packQty": money(product.pack_qty) if product.pack_qty is not None else 1,
         "sellPrice": money(product.sell_price),
         "stockQty": money(product.stock_qty),
         "lowStockThreshold": product.low_stock_threshold,
@@ -72,6 +75,13 @@ def item_dict(item: InvoiceItem) -> dict:
         "rate": money(item.rate),
         "piecesPerBox": item.pieces_per_box,
         "size": item.size,
+        "productUnit": item.product_unit or item.unit or "box",
+        "packQty": money(item.pack_qty) if item.pack_qty is not None else 1,
+        "priceQty": money(item.price_qty),
+        "lotNo": item.lot_no or "",
+        "measureUnit": item.measure_unit or "ft",
+        "areaUnit": item.area_unit or "sqft",
+        "measurements": list(item.measurements or []),
     }
 
 
@@ -120,6 +130,7 @@ def invoice_calc_dict(inv: Invoice) -> dict:
         "customerPhone": inv.customer_phone,
         "isContractor": inv.is_contractor,
         "siteNote": inv.site_note,
+        "vehicleNo": inv.vehicle_no or "",
         "items": [item_dict(it) for it in inv.items],
         "discount": discount,
         "gstEnabled": inv.gst_enabled,

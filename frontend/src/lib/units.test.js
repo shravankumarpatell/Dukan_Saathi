@@ -1,7 +1,8 @@
 import {
   UNIT_BOX, UNIT_PIECE,
-  applyCatalogUnitChange, normalizeProductUnitFields, productMetaLine,
-  isTileOnlyCatalogField, unitKindChipClass, CONTRACTOR_CHIP,
+  applyCatalogCategoryChange, applyCatalogUnitChange, normalizeProductUnitFields, productMetaLine,
+  isTileOnlyCatalogField, unitKindChipClass, CONTRACTOR_CHIP, formatQtyLabel,
+  catalogShowsSize, catalogShowsPpb, isSlabProduct,
 } from "./units";
 import { itemAmount } from "./calc";
 
@@ -58,5 +59,62 @@ describe("itemAmount unit default", () => {
 
   it("ignores loose pieces for sanitary", () => {
     expect(itemAmount({ qty: 5, pieces: 99, rate: 100, unit: UNIT_PIECE })).toBe(500);
+  });
+});
+
+describe("qty labels", () => {
+  it("renders sq.ft and meters", () => {
+    expect(formatQtyLabel({ qty: 16, unit: "sqft" })).toBe("16 sq.ft");
+    expect(formatQtyLabel({ qty: 20, unit: "box" })).toBe("20 box");
+    expect(formatQtyLabel({ qty: 2, pieces: 3, unit: "box" })).toBe("2 box + 3 pc");
+    expect(formatQtyLabel({ qty: 5, unit: "piece" })).toBe("5 pcs");
+  });
+
+  it("stone SKUs bill in remaining sq.ft, not tile size", () => {
+    expect(catalogShowsSize({ category: "natural_stone", unit: "sqft" })).toBe(false);
+    expect(catalogShowsSize({ category: "engineered_stone", unit: "sqft" })).toBe(false);
+    expect(isSlabProduct({ category: "natural_stone" })).toBe(true);
+    expect(formatQtyLabel({ qty: 562.75, unit: "sqft" })).toBe("562.75 sq.ft");
+  });
+});
+
+describe("applyCatalogCategoryChange", () => {
+  it("snaps tiles + box to stone sq.ft and drops box from the unit list", () => {
+    const next = applyCatalogCategoryChange(
+      {
+        category: "tiles",
+        unit: UNIT_BOX,
+        size: "2x2 ft",
+        piecesPerBox: 4,
+        allowedUnits: ["box", "piece", "sqft"],
+      },
+      "natural_stone",
+    );
+    expect(next.category).toBe("natural_stone");
+    expect(next.unit).toBe("sqft");
+    expect(next.allowedUnits).toEqual(["sqft", "sqm"]);
+    expect(next.allowedUnits).not.toContain("box");
+    expect(next.size).toBe("");
+    expect(catalogShowsPpb(next)).toBe(false);
+    expect(catalogShowsSize(next)).toBe(false);
+  });
+
+  it("keeps sq.ft when a tile already priced per sq.ft becomes stone", () => {
+    const next = applyCatalogCategoryChange(
+      { category: "tiles", unit: "sqft", size: "2x2 ft" },
+      "natural_stone",
+    );
+    expect(next.unit).toBe("sqft");
+    expect(next.allowedUnits).toEqual(["sqft", "sqm"]);
+  });
+
+  it("snaps sanitary piece to stone sq.ft", () => {
+    const next = applyCatalogCategoryChange(
+      { category: "sanitaryware", unit: UNIT_PIECE },
+      "engineered_stone",
+    );
+    expect(next.category).toBe("engineered_stone");
+    expect(next.unit).toBe("sqft");
+    expect(next.allowedUnits).toEqual(["sqft", "sqm"]);
   });
 });

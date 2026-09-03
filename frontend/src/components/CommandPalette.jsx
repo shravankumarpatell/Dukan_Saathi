@@ -7,7 +7,7 @@ import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { SCOPES, NAV_ITEMS, NAV_BOTTOM, KEYS } from "@/lib/keymap";
 import { searchProducts, searchCustomers, searchInvoices } from "@/lib/fuzzy";
 import { money, fmtDate, piecesBreakdown } from "@/lib/calc";
-import { formatStockLabel, unitKindLabel, isBoxUnit, piecesPerBoxOf } from "@/lib/units";
+import { catalogShowsPpb, catalogShowsSize, formatStockLabel, piecesPerBoxOf, unitKindLabel } from "@/lib/units";
 import { formatTileSize } from "@/lib/tileSizes";
 import Kbd from "@/components/Kbd";
 import {
@@ -25,7 +25,7 @@ import {
   generateUdhariVusoolReceiptPDF,
 } from "@/services/billPdf";
 import { toast } from "sonner";
-import { Plus, IndianRupee, Wallet, Printer, Package, Users, Undo2, Calculator, ReceiptText } from "lucide-react";
+import { Plus, IndianRupee, Wallet, Printer, Package, Users, Undo2, Calculator, ReceiptText, Ruler } from "lucide-react";
 
 /**
  * Spotlight-style search: Alt+K. Lookup results (bills, customers, items) open
@@ -34,6 +34,7 @@ import { Plus, IndianRupee, Wallet, Printer, Package, Users, Undo2, Calculator, 
 
 const ACTIONS = [
   { id: "new-bill", label: "Naya bill banayein", hint: "New sale invoice", icon: Plus, to: "/bill", keys: KEYS.gotoBill, keywords: "bill invoice sale sell naya" },
+  { id: "slab", label: "Slab estimate", hint: "Stone L×W measurement worksheet", icon: Ruler, to: "/slab", keys: KEYS.gotoSlab, keywords: "slab stone marble granite naap estimate paththar sheet" },
   { id: "expense", label: "Kharcha add karein", hint: "Record an expense", icon: IndianRupee, to: "/?focus=expense", keys: KEYS.gotoExpense, keywords: "expense kharcha spend cost daily" },
   { id: "sqft", label: "Sq-ft calculator", hint: "Quick tile area → boxes calculator", icon: Calculator, to: "/?focus=sqft", keys: KEYS.sqftCalc, keywords: "sqft square feet tiles boxes area calculator" },
   { id: "udhari", label: "Udhari payment lein", hint: "Record a customer payment", icon: Wallet, to: "/customers?tab=udhari&focus=payment", keys: KEYS.gotoUdhari, keywords: "udhari payment collect credit due paisa" },
@@ -458,17 +459,22 @@ function ProductPeekDialog({ product, onClose }) {
     { keys: KEYS.cancel, label: "Close", handler: onClose },
   ]);
   if (!product) return null;
-    const tile = isBoxUnit(product);
+  const showSize = catalogShowsSize(product);
+  const showPpb = catalogShowsPpb(product);
   const totalStock = (product.showroomQty || 0) + (product.godownQty || 0) + (product.stockQty || 0);
   const ppb = piecesPerBoxOf(product);
   const bd = piecesBreakdown(totalStock, ppb);
-  const low = bd.totalPieces <= (product.lowStockThreshold || 0) * (tile ? ppb : 1);
+  const low = showPpb
+    ? bd.totalPieces <= (product.lowStockThreshold || 0) * ppb
+    : totalStock <= (product.lowStockThreshold || 0);
   const rows = [
     ["Type", unitKindLabel(product)],
     ["Code", product.code || "—"],
     ["Company", product.company || "—"],
-    ...(tile ? [
+    ...(showSize ? [
       ["Size", formatTileSize(product.size) || "—"],
+    ] : []),
+    ...(showPpb ? [
       ["Pcs / box", String(ppb)],
     ] : []),
     ["Stock", formatStockLabel(product, piecesBreakdown)],

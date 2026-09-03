@@ -1,17 +1,18 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { useNavigate } from "@/hooks/useNavigate";
 import { useOwnedSearchParams } from "@/hooks/useOwnedSearchParams";
 import NumberInput from "@/components/NumberInput";
-import UnitToggle from "@/components/UnitToggle";
+import { AllowedUnitChips, CategorySelect, DerivedSqftHint, PackQtyField, PriceUnitSelect } from "@/components/CatalogFields";
 import TileSizeSelect from "@/components/TileSizeSelect";
 import Kbd from "@/components/Kbd";
 import { money, piecesBreakdown } from "@/lib/calc";
 import {
   isBoxUnit, formatStockLabel, normalizeProductUnitFields,
-  applyCatalogUnitChange, unitKindLabel, unitKindChipClass, piecesPerBoxOf,
+  applyCatalogUnitChange, applyCatalogCategoryChange, unitKindLabel, unitKindChipClass, piecesPerBoxOf,
+  catalogShowsSize, catalogShowsPpb, rateSuffix, stockUnitWord, isSlabProduct,
 } from "@/lib/units";
 import { formatTileSize } from "@/lib/tileSizes";
 import { searchProducts } from "@/lib/fuzzy";
@@ -24,10 +25,48 @@ import { SCOPES, KEYS } from "@/lib/keymap";
 import { toast } from "sonner";
 import { errorMessage } from "@/services/apiError";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuCheckboxItem, DropdownMenuRadioGroup, DropdownMenuRadioItem,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { useVisibleOpen } from "@/context/PageKeepAliveContext";
-import { Search, Upload, X, Package } from "lucide-react";
+import { CATEGORIES, normalizeCategory } from "@/lib/uom";
+import { Search, Upload, X, Package, Filter, ArrowUpDown } from "lucide-react";
+import MeasureToAdd from "@/components/MeasureToAdd";
 
-const NUMERIC = ["piecesPerBox", "sellPrice", "stockQty", "lowStockThreshold"];
+const NUMERIC = ["piecesPerBox", "sellPrice", "stockQty", "lowStockThreshold", "packQty"];
+
+const SORT_OPTIONS = [
+  ["smart", "Smart (default)"],
+  ["name", "Name (A–Z)"],
+  ["type", "Type (category)"],
+  ["stockDesc", "Stock (zyada → kam)"],
+  ["stockAsc", "Stock (kam → zyada)"],
+  ["priceDesc", "Rate (zyada → kam)"],
+  ["priceAsc", "Rate (kam → zyada)"],
+];
+
+const totalStockOf = (p) => (Number(p.showroomQty) || 0) + (Number(p.godownQty) || 0) + (Number(p.stockQty) || 0);
+
+function applyStockSort(list, key) {
+  if (key === "smart") return list;
+  const arr = [...list];
+  switch (key) {
+    case "name":
+      return arr.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "en", { sensitivity: "base" }));
+    case "type":
+      return arr.sort((a, b) => (
+        unitKindLabel(a).localeCompare(unitKindLabel(b), "en", { sensitivity: "base" })
+        || String(a.name || "").localeCompare(String(b.name || ""), "en", { sensitivity: "base" })
+      ));
+    case "stockDesc": return arr.sort((a, b) => totalStockOf(b) - totalStockOf(a));
+    case "stockAsc": return arr.sort((a, b) => totalStockOf(a) - totalStockOf(b));
+    case "priceDesc": return arr.sort((a, b) => (Number(b.sellPrice) || 0) - (Number(a.sellPrice) || 0));
+    case "priceAsc": return arr.sort((a, b) => (Number(a.sellPrice) || 0) - (Number(b.sellPrice) || 0));
+    default: return arr;
+  }
+}
 
 /** Phone: flex so Type/Size/Stock pack tight (no dead gap). Desktop: full grid. */
 const STOCK_TRACKS =
@@ -40,34 +79,79 @@ export default function Inventory() {
   const quickCreate = useQuickCreate();
   const [q, setQ] = useState(params.get("q") || "");
   const [form, setForm] = useState(null);
+  const [cats, setCats] = useState(() => new Set());
+  const [sortKey, setSortKey] = useState("smart");
   const searchRef = useRef(null);
 
+  // Categories actually present in this shop's catalog — drives the Filter menu.
+  const presentCats = useMemo(() => {
+    const seen = new Map();
+    for (const p of (products || [])) {
+      const code = normalizeCategory(p.category, p.unit);
+      if (!seen.has(code)) seen.set(code, CATEGORIES[code]?.short || CATEGORIES[code]?.label || code);
+    }
+    return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [products]);
+
+  const toggleCat = useCallback((code) => {
+    setCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }, []);
+
   const lowOnly = params.get("low") === "1";
-  let list = searchProducts(products, q);
+  // No cap on the Stock page — show every product the shop has, not just top 30.
+  let list = searchProducts(products, q, {}, Infinity);
+  if (cats.size) list = list.filter((p) => cats.has(normalizeCategory(p.category, p.unit)));
   if (lowOnly) list = list.filter((p) => {
     const totalStock = (p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0);
     return totalStock <= (p.lowStockThreshold || 0);
   });
+  list = applyStockSort(list, sortKey);
+
+  // Remember which row opened the dialog so closing it lands back on that row
+  // (keeping the scroll position) instead of snapping to the search box up top.
+  const lastEditIdRef = useRef(null);
+  const returnToRowRef = useRef(false);
 
   const openEdit = useCallback((p) => {
+    lastEditIdRef.current = p.id;
     const merged = { ...p };
     if (merged.showroomQty !== undefined || merged.godownQty !== undefined) {
       merged.stockQty = (Number(merged.showroomQty) || 0) + (Number(merged.godownQty) || 0) + (Number(merged.stockQty) || 0);
     }
-    if (isBoxUnit(merged)) merged.size = formatTileSize(merged.size);
+    if (catalogShowsSize(merged)) merged.size = formatTileSize(merged.size);
     setForm(merged);
   }, []);
 
-  const focusStart = usePageFocus(() => searchRef.current?.focus(), { enabled: !form });
+  // When closing the edit dialog we want the caret back on the opened row (no
+  // scroll jump); every other trigger (Alt+K, page load) focuses the search box.
+  const focusStart = usePageFocus(() => {
+    if (returnToRowRef.current) {
+      returnToRowRef.current = false;
+      const id = lastEditIdRef.current;
+      const el = id && document.querySelector(`[data-testid="product-row-${id}"]`);
+      if (el) { el.focus({ preventScroll: true }); return; }
+    }
+    searchRef.current?.focus();
+  }, { enabled: !form });
+
+  const restoreListFocus = useCallback(() => {
+    // usePageFocus fires on close (enabled flips true) and will honour this flag.
+    returnToRowRef.current = true;
+  }, []);
 
   const save = useCallback(async () => {
     if (!form?.id) return;
     if (!form.name) return toast.error("Product ka naam daaliye");
-    if (isBoxUnit(form) && !(Number(form.piecesPerBox) > 0)) {
+    if (catalogShowsPpb(form) && !(Number(form.piecesPerBox) > 0)) {
       return toast.error("Tiles ke liye pieces / box daaliye");
     }
-    if (isBoxUnit(form) && !String(form.size || "").trim()) {
-      return toast.error("Tiles ke liye size choose karein");
+    if (catalogShowsSize(form) && !String(form.size || "").trim()) {
+      return toast.error("Size choose karein");
     }
     let clean = { ...form };
     NUMERIC.forEach((k) => (clean[k] = Number(clean[k]) || 0));
@@ -87,11 +171,14 @@ export default function Inventory() {
     }
     toast.success("Product update ho gaya");
     setForm(null);
-    focusStart();
-  }, [form, updateProduct, focusStart]);
+    restoreListFocus();
+  }, [form, updateProduct, restoreListFocus]);
 
   const setUnit = (unit) => {
     setForm((f) => applyCatalogUnitChange(f, unit));
+  };
+  const setCategory = (cat) => {
+    setForm((f) => applyCatalogCategoryChange(f, cat));
   };
 
   /* ── Keyboard: type to filter, ↑/↓ to walk the list, Enter to edit ── */
@@ -103,7 +190,7 @@ export default function Inventory() {
   });
   const { activeIndex, setActiveIndex, hover } = nav;
 
-  useEffect(() => { setActiveIndex(0); }, [q, lowOnly, setActiveIndex]);
+  useEffect(() => { setActiveIndex(0); }, [q, lowOnly, cats, sortKey, setActiveIndex]);
 
   // The palette hands over a product name as ?q=
   useEffect(() => {
@@ -153,6 +240,86 @@ export default function Inventory() {
           <span className="hidden shrink-0 font-mono text-xs tabular-nums text-slate-400 sm:inline">
             {list.length}
           </span>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                data-testid="stock-filter-btn"
+                className={`inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-3 text-sm font-semibold transition-colors ${
+                  cats.size ? "border-mint bg-mint-soft text-mint-dark" : "border-border text-ink hover:bg-slate-50"
+                }`}
+              >
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline">Filter</span>
+                {cats.size > 0 && (
+                  <span className="rounded-full bg-mint px-1.5 text-[10px] font-bold text-white">{cats.size}</span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Category</DropdownMenuLabel>
+              {presentCats.length === 0 ? (
+                <DropdownMenuItem disabled>Koi product nahi</DropdownMenuItem>
+              ) : presentCats.map(([code, label]) => (
+                <DropdownMenuCheckboxItem
+                  key={code}
+                  data-testid={`stock-filter-cat-${code}`}
+                  checked={cats.has(code)}
+                  onCheckedChange={() => toggleCat(code)}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                data-testid="stock-filter-low"
+                checked={lowOnly}
+                onCheckedChange={(v) => setParams(v ? { low: "1" } : {})}
+                onSelect={(e) => e.preventDefault()}
+              >
+                Low stock only
+              </DropdownMenuCheckboxItem>
+              {(cats.size > 0 || lowOnly) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    data-testid="stock-filter-clear"
+                    onSelect={() => { setCats(new Set()); if (lowOnly) setParams({}); }}
+                  >
+                    Clear filters
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                data-testid="stock-sort-btn"
+                className={`inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-3 text-sm font-semibold transition-colors ${
+                  sortKey !== "smart" ? "border-mint bg-mint-soft text-mint-dark" : "border-border text-ink hover:bg-slate-50"
+                }`}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                <span className="hidden sm:inline">Sort</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={sortKey} onValueChange={setSortKey}>
+                {SORT_OPTIONS.map(([key, label]) => (
+                  <DropdownMenuRadioItem key={key} value={key} data-testid={`stock-sort-${key}`}>
+                    {label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <button
             type="button"
             data-testid="bulk-upload-btn"
@@ -176,7 +343,7 @@ export default function Inventory() {
 
         <div className={`w-full border-l-2 border-l-transparent border-b border-slate-100 bg-slate-50/90 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 ${STOCK_TRACKS}`}>
           <span className="min-w-0 flex-1 lg:flex-none">Item</span>
-          <span className="w-[4.5rem] shrink-0 lg:w-auto">Type</span>
+          <span className="hidden lg:block">Type</span>
           <span className="hidden lg:block">Code</span>
           <span className="w-14 shrink-0 lg:w-auto">Size</span>
           <span className="hidden text-right lg:block">Pcs/Box</span>
@@ -189,10 +356,12 @@ export default function Inventory() {
             const totalStock = (p.showroomQty || 0) + (p.godownQty || 0) + (p.stockQty || 0);
             const ppb = Number(p.piecesPerBox) || 1;
             const bd = piecesBreakdown(totalStock, ppb);
-            const low = bd.totalPieces <= (p.lowStockThreshold || 0) * (isBoxUnit(p) ? ppb : 1);
+            const low = isBoxUnit(p)
+              ? bd.totalPieces <= (p.lowStockThreshold || 0) * ppb
+              : totalStock <= (p.lowStockThreshold || 0);
             const stockLabel = formatStockLabel(p, piecesBreakdown);
             const active = i === activeIndex;
-            const tile = isBoxUnit(p);
+            const tile = catalogShowsSize(p);
             const size = tile ? (formatTileSize(p.size) || "—") : "—";
             return (
               <button
@@ -218,15 +387,22 @@ export default function Inventory() {
                     <p className={`min-w-0 truncate font-semibold ${low ? "text-rose-900 dark:text-rose-200" : "text-ink"}`}>{p.name}</p>
                     {low && <span className="shrink-0 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 dark:bg-rose-900 dark:text-rose-200">LOW</span>}
                   </div>
+                  {/* Mobile: type sits under the name so it is not pushed far right by flex-1 */}
+                  <div className="mt-0.5 flex min-w-0 items-center gap-1.5 lg:hidden">
+                    <span className={`shrink-0 ${unitKindChipClass(p)}`}>{unitKindLabel(p)}</span>
+                    {p.company && (
+                      <p className="truncate text-[11px] text-slate-400">{p.company}</p>
+                    )}
+                  </div>
                   {p.company && (
-                    <p className="truncate text-[11px] text-slate-400">{p.company}</p>
+                    <p className="hidden truncate text-[11px] text-slate-400 lg:block">{p.company}</p>
                   )}
                 </div>
-                <span className={`shrink-0 ${unitKindChipClass(p)}`}>{unitKindLabel(p)}</span>
+                <span className={`hidden shrink-0 lg:inline-flex ${unitKindChipClass(p)}`}>{unitKindLabel(p)}</span>
                 <span className="hidden truncate font-mono text-xs text-slate-500 lg:block">{p.code || "—"}</span>
                 <span className="w-14 shrink-0 truncate text-xs text-slate-600 lg:w-auto">{size}</span>
                 <span className="hidden text-right font-mono text-xs tabular-nums text-slate-500 lg:block">
-                  {tile ? piecesPerBoxOf(p) : "—"}
+                  {catalogShowsPpb(p) ? piecesPerBoxOf(p) : "—"}
                 </span>
                 <span className={`w-[3.25rem] shrink-0 text-right font-mono text-xs font-semibold tabular-nums lg:w-auto ${low ? "text-rose-700 dark:text-rose-200" : "text-ink"}`} data-testid={`stock-qty-${p.id}`}>
                   {stockLabel}
@@ -258,12 +434,12 @@ export default function Inventory() {
         </div>
       </div>
 
-      <EditProductDialog form={form} setForm={setForm} setUnit={setUnit} onSave={save} onClose={() => { setForm(null); focusStart(); }} />
+      <EditProductDialog form={form} setForm={setForm} setUnit={setUnit} setCategory={setCategory} onSave={save} onClose={() => { setForm(null); restoreListFocus(); }} />
     </div>
   );
 }
 
-function EditProductDialog({ form, setForm, setUnit, onSave, onClose }) {
+function EditProductDialog({ form, setForm, setUnit, setCategory, onSave, onClose }) {
   const open = useVisibleOpen(!!form);
   useHotkeyScope("modal:edit-product", { exclusive: true, enabled: open });
   useHotkeys("modal:edit-product", [
@@ -286,12 +462,19 @@ function EditProductDialog({ form, setForm, setUnit, onSave, onClose }) {
         <DialogHeader><DialogTitle>Edit Product</DialogTitle></DialogHeader>
         {form && (
           <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className="grid grid-cols-2 gap-3">
-            <UnitToggle value={form.unit} onChange={setUnit} testId="pf-unit" />
+            <CategorySelect value={form.category} onChange={setCategory} testId="pf-category" className="col-span-2" />
+            <PriceUnitSelect product={form} onChange={setUnit} testId="pf-unit" />
+            <AllowedUnitChips
+              product={form}
+              onChange={(allowedUnits) => setForm({ ...form, allowedUnits })}
+              testId="pf-allowed"
+            />
             {[
               ["name", "Name", "col-span-2"], ["code", "Code"], ["company", "Company"],
-              ...(isBoxUnit(form) ? [["size", "Size"], ["piecesPerBox", "Pieces / box"]] : []),
-              ["sellPrice", `Price (${isBoxUnit(form) ? "₹/box" : "₹/pc"})`],
-              ["stockQty", `Stock (${isBoxUnit(form) ? "boxes" : "pcs"})`, "col-span-2"],
+              ...(catalogShowsSize(form) ? [["size", "Size"]] : []),
+              ...(catalogShowsPpb(form) ? [["piecesPerBox", "Pieces / box"]] : []),
+              ["sellPrice", `Price (₹${rateSuffix(form)})`],
+              ["stockQty", isSlabProduct(form) ? `Remaining (${stockUnitWord(form)})` : `Stock (${stockUnitWord(form)})`, "col-span-2"],
               ["lowStockThreshold", "Low-stock threshold", "col-span-2"],
             ].map(([key, label, cls = ""]) => (
               <div key={key} className={cls}>
@@ -305,6 +488,15 @@ function EditProductDialog({ form, setForm, setUnit, onSave, onClose }) {
                 )}
               </div>
             ))}
+            <PackQtyField product={form} value={form.packQty} onChange={(v) => setForm({ ...form, packQty: v })} testId="pf-packQty" />
+            {isSlabProduct(form) && (
+              <MeasureToAdd
+                product={form}
+                onAdd={(qty) => setForm({ ...form, stockQty: String(Math.round(((Number(form.stockQty) || 0) + qty) * 10000) / 10000) })}
+                testPrefix="pf-measure"
+              />
+            )}
+            <DerivedSqftHint product={form} rate={form.sellPrice} />
             <button data-flow-skip data-testid="save-product-btn" onClick={onSave} className="col-span-2 flex items-center justify-center gap-2 rounded-control bg-mint px-4 py-3 font-semibold text-white active:scale-95 hover:bg-mint-dark">
               Save <Kbd keys={KEYS.save} tone="dark" />
             </button>

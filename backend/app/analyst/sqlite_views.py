@@ -39,7 +39,16 @@ SQLITE_ANALYST_DDL = [
         ii.unit,
         ii.rate,
         ii.pieces_per_box,
+        COALESCE(ii.product_unit, CASE WHEN ii.unit = 'piece' THEN 'piece' ELSE 'box' END) AS product_unit,
+        COALESCE(
+            ii.price_qty,
+            CASE
+                WHEN ii.unit = 'piece' THEN ii.qty
+                ELSE ii.qty + ii.pieces / CASE WHEN ii.pieces_per_box = 0 THEN NULL ELSE ii.pieces_per_box END
+            END
+        ) AS price_qty,
         CASE
+            WHEN ii.price_qty IS NOT NULL AND ii.price_qty != 0 THEN ROUND(ii.price_qty * ii.rate, 2)
             WHEN ii.unit = 'piece' THEN ROUND(ii.qty * ii.rate, 2)
             ELSE ROUND(
                 ii.qty * ii.rate

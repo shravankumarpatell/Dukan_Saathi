@@ -6,13 +6,17 @@ instructions: |
   One output row per product line. Never merge two products. Never split one product into two.
   Ignore letterheads, party/GSTIN/address blocks, invoice numbers, dates, HSN-only lines, empty rows,
   subtotals, grand totals, GST/CGST/SGST/IGST, round-off, and "amount in words".
-  Tiles, flooring, wall tiles, and planks use unit box. Size must be one of: {tile_sizes}.
+  Tiles, flooring, wall tiles, and planks use unit box when the sheet shows boxes/cartons.
+  Size must be one of: {tile_sizes}.
   Never write a bare 2x2 or 12x18 without ft or in. Map 2x2 or 600x600 to 2x2 ft, 12x18 or 300x450 to 12x18 in, and 60x120 or 60*120 to 2x4 ft.
   If size is unreadable or the item is sanitary, use an empty string.
   piecesPerBox is the piece count in one box if printed. If a tile line does not show pcs/box, omit it or use 0 — never invent 1.
-  qty is the number of boxes, not sqft, not sqm, not rupees.
+  qty is the number in the printed unit column (usually boxes for tiles). Never convert to sqft/sqm. Never use rupees as qty.
   When several quantity columns exist (boxes, pcs, sqft, amount), use the boxes/carton/qty-in-boxes column for tiles.
   Sanitary, fittings, basins, closets, and taps use unit piece, empty size, piecesPerBox 1, and qty as the number of pieces.
+  Pipes/coils with meter or feet use unit mtr or ft. Adhesive/grout bags use unit bag (or kg if the sheet is in kg).
+  Map slang: pcs/pc → piece, sft/sq.ft → sqft, mtr/meter → mtr, bag/bags → bag. Do not invent sq.ft stock qty from a box column.
+  category if obvious: tiles, sanitaryware, plumbing_construction, tile_installation; else leave empty.
   name is the design/SKU from the name column only. Do not write the name twice (never "1852 F 1852 F" or "3303 3303").
   Do not prepend finish/surface words (GLOSSY, CARVING, MATT) to the design name; those belong to a finish column, not name.
   Copy name and code exactly as printed. If a lot/series column exists (14 S-1, 59 S-1), put it in code, not in name.
@@ -21,7 +25,7 @@ instructions: |
 constraints:
   - Extract only what is visible. Never invent names, codes, quantities, or prices.
   - Never guess selling price. Do not output prices.
-  - qty is boxes (tiles) or pieces (sanitary). Never use area or line amount as qty.
+  - qty is the printed count (boxes, pieces, m, bag). Never use area or line amount as qty.
   - Skip totals, tax rows, and headers.
   - Set lowConfidence true if a row is blurry or uncertain.
   - Return an empty rows list if nothing can be read.

@@ -11,12 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.calc import (
     allocate_return_across_invoices,
     apply_store_credit_conversion,
-    calculate_sold_pieces,
-    compute_stock_addition,
+    compute_stock_after_qty,
     conversion_recorded_amount,
+    enrich_line,
     format_stock_pieces_label,
     gen_invoice_no,
     item_amount,
+    line_consumed_qty,
+    line_return_qty,
     recompute_customer_total_pending,
     remaining_returnable_amount,
     remaining_returnable_by_product,
@@ -160,14 +162,14 @@ def _validate_return_qty(original_items: list, prior_returns: list[Invoice], new
             raise ValidationError("Return item me productId zaroori hai")
         if pid not in original_ids:
             raise ValidationError(f"'{it.get('name') or pid}' is original bill me nahi tha")
-        want = calculate_sold_pieces(it)
-        left = int(remaining.get(pid, 0))
-        if want > left:
-            label = format_stock_pieces_label(it, left)
+        want = line_return_qty(it)
+        left = remaining.get(pid, 0)
+        if want > float(left) + 1e-6:
+            label = format_stock_pieces_label(it, int(left) if float(left) == int(left) else left)
             raise ValidationError(
                 f"'{it.get('name') or pid}' me sirf {label} return ho sakta hai (pehle se return ho chuka / sold se zyada)"
             )
-        remaining[pid] = left - want
+        remaining[pid] = float(left) - want
 
 
 def _apply_patches(sales_by_id: dict[str, Invoice], shop_id: UUID, patches: list) -> None:
@@ -294,17 +296,30 @@ async def create_return(
         refund_total=refund,
     )
     for idx, item in enumerate(body.items):
+        pid = parse_uuid(item.productId, "Product")
+        product = (
+            await session.execute(
+                select(Product).where(Product.shop_id == shop_id, Product.id == pid)
+            )
+        ).scalar_one()
+        pdata = product_dict(product)
+        enriched = enrich_line(item.model_dump(), pdata)
+        price_qty = line_consumed_qty(enriched, pdata)
         inv.items.append(
             InvoiceItem(
                 shop_id=shop_id,
                 line_no=idx,
-                product_id=parse_uuid(item.productId, "Product"),
+                product_id=pid,
                 name=item.name,
                 qty=item.qty,
                 pieces=item.pieces,
-                unit=item.unit,
+                unit=enriched.get("unit") or item.unit,
                 rate=item.rate,
                 pieces_per_box=item.piecesPerBox,
+                size=enriched.get("size") or "",
+                product_unit=enriched.get("productUnit") or pdata.get("unit") or "box",
+                pack_qty=enriched.get("packQty") if enriched.get("packQty") is not None else 1,
+                price_qty=price_qty,
             )
         )
     set_settlement(inv, shop_id, detail, body.settlement)
@@ -318,15 +333,17 @@ async def create_return(
                 select(Product).where(Product.shop_id == shop_id, Product.id == pid).with_for_update()
             )
         ).scalar_one()
-        add_pieces = calculate_sold_pieces(item.model_dump())
-        if add_pieces > 0:
-            patch = compute_stock_addition(product_dict(product), add_pieces)
+        pdata = product_dict(product)
+        enriched = enrich_line(item.model_dump(), pdata)
+        add_qty = line_consumed_qty(enriched, pdata)
+        if add_qty > 0:
+            patch = compute_stock_after_qty(pdata, add_qty)
             product.stock_qty = patch["stockQty"]
             session.add(
                 StockLedger(
                     shop_id=shop_id,
                     product_id=pid,
-                    change=add_pieces,
+                    change=add_qty,
                     reason="return",
                     invoice_id=inv.id,
                     timestamp=now,

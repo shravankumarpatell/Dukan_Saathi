@@ -44,7 +44,7 @@ export function matchCustomer(customers, query, phone) {
   };
 }
 
-export function searchProducts(products, query, salesQty = {}) {
+export function searchProducts(products, query, salesQty = {}, limit = 30) {
   let list;
   if (!query || !query.trim()) {
     list = products;
@@ -52,7 +52,9 @@ export function searchProducts(products, query, salesQty = {}) {
     const fuse = new Fuse(products, { keys: ["name", "code", "company", "size"], threshold: 0.4 });
     list = fuse.search(query).map((r) => r.item);
   }
-  return sortProductsForSearch(list, salesQty).slice(0, 30);
+  const sorted = sortProductsForSearch(list, salesQty);
+  // limit falsy/Infinity → return the full catalog (e.g. the Stock page).
+  return limit && Number.isFinite(limit) ? sorted.slice(0, limit) : sorted;
 }
 
 export function searchCustomers(customers, query) {

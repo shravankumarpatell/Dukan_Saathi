@@ -1,24 +1,49 @@
-from typing import Optional, List, Dict
+from typing import Optional, List
 """Pydantic models for Product endpoints."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
+
+from app.common.uom import normalize_category, normalize_unit_code
+
+
+def _norm_unit(v, default="box"):
+    if v is None or v == "":
+        return default
+    return normalize_unit_code(v, default=default)
 
 
 class ProductCreate(BaseModel):
-    """Quick-add payload — used when billing a product that isn't in the catalog yet.
+    """Quick-add payload — used when billing a product that isn't in the catalog yet."""
 
-    Tiles (unit=box): size + piecesPerBox required in practice.
-    Sanitary (unit=piece): size empty, piecesPerBox always 1.
-    """
     name: str = Field(..., min_length=1, max_length=200)
     code: str = ""
     company: str = ""
     size: str = ""
-    unit: str = Field(default="box", pattern="^(box|piece)$")
+    unit: str = "box"
+    category: str = ""
+    allowedUnits: List[str] = Field(default_factory=list)
     piecesPerBox: int = Field(default=1, ge=1)
+    packQty: float = Field(default=1, gt=0)
     sellPrice: float = Field(default=0, ge=0)
     stockQty: float = Field(default=0, ge=0)
     lowStockThreshold: int = Field(default=10, ge=0)
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def _unit(cls, v):
+        return _norm_unit(v, "box")
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _category(cls, v, info: ValidationInfo):
+        return normalize_category(v, (info.data or {}).get("unit"))
+
+    @field_validator("allowedUnits", mode="before")
+    @classmethod
+    def _allowed(cls, v):
+        if not v:
+            return []
+        return [_norm_unit(u, "box") for u in v]
 
 
 class ProductUpdate(BaseModel):
@@ -26,11 +51,35 @@ class ProductUpdate(BaseModel):
     code: Optional[str] = None
     company: Optional[str] = None
     size: Optional[str] = None
-    unit: Optional[str] = Field(default=None, pattern="^(box|piece)$")
+    unit: Optional[str] = None
+    category: Optional[str] = None
+    allowedUnits: Optional[List[str]] = None
     piecesPerBox: Optional[int] = Field(default=None, ge=1)
+    packQty: Optional[float] = Field(default=None, gt=0)
     sellPrice: Optional[float] = Field(default=None, ge=0)
     stockQty: Optional[float] = Field(default=None, ge=0)
     lowStockThreshold: Optional[int] = Field(default=None, ge=0)
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def _unit(cls, v):
+        if v is None or v == "":
+            return v
+        return _norm_unit(v, "box")
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _category(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            return v
+        return normalize_category(v, (info.data or {}).get("unit"))
+
+    @field_validator("allowedUnits", mode="before")
+    @classmethod
+    def _allowed(cls, v):
+        if v is None:
+            return v
+        return [_norm_unit(u, "box") for u in v]
 
 
 class ProductResponse(BaseModel):
@@ -40,7 +89,10 @@ class ProductResponse(BaseModel):
     company: str = ""
     size: str = ""
     unit: str = "box"
+    category: str = "tiles"
+    allowedUnits: List[str] = Field(default_factory=list)
     piecesPerBox: int = 1
+    packQty: float = 1
     sellPrice: float = 0
     stockQty: float = 0
     lowStockThreshold: int = 10
@@ -51,13 +103,30 @@ class BulkProductRow(BaseModel):
     code: str = ""
     company: str = ""
     size: str = ""
-    # "box" = tiles (size + pcs/box). "piece" = sanitary (no size, pcs/box = 1).
-    unit: str = Field(default="box", pattern="^(box|piece)$")
+    unit: str = "box"
+    category: str = ""
+    allowedUnits: List[str] = Field(default_factory=list)
     piecesPerBox: int = Field(default=1, ge=1)
+    packQty: float = Field(default=1, gt=0)
     qty: float = Field(default=0, ge=0)
-    # Optional — supplier sheets usually have no price. Left blank means
-    # the shopkeeper enters the rate while making the bill.
     price: float = Field(default=0, ge=0)
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def _unit(cls, v):
+        return _norm_unit(v, "box")
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _category(cls, v, info: ValidationInfo):
+        return normalize_category(v, (info.data or {}).get("unit"))
+
+    @field_validator("allowedUnits", mode="before")
+    @classmethod
+    def _allowed(cls, v):
+        if not v:
+            return []
+        return [_norm_unit(u, "box") for u in v]
 
 
 class BulkImportRequest(BaseModel):

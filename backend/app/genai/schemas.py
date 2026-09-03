@@ -10,10 +10,17 @@ class StockExtractRow(BaseModel):
     name: str = Field(default="", description="Product name as written on the sheet")
     code: str = Field(default="", description="Product code or SKU if visible")
     company: str = Field(default="", description="Brand or company if visible")
-    size: str = Field(default="", description="Tile size from the allowed list, or empty for sanitary")
-    unit: str = Field(default="box", description='box for tiles/flooring, piece for sanitary')
-    piecesPerBox: int = Field(default=1, description="Pieces in one box; 1 for sanitary")
-    qty: float = Field(default=0, description="Boxes for tiles, pieces for sanitary")
+    size: str = Field(default="", description="Tile size from the allowed list, or empty when the SKU has no size")
+    unit: str = Field(
+        default="box",
+        description="Stock qty unit from the sheet: box, piece, sqft, sqm, mtr, ft, kg, bag, pack, set, …",
+    )
+    category: str = Field(
+        default="",
+        description="Catalog category if obvious (tiles, sanitaryware, plumbing_construction, tile_installation, …)",
+    )
+    piecesPerBox: int = Field(default=1, description="Pieces in one box; 1 when not a boxed tile")
+    qty: float = Field(default=0, description="Quantity in this row's unit as printed — never convert to sq.ft")
     lowConfidence: bool = Field(default=False, description="True if the row is blurry or uncertain")
 
 

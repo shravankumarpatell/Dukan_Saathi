@@ -21,7 +21,7 @@ Money lives in numeric columns; you do not compute GST, discounts, or kamai your
 - money in: payments.mode IN ('cash','online') only. Never credit or return_adjust.
 - bill_date: shop-local calendar day in Asia/Kolkata (generated on invoices; views expose it).
 - Year means January–December, not Indian FY.
-- Tiles line_amount = qty * rate + pieces * (rate / pieces_per_box). Use v_invoice_lines.line_amount.
+- Line amount is always v_invoice_lines.line_amount (= price_qty * rate). price_qty is qty converted into the product's priced unit (product_unit). Old box+pcs bills still match: price_qty = qty + pieces/pieces_per_box. Do not recompute GST or discounts.
 - Paid/partial/pending uses the 0.5 rupee threshold (v_sales.status_bucket).
 - shops.name = dukaan / shop ka naam. shops.owner_name = malik / owner / mera naam (the shopkeeper).
 - Product catalog lives on products (name, code, company, size, stock_qty). COUNT(*) for kitne; list ordered by name. That is not v_invoice_lines (sold tiles on bills).
@@ -32,17 +32,17 @@ Money lives in numeric columns; you do not compute GST, discounts, or kamai your
 
 # Tables
 shops(id uuid PK, name, owner_name, phone, address, gst_enabled, gstin, created_at)
-products(id, shop_id, name, code, company, size, unit[box|piece], pieces_per_box, sell_price, stock_qty, low_stock_threshold)
+products(id, shop_id, name, code, company, size, category, unit[piece|box|set|sqft|sqm|mtr|rft|ft|inch|kg|gm|litre|bag|pack|bundle|slab|roll|pair], allowed_units jsonb, pieces_per_box, pack_qty, sell_price, stock_qty in product.unit, low_stock_threshold)
 customers(id, shop_id, name, phone, is_contractor, site_note, total_pending, store_credit)
-invoices(id, shop_id, invoice_no, date timestamptz, bill_date date, type[sale|purchase|return], customer_id, customer_name, customer_phone, discount_*, gst_*, subtotal, discount_off, gst_amount, grand_total, amount_paid, amount_pending, payment_status, settlement[cash|adjust_udhari|store_credit], settlement_cash, settlement_udhari, settlement_store_credit, settlement_converted_at, original_invoice_id, original_invoice_no, refund_total)
-invoice_items(id, shop_id, invoice_id, line_no, product_id, name, qty, pieces, unit, rate, pieces_per_box, size)
+invoices(id, shop_id, invoice_no, date timestamptz, bill_date date, type[sale|purchase|return], customer_id, customer_name, customer_phone, site_note, vehicle_no, discount_*, gst_*, subtotal, discount_off, gst_amount, grand_total, amount_paid, amount_pending, payment_status, settlement[cash|adjust_udhari|store_credit], settlement_cash, settlement_udhari, settlement_store_credit, settlement_converted_at, original_invoice_id, original_invoice_no, refund_total)
+invoice_items(id, shop_id, invoice_id, line_no, product_id, name, qty, pieces, unit[line selling unit], product_unit, pack_qty, price_qty, rate, pieces_per_box, size, lot_no, measure_unit, area_unit, measurements jsonb)
 payments(id, shop_id, invoice_id, mode[cash|online|credit|return_adjust], amount, date, return_invoice_no)
 return_allocations(id, shop_id, return_invoice_id, sale_invoice_id, sale_invoice_no, amount)
 stock_ledger(id, shop_id, product_id, change, reason[sale|purchase|return], invoice_id, timestamp)
 expenses(id, shop_id, amount, note, mode[cash|online], date)
 
 # Certified views (prefer these for money)
-v_invoice_lines — items + line_amount + bill_date + customer_id + product_name (no phone)
+v_invoice_lines — items + product_unit + price_qty + line_amount (price_qty*rate) + bill_date + customer_id + product_name (no phone)
 v_daily(shop_id, bill_date, kamai, karcha, bachat, bills, sales_gross, returns_total, cash_collected, online_collected, udhari_added, udhari_collected, cash_expenses, online_expenses, net_cash, net_online)
 v_sales, v_purchases — invoice headers
 v_return_events / v_returns_day(shop_id, return_id, invoice_no, customer_id, event_date, event_kind, mode, refund_amount, cash_out)

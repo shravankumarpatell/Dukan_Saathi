@@ -1,6 +1,6 @@
 // Core business math: GST, sq-ft calculator (area or L×W, box+pieces),
 // money-in-words, formatting, and per-item amount (boxes + loose pieces).
-import { isPieceUnit } from "./units";
+import { linePriceQty, normalizeUnitCode } from "./uom";
 
 export const GST_DEFAULT = 18;
 export const GST_SLABS = [0, 5, 12, 18, 28, 40];
@@ -16,23 +16,29 @@ export function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 // Amount for a line item.
 // Tiles (unit=box or missing): qty = boxes, pieces = loose pcs, rate = per box.
 // Sanitary (unit=piece): qty = pieces, rate = per piece (pieces field ignored).
-export function itemAmount(it) {
+export function itemAmount(it, product) {
   const rate = Number(it.rate) || 0;
   const qty = Number(it.qty) || 0;
-  if (isPieceUnit(it)) return round2(qty * rate);
-  const ppb = Number(it.piecesPerBox) || 1;
-  const pieces = Number(it.pieces) || 0;
-  const piecePrice = ppb ? rate / ppb : rate;
-  return round2(qty * rate + pieces * piecePrice);
+  const lineUnit = it.unit == null || it.unit === "" ? "box" : normalizeUnitCode(it.unit, "box");
+  if (lineUnit === "box") {
+    const ppb = Number(it.piecesPerBox) || 1;
+    const pieces = Number(it.pieces) || 0;
+    const piecePrice = ppb ? rate / ppb : rate;
+    return round2(qty * rate + pieces * piecePrice);
+  }
+  return round2(linePriceQty(it, product) * rate);
 }
 
-/** Effective box-units for a line (boxes + loose pieces / ppb). Piece lines = qty. */
-export function lineUnits(it) {
+/** Effective priced-unit qty for a line (boxes + loose / ppb, or converted). */
+export function lineUnits(it, product) {
   const qty = Number(it.qty) || 0;
-  if (isPieceUnit(it)) return qty;
-  const ppb = Number(it.piecesPerBox) || 1;
-  const pieces = Number(it.pieces) || 0;
-  return qty + (ppb ? pieces / ppb : 0);
+  const lineUnit = it.unit == null || it.unit === "" ? "box" : normalizeUnitCode(it.unit, "box");
+  if (lineUnit === "box") {
+    const ppb = Number(it.piecesPerBox) || 1;
+    const pieces = Number(it.pieces) || 0;
+    return qty + (ppb ? pieces / ppb : 0);
+  }
+  return linePriceQty(it, product);
 }
 
 /** Back-calculate per-box / per-piece rate from a target line amount. */

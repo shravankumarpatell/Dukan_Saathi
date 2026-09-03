@@ -12,6 +12,7 @@ from typing import List, Optional, Sequence
 import yaml
 
 from app.common.tile_sizes import normalize_tile_size
+from app.common.uom import normalize_category, normalize_unit_code
 from app.genai.config import CONFIG_DIR, PromptConfig, settings
 from app.genai.schemas import StockExtractRow
 
@@ -181,19 +182,36 @@ def enrich_rows_from_sheet_text(
     return out
 
 
+_LENGTH_UNITS = frozenset({"mtr", "ft", "rft", "inch"})
+_MASS_PACK_UNITS = frozenset({"bag", "kg", "gm", "pack"})
+
+
+def infer_extract_category(unit: str, size: str, existing: str = "") -> str:
+    if (existing or "").strip():
+        return normalize_category(existing, unit)
+    if unit == "piece":
+        return "sanitaryware"
+    if normalize_tile_size(size):
+        return "tiles"
+    if unit in _LENGTH_UNITS:
+        return "plumbing_construction"
+    if unit in _MASS_PACK_UNITS:
+        return "tile_installation"
+    return normalize_category(None, unit)
+
+
 def normalize_row(row: StockExtractRow) -> StockExtractRow:
     row = row.model_copy(deep=True)
     row.name, row.code = split_series_code_from_name(row.name, row.code)
     row.name = collapse_duplicate_name(row.name)
     row.code = (row.code or "").strip()
     row.company = " ".join((row.company or "").split())
-    unit = str(row.unit or "").lower()
-    if unit in ("piece", "pcs", "pc", "sanitary"):
-        row.unit = "piece"
+    unit = normalize_unit_code(row.unit or "box", default="box")
+    row.unit = unit
+    if unit == "piece":
         row.piecesPerBox = 1
         row.size = ""
-    else:
-        row.unit = "box"
+    elif unit in ("box", "sqft", "sqm") or normalize_tile_size(row.size):
         row.size = normalize_tile_size(row.size) or ""
         try:
             row.piecesPerBox = int(row.piecesPerBox or 1)
@@ -201,6 +219,14 @@ def normalize_row(row: StockExtractRow) -> StockExtractRow:
             row.piecesPerBox = 1
         if row.piecesPerBox < 1:
             row.piecesPerBox = 1
+    else:
+        try:
+            row.piecesPerBox = int(row.piecesPerBox or 1)
+        except (TypeError, ValueError):
+            row.piecesPerBox = 1
+        if row.piecesPerBox < 1:
+            row.piecesPerBox = 1
+    row.category = infer_extract_category(unit, row.size, getattr(row, "category", "") or "")
     return row
 
 
@@ -279,7 +305,8 @@ def sheet_user_text(pdf_text: str) -> str:
     lead = (
         "Extract every product line from the attached sheet. "
         "Skip totals, GST, headers, and blank rows. "
-        "qty is boxes (tiles) or pieces (sanitary), never sqft or rupees."
+        "qty is the printed count in that row's unit (boxes, pieces, m, bag) — "
+        "never invent sqft or rupees as qty."
     )
     if not (pdf_text or "").strip():
         return lead

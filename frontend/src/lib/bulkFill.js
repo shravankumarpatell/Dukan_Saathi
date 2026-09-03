@@ -3,16 +3,21 @@
  * Tile pcs/box of 1 is treated as empty (extractor dummy), matching applyCatalogUnitChange.
  */
 
-import { normalizeTileSize } from "@/lib/tileSizes";
+import { normalizeTileSize } from "./tileSizes";
 import {
   UNIT_BOX,
   UNIT_PIECE,
+  applyCatalogCategoryChange,
   applyCatalogUnitChange,
+  catalogShowsPpb,
+  catalogShowsSize,
+  catalogUnitForCategory,
   isBoxUnit,
   isPieceUnit,
   isTileOnlyCatalogField,
   normalizeUnit,
-} from "@/lib/units";
+} from "./units";
+import { CATEGORIES, normalizeCategory, suggestedUnits } from "./uom";
 
 function sanitizeNumber(raw) {
   let v = String(raw ?? "").replace(/[^0-9.]/g, "");
@@ -21,10 +26,11 @@ function sanitizeNumber(raw) {
   return v;
 }
 
-export const FILLABLE_FIELDS = ["unit", "company", "size", "piecesPerBox", "qty", "price"];
+export const FILLABLE_FIELDS = ["category", "unit", "company", "size", "piecesPerBox", "qty", "price"];
 
 export const FIELD_LABELS = {
-  unit: "Type",
+  category: "Category",
+  unit: "Price unit",
   name: "Product name",
   code: "Code",
   company: "Company",
@@ -42,13 +48,15 @@ export function isFillableField(field) {
 
 export function isRowEligible(row, field) {
   if (!row) return false;
-  if (isTileOnlyCatalogField(field) && isPieceUnit(row)) return false;
+  if (field === "size" && !catalogShowsSize(row)) return false;
+  if (field === "piecesPerBox" && !catalogShowsPpb(row)) return false;
+  if (isTileOnlyCatalogField(field) && isPieceUnit(row) && !catalogShowsSize(row) && !catalogShowsPpb(row)) return false;
   return true;
 }
 
 /** Empty for fill purposes: blank, or tile pcs/box dummy 1. */
 export function isCellEmpty(row, field) {
-  if (!row || field === "unit") return false;
+  if (!row || field === "unit" || field === "category") return false;
   if (!isRowEligible(row, field)) return true;
   const raw = row[field];
   if (raw == null || String(raw).trim() === "") return true;
@@ -59,10 +67,14 @@ export function isCellEmpty(row, field) {
 export function coerceFillValue(field, value) {
   if (field === "unit") {
     const lower = String(value ?? "").toLowerCase();
-    if (lower.startsWith("p") || lower.includes("sanit") || lower.includes("piece")) {
+    if (lower.includes("sanit") || (lower.startsWith("p") && (lower.includes("piece") || lower === "p" || lower.startsWith("pc")))) {
       return UNIT_PIECE;
     }
-    return UNIT_BOX;
+    if (lower.includes("tile")) return UNIT_BOX;
+    return normalizeUnit(value);
+  }
+  if (field === "category") {
+    return normalizeCategory(value);
   }
   if (field === "size") {
     const trimmed = String(value ?? "").trim();
@@ -74,7 +86,12 @@ export function coerceFillValue(field, value) {
 
 export function writeField(row, field, value) {
   if (!row) return row;
-  if (field === "unit") return applyCatalogUnitChange(row, coerceFillValue("unit", value));
+  if (field === "unit") {
+    const suggested = suggestedUnits(row.category);
+    const unit = catalogUnitForCategory(row.category, coerceFillValue("unit", value));
+    return applyCatalogUnitChange({ ...row, allowedUnits: suggested }, unit);
+  }
+  if (field === "category") return applyCatalogCategoryChange(row, coerceFillValue("category", value));
   if (!isRowEligible(row, field)) return row;
   return { ...row, [field]: coerceFillValue(field, value) };
 }
@@ -157,8 +174,12 @@ export function formatFillToast(count, field, value) {
   if (count <= 0) return "";
   if (field === "piecesPerBox") return `${count} tiles pe ${value} pcs/box`;
   if (field === "unit") {
-    const kind = coerceFillValue("unit", value) === UNIT_PIECE ? "Sanitary" : "Tiles";
+    const kind = coerceFillValue("unit", value) === UNIT_PIECE ? "Sanitary" : (CATEGORIES[normalizeCategory(undefined, coerceFillValue("unit", value))]?.short || coerceFillValue("unit", value));
     return `${count} rows pe ${kind}`;
+  }
+  if (field === "category") {
+    const cat = coerceFillValue("category", value);
+    return `${count} rows pe ${CATEGORIES[cat]?.short || cat}`;
   }
   const label = FIELD_LABELS[field] || field;
   const shown = String(value ?? "").trim();

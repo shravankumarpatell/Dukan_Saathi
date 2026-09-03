@@ -9,6 +9,18 @@ from datetime import datetime, timezone
 from typing import List, Optional, Any
 import math
 
+from app.common.uom import (
+    conversion_product,
+    is_slab_product,
+    line_price_qty,
+    normalize_unit_code,
+    sold_pieces,
+    sqft_per_piece,
+    to_product_unit,
+    unit_kind,
+    uses_piece_stock,
+)
+
 # GST
 GST_DEFAULT = 18
 GST_SLABS = [0, 5, 12, 18, 28, 40]
@@ -21,21 +33,25 @@ def round2(n: float) -> float:
     return round(float(n or 0), 2)
 
 
-def item_amount(item: dict) -> float:
-    """Calculate the amount for a single line item.
+def item_amount(item: dict, product: dict | None = None) -> float:
+    """Amount for a line. Rate is always per product.unit (priced unit).
 
-    Tiles (unit=box): amount = qty * rate + pieces * (rate / piecesPerBox)
-    Sanitary (unit=piece): amount = qty * rate  (pieces ignored)
+    Box lines keep qty * rate + loose * (rate/ppb) so existing invoices match.
+    Piece lines stay qty * rate. Every other line unit converts via to_product_unit.
     """
     rate = float(item.get("rate", 0) or 0)
     qty = float(item.get("qty", 0) or 0)
-    # Missing unit defaults to box (tiles) — same as stock helpers / frontend.
-    if item.get("unit") == "piece":
-        return round2(qty * rate)
-    ppb = int(item.get("piecesPerBox", 1) or 1)
-    pieces = float(item.get("pieces", 0) or 0)
-    piece_price = rate / ppb if ppb else rate
-    return round2(qty * rate + pieces * piece_price)
+    raw_unit = item.get("unit")
+    if raw_unit in (None, ""):
+        line_unit = "box"
+    else:
+        line_unit = normalize_unit_code(raw_unit, default="box")
+    if line_unit == "box":
+        ppb = int(item.get("piecesPerBox", 1) or 1)
+        pieces = float(item.get("pieces", 0) or 0)
+        piece_price = rate / ppb if ppb else rate
+        return round2(qty * rate + pieces * piece_price)
+    return round2(line_price_qty(item, product) * rate)
 
 
 def compute_bill_totals(draft: dict) -> dict:
@@ -166,19 +182,43 @@ def gen_invoice_no(seq: int, gst_enabled: bool, prefix: Optional[str] = None) ->
     return f"{p}{yr}{nn}"
 
 
-def calculate_sold_pieces(item: dict) -> int:
-    """Calculate total pieces being sold/returned for a line item.
+def calculate_sold_pieces(item: dict, product: dict | None = None) -> int:
+    """Pieces consumed by a box/piece/area line. Non-count lines return 0."""
+    return sold_pieces(item, product)
 
-    Tiles: boxes * piecesPerBox + loose pieces.
-    Sanitary: qty is already in pieces.
-    Missing unit defaults to box (tiles) — same as the frontend normalizer.
+
+def line_consumed_qty(item: dict, product: dict | None = None) -> float:
+    """Qty of stock in product.unit that this bill line consumes."""
+    fields = conversion_product(item, product)
+    raw = item.get("unit")
+    line_unit = "box" if raw in (None, "") else raw
+    return to_product_unit(fields, line_unit, item.get("qty") or 0, item.get("pieces") or 0)
+
+
+def line_return_qty(item: dict, product: dict | None = None) -> float:
+    """Comparable qty for remaining-returnable checks.
+
+    Box/piece/area (tile) lines stay in integer pieces so existing bills match.
+    Stone/slab lines return remaining sq.ft (or product.unit area) — no re-measure.
+    Meter/kg/bag lines use qty in the product's priced unit.
     """
-    if item.get("unit") == "piece":
-        return round(float(item.get("qty", 0) or 0))
-    ppb = int(item.get("piecesPerBox", 1) or 1)
-    qty = float(item.get("qty", 0) or 0)
-    pieces = float(item.get("pieces", 0) or 0)
-    return round(qty * ppb + pieces)
+    fields = conversion_product(item, product)
+    if is_slab_product(item) or is_slab_product(product) or is_slab_product(fields):
+        return line_consumed_qty(item, product)
+    line_u = normalize_unit_code(item.get("unit") or "box", default="box")
+    tile_area = unit_kind(line_u) == "area" and sqft_per_piece(fields) > 0
+    if uses_piece_stock(fields) or line_u in ("box", "piece") or tile_area:
+        return float(sold_pieces(item, fields))
+    return line_consumed_qty(item, product)
+
+
+def stock_on_hand(product: dict) -> float:
+    """StockQty in product.unit, including legacy showroom/godown fields."""
+    return float(
+        (product.get("stockQty") or 0)
+        + (product.get("godownQty") or 0)
+        + (product.get("showroomQty") or 0)
+    )
 
 
 def get_total_stock_pieces(product: dict) -> int:
@@ -188,11 +228,10 @@ def get_total_stock_pieces(product: dict) -> int:
       - tiles (unit=box or missing): boxes (may be fractional)
       - sanitary (unit=piece): pieces
     """
-    stock_qty = product.get("stockQty", 0) or 0
-    godown_qty = product.get("godownQty", 0) or 0
-    showroom_qty = product.get("showroomQty", 0) or 0
-    total_units = stock_qty + godown_qty + showroom_qty
+    total_units = stock_on_hand(product)
     if product.get("unit") == "piece":
+        return round(total_units)
+    if not uses_piece_stock(product) and product.get("unit") not in (None, "", "box"):
         return round(total_units)
     ppb = int(product.get("piecesPerBox", 1) or 1)
     return round(total_units * ppb)
@@ -220,6 +259,14 @@ def format_stock_pieces_label(product: dict, pieces: int) -> str:
     return f"{boxes}b"
 
 
+def _stock_result(product: dict, stock_qty: float) -> dict:
+    result = {"stockQty": round(max(0.0, float(stock_qty or 0)), 4)}
+    if product.get("godownQty") or product.get("showroomQty"):
+        result["godownQty"] = 0
+        result["showroomQty"] = 0
+    return result
+
+
 def compute_stock_deduction(product: dict, sold_pieces: int) -> dict:
     """Compute new stockQty after a sale.
 
@@ -228,16 +275,12 @@ def compute_stock_deduction(product: dict, sold_pieces: int) -> dict:
     total_pieces = get_total_stock_pieces(product)
     remaining_pieces = max(0, total_pieces - sold_pieces)
 
-    if product.get("unit") == "piece":
-        result = {"stockQty": float(remaining_pieces)}
-    else:
-        ppb = int(product.get("piecesPerBox", 1) or 1)
-        result = {"stockQty": round2(remaining_pieces / ppb)}
-    # Zero out legacy fields if they exist, consolidating into stockQty
-    if product.get("godownQty") or product.get("showroomQty"):
-        result["godownQty"] = 0
-        result["showroomQty"] = 0
-    return result
+    if product.get("unit") == "piece" or (
+        not uses_piece_stock(product) and product.get("unit") not in (None, "", "box")
+    ):
+        return _stock_result(product, float(remaining_pieces))
+    ppb = int(product.get("piecesPerBox", 1) or 1)
+    return _stock_result(product, remaining_pieces / ppb)
 
 
 def compute_stock_addition(product: dict, add_pieces: int) -> dict:
@@ -247,16 +290,17 @@ def compute_stock_addition(product: dict, add_pieces: int) -> dict:
     """
     total_pieces = get_total_stock_pieces(product) + add_pieces
 
-    if product.get("unit") == "piece":
-        result = {"stockQty": float(total_pieces)}
-    else:
-        ppb = int(product.get("piecesPerBox", 1) or 1)
-        result = {"stockQty": round2(total_pieces / ppb)}
-    # Zero out legacy fields if they exist
-    if product.get("godownQty") or product.get("showroomQty"):
-        result["godownQty"] = 0
-        result["showroomQty"] = 0
-    return result
+    if product.get("unit") == "piece" or (
+        not uses_piece_stock(product) and product.get("unit") not in (None, "", "box")
+    ):
+        return _stock_result(product, float(total_pieces))
+    ppb = int(product.get("piecesPerBox", 1) or 1)
+    return _stock_result(product, total_pieces / ppb)
+
+
+def compute_stock_after_qty(product: dict, delta_product_unit: float) -> dict:
+    """Apply a signed qty in product.unit to stockQty (sale negative, return positive)."""
+    return _stock_result(product, stock_on_hand(product) + float(delta_product_unit or 0))
 
 
 def today_iso() -> str:
@@ -333,6 +377,28 @@ def remove_return_adjust_payments(inv: dict, return_invoice_no: str) -> dict:
     }
 
 
+def enrich_line(item: dict, product: dict | None = None) -> dict:
+    """Copy priced-unit fields from the catalog onto a bill line."""
+    from app.common.uom import normalize_unit_code
+
+    out = dict(item or {})
+    prod = product or {}
+    dest = prod.get("unit") or out.get("productUnit") or "box"
+    out["productUnit"] = dest
+    if out.get("packQty") is None:
+        out["packQty"] = prod.get("packQty") if prod.get("packQty") is not None else 1
+    if not out.get("size"):
+        out["size"] = prod.get("size") or ""
+    if not out.get("piecesPerBox"):
+        out["piecesPerBox"] = prod.get("piecesPerBox") or 1
+    raw = out.get("unit")
+    if raw in (None, ""):
+        out["unit"] = dest
+    else:
+        out["unit"] = normalize_unit_code(raw, default=dest)
+    return out
+
+
 def remaining_returnable_by_product(
     original_items: list,
     prior_return_items: list,
@@ -343,16 +409,20 @@ def remaining_returnable_by_product(
         pid = it.get("productId")
         if not pid:
             continue
-        sold[pid] = sold.get(pid, 0) + calculate_sold_pieces(it)
+        sold[pid] = sold.get(pid, 0) + line_return_qty(it)
 
     returned: dict = {}
     for it in prior_return_items or []:
         pid = it.get("productId")
         if not pid:
             continue
-        returned[pid] = returned.get(pid, 0) + calculate_sold_pieces(it)
+        returned[pid] = returned.get(pid, 0) + line_return_qty(it)
 
-    return {pid: max(0, int(sold[pid]) - int(returned.get(pid, 0))) for pid in sold}
+    out = {}
+    for pid in sold:
+        rem = sold[pid] - float(returned.get(pid, 0))
+        out[pid] = max(0, int(round(rem))) if rem == int(rem) or abs(rem - round(rem)) < 1e-9 else max(0.0, rem)
+    return out
 
 
 def remaining_returnable_amount(original_inv: dict, prior_returns: list) -> float:

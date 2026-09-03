@@ -13,6 +13,9 @@ class ReturnItemInput(BaseModel):
     unit: str = "box"
     rate: float = Field(default=0, ge=0)
     piecesPerBox: int = Field(default=1, ge=1)
+    productUnit: Optional[str] = None
+    packQty: Optional[float] = None
+    size: str = ""
 
 
 class CreateReturnRequest(BaseModel):

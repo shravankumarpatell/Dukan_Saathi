@@ -1,7 +1,6 @@
 """Product API routes — CRUD, bulk import."""
 
 from typing import List, Optional
-from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -10,6 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.calc import round2
 from app.common.errors import NotFoundError
 from app.common.tile_sizes import normalize_tile_size
+from app.common.uom import (
+    UNIT_CODE_SET,
+    category_meta,
+    default_allowed_units,
+    needs_pack_qty,
+    normalize_category,
+    normalize_unit_code,
+)
 from app.db import get_session
 from app.dependencies import AuthenticatedUser, get_current_user
 from app.orm import Product
@@ -26,30 +33,73 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 
 def _normalize_unit_fields(data: dict, existing: Optional[dict] = None) -> dict:
-    """Tiles keep size + pcs/box; sanitary has no size and pcs/box = 1."""
-    unit = data.get("unit")
-    if unit is None and existing is not None:
-        unit = existing.get("unit", "box")
-    if unit == "piece":
-        data["unit"] = "piece"
-        data["piecesPerBox"] = 1
-        data["size"] = ""
-    else:
-        if "unit" in data or existing is None:
-            data["unit"] = "box"
+    """Apply category defaults. Never coerce unknown units down to box|piece."""
+    unit_in = data.get("unit")
+    if unit_in is None and existing is not None:
+        unit_in = existing.get("unit", "box")
+    unit = normalize_unit_code(unit_in or "box", default="box")
+    if "unit" in data or existing is None:
+        data["unit"] = unit
+
+    cat_in = data.get("category")
+    if cat_in is None and existing is not None:
+        cat_in = existing.get("category")
+    cat = normalize_category(cat_in, data.get("unit") or unit)
+    if "category" in data or existing is None:
+        data["category"] = cat
+
+    merged = {**(existing or {}), **data}
+    meta = category_meta(merged.get("category") or cat)
+
+    allowed = data.get("allowedUnits")
+    if not allowed:
+        if "allowedUnits" in data or existing is None:
+            allowed = default_allowed_units(data.get("category") or cat, data.get("unit") or unit)
+            data["allowedUnits"] = allowed
+    elif isinstance(allowed, list):
+        seen = []
+        for u in allowed:
+            code = normalize_unit_code(u, default=unit)
+            if code in UNIT_CODE_SET and code not in seen:
+                seen.append(code)
+        if (data.get("unit") or unit) not in seen:
+            seen.insert(0, data.get("unit") or unit)
+        data["allowedUnits"] = seen or default_allowed_units(data.get("category") or cat, data.get("unit") or unit)
+
+    if meta.get("needsPpb") or (data.get("unit") or unit) == "box":
         if "piecesPerBox" in data or existing is None:
             data["piecesPerBox"] = max(
                 1,
                 int(data.get("piecesPerBox") or (existing or {}).get("piecesPerBox") or 1),
             )
+    elif (data.get("unit") or unit) == "piece" and not meta.get("needsPpb"):
+        if "piecesPerBox" in data or existing is None:
+            data["piecesPerBox"] = 1
+
+    if meta.get("needsSize"):
         if "size" in data or existing is None:
             mapped = normalize_tile_size(data.get("size") or "")
             data["size"] = mapped or str(data.get("size") or "").strip()
+    elif not meta.get("needsSize") and (data.get("unit") or unit) == "piece":
+        if "size" in data or existing is None:
+            data["size"] = ""
+
+    if "packQty" in data or existing is None:
+        try:
+            pq = float(data.get("packQty") or (existing or {}).get("packQty") or 1)
+        except (TypeError, ValueError):
+            pq = 1.0
+        data["packQty"] = pq if pq > 0 else 1.0
+        if not needs_pack_qty(merged) and existing is None and "packQty" not in (data or {}):
+            data["packQty"] = 1.0
+
     return data
 
 
 def _to_response(product: Product) -> ProductResponse:
     d = product_dict(product)
+    if not d.get("allowedUnits"):
+        d["allowedUnits"] = default_allowed_units(d.get("category"), d.get("unit"))
     return ProductResponse(**d)
 
 
@@ -60,7 +110,10 @@ def _apply_fields(product: Product, data: dict) -> None:
         "company": "company",
         "size": "size",
         "unit": "unit",
+        "category": "category",
+        "allowedUnits": "allowed_units",
         "piecesPerBox": "pieces_per_box",
+        "packQty": "pack_qty",
         "sellPrice": "sell_price",
         "stockQty": "stock_qty",
         "lowStockThreshold": "low_stock_threshold",
@@ -176,19 +229,23 @@ async def bulk_import(
                 matched = product
                 break
 
+        unit = normalize_unit_code(row.unit or "box", default="box")
         if matched:
             new_stock = money(matched.stock_qty) + (row.qty or 0)
             matched.stock_qty = round2(new_stock)
             if row.price > 0:
                 matched.sell_price = row.price
-            if row.unit in ("box", "piece"):
-                patch = {
-                    "unit": row.unit,
-                    "piecesPerBox": row.piecesPerBox,
-                    "size": row.size,
-                }
-                _normalize_unit_fields(patch, product_dict(matched))
-                _apply_fields(matched, patch)
+            patch = {
+                "unit": unit,
+                "category": row.category,
+                "piecesPerBox": row.piecesPerBox,
+                "size": row.size,
+                "packQty": row.packQty,
+            }
+            if row.allowedUnits:
+                patch["allowedUnits"] = row.allowedUnits
+            _normalize_unit_fields(patch, product_dict(matched))
+            _apply_fields(matched, patch)
             results.append(matched)
         else:
             new_data = {
@@ -196,8 +253,11 @@ async def bulk_import(
                 "code": row.code,
                 "company": row.company,
                 "size": row.size,
-                "unit": row.unit if row.unit in ("box", "piece") else "box",
+                "unit": unit,
+                "category": row.category,
+                "allowedUnits": row.allowedUnits,
                 "piecesPerBox": row.piecesPerBox,
+                "packQty": row.packQty,
                 "sellPrice": row.price,
                 "stockQty": row.qty,
                 "lowStockThreshold": 10,

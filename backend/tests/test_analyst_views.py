@@ -102,3 +102,49 @@ def test_other_shop_rows_are_invisible(client):
     names = {r["name"] for r in rows}
     assert "Meena Quarries" in names
     assert "Other Secret" not in names
+
+
+def test_sqft_line_amount_uses_price_qty(client):
+    headers, uid = auth_header()
+    _create_shop(client, headers)
+    product = _create_product(
+        client, headers, name="Kajaria 2x2", unit="box", size="2x2 ft",
+        piecesPerBox=4, stockQty=20, sellPrice=800,
+    )
+    customer = _create_customer(client, headers, name="Area Buyer")
+    client.post("/api/invoices", json={
+        "type": "sale",
+        "items": [{
+            "productId": product["id"],
+            "name": product["name"],
+            "qty": 150,
+            "pieces": 0,
+            "unit": "sqft",
+            "rate": 800,
+            "piecesPerBox": 4,
+            "size": "2x2 ft",
+        }],
+        "gstEnabled": False,
+        "payments": [{"mode": "cash", "amount": 7500}],
+        "customerId": customer["id"],
+        "customerName": customer["name"],
+    }, headers=headers)
+    shop_id = shop_uuid(uid)
+    _, rows = _query(
+        "SELECT qty, unit, price_qty, line_amount FROM v_invoice_lines WHERE invoice_type = 'sale'",
+        shop_id,
+    )
+    assert rows
+    assert float(rows[0]["qty"]) == 150
+    assert rows[0]["unit"] == "sqft"
+    assert float(rows[0]["price_qty"]) == 9.375
+    assert float(rows[0]["line_amount"]) == 7500.0
+
+
+def test_catalog_documents_price_qty_and_categories():
+    from app.analyst.catalog import SCHEMA_PREFIX
+
+    assert "price_qty" in SCHEMA_PREFIX
+    assert "category" in SCHEMA_PREFIX
+    assert "v_invoice_lines.line_amount" in SCHEMA_PREFIX
+    assert "unit[box|piece]" not in SCHEMA_PREFIX

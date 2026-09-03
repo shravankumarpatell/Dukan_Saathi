@@ -113,3 +113,5 @@ backend/eval/extraction/.gepa_cache/
 .stitch/_screens.json
 .stitch/_last.json
 .stitch/scripts/node_modules/
+
+slab-estimate

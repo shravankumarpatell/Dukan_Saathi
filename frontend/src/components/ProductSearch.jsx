@@ -2,7 +2,8 @@ import React, { useState, useMemo, useRef, useEffect, forwardRef, useImperativeH
 import { searchProducts } from "@/lib/fuzzy";
 import { money, piecesBreakdown } from "@/lib/calc";
 import { productSalesQtyMap } from "@/lib/shopInsights";
-import { formatStockLabel, unitKindLabel, unitKindChipClass, rateSuffix, productMetaLine, stockAvailPieces } from "@/lib/units";
+import { formatStockLabel, unitKindLabel, unitKindChipClass, rateSuffix, productMetaLine, stockAvailPieces, stockAvailQty } from "@/lib/units";
+import { usesPieceStock } from "@/lib/uom";
 import { useListNavigation } from "@/hooks/useListNavigation";
 import { useTapSelect } from "@/hooks/useTapSelect";
 import { KEYS } from "@/lib/keymap";
@@ -20,7 +21,16 @@ import { Search, PlusCircle } from "lucide-react";
  * Parents hold a ref and call focus() to bring the caret back for the next item.
  */
 const ProductSearch = forwardRef(function ProductSearch(
-  { products, invoices = [], onPick, onCreateNew, placeholder = "Search product by name, code, company…", disabledIds = [] },
+  {
+    products,
+    invoices = [],
+    onPick,
+    onCreateNew,
+    placeholder = "Search product by name, code, company…",
+    disabledIds = [],
+    includeOutOfStock = false,
+    inputTestId = "product-search-input",
+  },
   ref
 ) {
   const [q, setQ] = useState("");
@@ -31,7 +41,10 @@ const ProductSearch = forwardRef(function ProductSearch(
   const inputRef = useRef(null);
   const tap = useTapSelect();
 
-  const isOutOfStock = useCallback((p) => stockAvailPieces(p) <= 0, []);
+  const isOutOfStock = useCallback((p) => {
+    if (!usesPieceStock(p)) return stockAvailQty(p) <= 1e-6;
+    return stockAvailPieces(p) <= 0;
+  }, []);
 
   // One flat list so the keyboard highlight and the rendered order agree.
   const rows = useMemo(() => [
@@ -39,11 +52,11 @@ const ProductSearch = forwardRef(function ProductSearch(
     ...results.map((p) => ({
       kind: "product",
       product: p,
-      disabled: disabledIds.includes(p.id) || isOutOfStock(p),
+      disabled: disabledIds.includes(p.id) || (!includeOutOfStock && isOutOfStock(p)),
       outOfStock: isOutOfStock(p),
     })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [results, onCreateNew, disabledIds.join(","), isOutOfStock]);
+  ], [results, onCreateNew, disabledIds.join(","), isOutOfStock, includeOutOfStock]);
 
   const pick = (p) => { onPick(p); setQ(""); setOpen(false); };
   const createNew = () => { const name = q.trim(); setQ(""); setOpen(false); onCreateNew?.(name); };
@@ -139,7 +152,7 @@ const ProductSearch = forwardRef(function ProductSearch(
         <Search className="h-4 w-4 shrink-0 text-slate-400" />
         <input
           ref={inputRef}
-          data-testid="product-search-input"
+          data-testid={inputTestId}
           role="combobox"
           aria-expanded={open}
           aria-controls="product-search-list"

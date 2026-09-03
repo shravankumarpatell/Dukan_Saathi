@@ -12,6 +12,7 @@ import Customers from "@/screens/Customers";
 import Returns from "@/screens/Returns";
 import Chat from "@/screens/Chat";
 import BulkUpload from "@/screens/BulkUpload";
+import SlabEstimate from "@/screens/SlabEstimate";
 import BillHistory from "@/screens/BillHistory";
 import Settings from "@/screens/Settings";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -35,6 +36,7 @@ const PAGES = [
   { path: "/", Page: Dashboard, label: "Dashboard" },
   { path: "/inventory", Page: Inventory, label: "Stock" },
   { path: "/bill", Page: NewBill, label: "Bill" },
+  { path: "/slab", Page: SlabEstimate, label: "Slab Estimate" },
   { path: "/customers", Page: Customers, label: "Customers" },
   { path: "/returns", Page: Returns, label: "Returns" },
   { path: "/chat", Page: Chat, label: "AI Saathi" },

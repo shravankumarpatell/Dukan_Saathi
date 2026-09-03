@@ -143,7 +143,7 @@ def extract_signature():
             desc="Digital PDF table text. Use '(none)' if the file is a photo."
         )
         rows: list[dict] = dspy.OutputField(
-            desc="Product rows: name, code, company, size, unit, piecesPerBox, qty"
+            desc="Product rows: name, code, company, size, unit, piecesPerBox, qty, category"
         )
 
     if hasattr(ExtractStock, "with_instructions"):

@@ -14,13 +14,17 @@ import { usePdfPreview } from "@/hooks/usePdfPreview";
 import { billLimitError, computeBillTotals, itemAmount, money, rateFromAmount, round2, todayISO } from "@/lib/calc";
 import { sanitizeNumber } from "@/components/NumberInput";
 import {
-  isBoxUnit, qtyFieldLabel, rateSuffix, productMetaLine, unitKindLabel, unitKindChipClass, UNIT_BOX, UNIT_PIECE,
-  stockAvailPieces, clampSaleQtyFields, formatAvailLabel, lineSoldPieces,
+  isBoxUnit, qtyFieldLabel, rateSuffix, productMetaLine, unitKindLabel, unitKindChipClass,
+  stockAvailQty, clampSaleQtyFields, formatAvailLabel, lineSoldQty,
+  derivedSqftRateLabel, isSlabProduct,
 } from "@/lib/units";
+import { allowedUnitsOf, UNITS, usesPieceStock } from "@/lib/uom";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { useFormFlow } from "@/hooks/useFormFlow";
 import { usePageFocus } from "@/hooks/usePageFocus";
+import { usePathname } from "@/context/AppHistoryContext";
 import { SCOPES, KEYS } from "@/lib/keymap";
+import { consumePendingSlabBill } from "@/lib/slabEstimates";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useVisibleOpen } from "@/context/PageKeepAliveContext";
@@ -54,7 +58,7 @@ function clearDraft() {
 /** Fields we never restore into (modals / ephemeral). */
 function isRestorableFocusId(id) {
   if (!id) return false;
-  if (id.startsWith("detail-") || id.startsWith("sqft-")) return false;
+  if (id.startsWith("detail-") || id.startsWith("sqft-") || id.startsWith("slab-")) return false;
   if (id.startsWith("bill-item-") || id.startsWith("item-") || id.startsWith("del-item-")) return false;
   if (id === "bill-cart-dialog" || id === "bill-cart-close" || id === "bill-cart-empty" || id === "bill-cart-subtotal") return false;
   return true;
@@ -71,11 +75,13 @@ export default function NewBill() {
   const focusTestIdRef = useRef(s?.focusTestId || null);
 
   const type = "sale";
+  const pathname = usePathname();
   const [items, setItems] = useState(s?.items || []);
   const [customerName, setCustomerName] = useState(s?.customerName || "");
   const [customerPhone, setCustomerPhone] = useState(s?.customerPhone || "");
   const [isContractor, setIsContractor] = useState(s?.isContractor || false);
   const [siteNote, setSiteNote] = useState(s?.siteNote || "");
+  const [vehicleNo, setVehicleNo] = useState(s?.vehicleNo || "");
   const [gstEnabled, setGstEnabled] = useState(s?.gstEnabled ?? (shop?.gstEnabled ?? true));
   const [gstRate, setGstRate] = useState(s?.gstRate ?? 18);
   const [discount, setDiscount] = useState(s?.discount || { type: "flat", value: "" });
@@ -88,6 +94,25 @@ export default function NewBill() {
   const [clearOpen, setClearOpen] = useState(false);
   const clearVisible = useVisibleOpen(clearOpen);
   const { pdfUrl, filename: pdfFilename, showPdf, closePdf } = usePdfPreview();
+
+  useEffect(() => {
+    if (pathname !== "/bill") return;
+    const pending = consumePendingSlabBill();
+    if (!pending) return;
+    if (pending.customerName) {
+      setCustomerName(pending.customerName);
+      const hit = (customers || []).find(
+        (c) => c.name.toLowerCase() === String(pending.customerName).trim().toLowerCase(),
+      );
+      setSelectedCustomer(hit || null);
+    }
+    if (pending.vehicleNo) setVehicleNo(pending.vehicleNo);
+    if (Array.isArray(pending.items) && pending.items.length) {
+      setItems((prev) => [...prev, ...pending.items]);
+    }
+    // customers is read for name match only; consuming twice would drop the estimate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
   const customerSearchRef = useRef(null);
   const landOnCustomerRef = useRef(false);
   const focusCustomer = useCallback(() => {
@@ -130,11 +155,11 @@ export default function NewBill() {
   // Persist form state whenever it changes (keep last focus id)
   useEffect(() => {
     saveDraft({
-      items, customerName, customerPhone, isContractor, siteNote,
+      items, customerName, customerPhone, isContractor, siteNote, vehicleNo,
       gstEnabled, gstRate, discount, pay, selectedCustomer, useCredit,
       focusTestId: focusTestIdRef.current,
     });
-  }, [items, customerName, customerPhone, isContractor, siteNote, gstEnabled, gstRate, discount, pay, selectedCustomer, useCredit]);
+  }, [items, customerName, customerPhone, isContractor, siteNote, vehicleNo, gstEnabled, gstRate, discount, pay, selectedCustomer, useCredit]);
 
   const focusSearch = useCallback(() => setTimeout(() => searchRef.current?.focus(), 60), []);
   const focusCartBtn = useCallback(() => setTimeout(() => cartBtnRef.current?.focus(), 80), []);
@@ -193,19 +218,27 @@ export default function NewBill() {
   // Picking a product opens the details popup; the caret returns to the search
   // box afterwards so the next item can be typed straight away.
   const pickProduct = (p) => {
-    if (items.some((it) => it.productId === p.id)) { toast.error("Ye item pehle se add hai"); return focusSearch(); }
+    if (!isSlabProduct(p) && items.some((it) => it.productId === p.id)) {
+      toast.error("Ye item pehle se add hai");
+      return focusSearch();
+    }
     setDetailsFor(p);
   };
 
   const addItemWithDetails = (p, d) => {
-    const tile = isBoxUnit(p);
+    const lineUnit = d.unit || p.unit || "box";
+    const tileLine = isBoxUnit({ unit: lineUnit });
     setItems((prev) => [...prev, {
       productId: p.id, name: p.name,
-      qty: d.qty, pieces: tile ? d.pieces : "",
-      unit: tile ? UNIT_BOX : UNIT_PIECE,
+      qty: d.qty, pieces: tileLine ? d.pieces : "",
+      unit: lineUnit,
+      productUnit: p.unit,
+      packQty: p.packQty,
+      category: p.category,
+      allowedUnits: p.allowedUnits,
       rate: d.rate,
-      piecesPerBox: tile ? (Number(p.piecesPerBox) || 1) : 1,
-      size: tile ? (p.size || "") : "",
+      piecesPerBox: Number(p.piecesPerBox) || 1,
+      size: p.size || "",
     }]);
     setDetailsFor(null);
     focusSearch();
@@ -215,9 +248,9 @@ export default function NewBill() {
   // the bill is untouched throughout.
   const createItemOnTheFly = useCallback(async (name) => {
     const product = await quickCreate("product", name || "");
-    if (product) setDetailsFor(product);
-    else focusSearch();
-  }, [quickCreate, focusSearch]);
+    if (!product) return focusSearch();
+    pickProduct(product);
+  }, [quickCreate, focusSearch, pickProduct]);
 
   const applyCustomer = useCallback((c) => {
     setSelectedCustomer(c);
@@ -244,7 +277,7 @@ export default function NewBill() {
   const delItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
 
   const reset = useCallback(() => {
-    setItems([]); setCustomerName(""); setCustomerPhone(""); setIsContractor(false); setSiteNote("");
+    setItems([]); setCustomerName(""); setCustomerPhone(""); setIsContractor(false); setSiteNote(""); setVehicleNo("");
     setGstEnabled(shop?.gstEnabled ?? true); setGstRate(18); setDiscount({ type: "flat", value: "" });
     setPay({ cash: "", online: "" }); setSelectedCustomer(null); setUseCredit(false);
     setCartOpen(false);
@@ -260,11 +293,12 @@ export default function NewBill() {
     || !!(customerPhone || "").trim()
     || isContractor
     || !!(siteNote || "").trim()
+    || !!(vehicleNo || "").trim()
     || Number(discount.value) > 0
     || Number(pay.cash) > 0
     || Number(pay.online) > 0
     || useCredit
-  ), [items, customerName, customerPhone, isContractor, siteNote, discount.value, pay.cash, pay.online, useCredit]);
+  ), [items, customerName, customerPhone, isContractor, siteNote, vehicleNo, discount.value, pay.cash, pay.online, useCredit]);
 
   const requestClear = useCallback(() => {
     if (!hasBillData) {
@@ -319,8 +353,8 @@ export default function NewBill() {
       ...(Number(pay.cash) > 0 ? [{ mode: "cash", amount: Number(pay.cash) }] : []),
       ...(Number(pay.online) > 0 ? [{ mode: "online", amount: Number(pay.online) }] : []),
     ],
-    customerName, customerPhone, isContractor, siteNote, createdVia: "manual", date: todayISO(), language: "hi",
-  }), [type, items, gstEnabled, gstRate, discount, pay, customerName, customerPhone, isContractor, siteNote]);
+    customerName, customerPhone, isContractor, siteNote, vehicleNo, createdVia: "manual", date: todayISO(), language: "hi",
+  }), [type, items, gstEnabled, gstRate, discount, pay, customerName, customerPhone, isContractor, siteNote, vehicleNo]);
 
   const totals = computeBillTotals(draftBase);
   const creditAvail = selectedCustomer?.storeCredit || 0;
@@ -362,17 +396,24 @@ export default function NewBill() {
     if (!it) return;
     const p = products.find((x) => x.id === it.productId) || it;
     const reserved = items.reduce((s, x, idx) => (
-      idx === i || x.productId !== it.productId ? s : s + lineSoldPieces(x)
+      idx === i || x.productId !== it.productId ? s : s + lineSoldQty(x, p)
     ), 0);
+    const availPU = Math.max(0, stockAvailQty(p) - reserved);
     const next = clampSaleQtyFields({
-      product: { ...p, unit: it.unit, piecesPerBox: it.piecesPerBox },
+      product: p,
+      lineUnit: it.unit,
       qty: it.qty,
       pieces: it.pieces,
       field,
       raw,
-      availPieces: Math.max(0, stockAvailPieces(p) - reserved),
+      availPieces: usesPieceStock(p) ? availPU * (Number(p.piecesPerBox) || 1) : availPU,
     });
-    updItem(i, { qty: next.qty, pieces: isBoxUnit(it) ? next.pieces : "", amount: undefined });
+    updItem(i, {
+      qty: next.qty,
+      pieces: isBoxUnit(it) ? next.pieces : "",
+      amount: undefined,
+      ...(isSlabProduct(it) || isSlabProduct(p) ? { measurements: [] } : {}),
+    });
   };
 
   // Editing amount back-calcs rate so totals / backend stay rate×qty based.
@@ -420,13 +461,13 @@ export default function NewBill() {
     {
       const byProduct = {};
       for (const it of items) {
-        byProduct[it.productId] = (byProduct[it.productId] || 0) + lineSoldPieces(it);
+        byProduct[it.productId] = (byProduct[it.productId] || 0) + lineSoldQty(it, products.find((x) => x.id === it.productId) || it);
       }
       const over = items.filter((it) => {
         if (byProduct[it.productId] == null) return false;
         const p = products.find((x) => x.id === it.productId);
         if (!p) return false;
-        const short = byProduct[it.productId] > stockAvailPieces(p);
+        const short = byProduct[it.productId] > stockAvailQty(p) + 1e-6;
         if (short) byProduct[it.productId] = null; // report once per product
         return short;
       });
@@ -538,6 +579,19 @@ export default function NewBill() {
                   </div>
                 </div>
               )}
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-600">Vehicle No</label>
+                <div className="ds-combo mt-1">
+                  <input
+                    data-testid="vehicle-no"
+                    autoComplete="off"
+                    value={vehicleNo}
+                    onChange={(e) => setVehicleNo(e.target.value)}
+                    placeholder="Vehicle number"
+                    className="ds-bare-input text-sm placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -547,7 +601,7 @@ export default function NewBill() {
             </label>
             <ProductSearch ref={searchRef} products={products} invoices={invoices} onPick={pickProduct}
               onCreateNew={createItemOnTheFly}
-              disabledIds={items.map((it) => it.productId)} />
+              disabledIds={items.filter((it) => !isSlabProduct(it)).map((it) => it.productId)} />
 
             <button
               ref={cartBtnRef}
@@ -665,7 +719,7 @@ export default function NewBill() {
         type={type}
         reservedPieces={
           detailsFor
-            ? items.filter((it) => it.productId === detailsFor.id).reduce((s, it) => s + lineSoldPieces(it), 0)
+            ? items.filter((it) => it.productId === detailsFor.id).reduce((s, it) => s + lineSoldQty(it, detailsFor), 0)
             : 0
         }
         onClose={() => { setDetailsFor(null); focusSearch(); }}
@@ -724,6 +778,7 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
   const [qty, setQty] = useState("");
   const [pieces, setPieces] = useState("");
   const [rate, setRate] = useState("");
+  const [lineUnit, setLineUnit] = useState("");
   const [sqftOpen, setSqftOpen] = useState(false);
   const rateRef = useRef(null);
   const ignoreDismissRef = useRef(false);
@@ -734,28 +789,33 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
     if (!product) return;
     setQty(""); setPieces("");
     setSqftOpen(false);
+    setLineUnit(product.unit || "box");
     setRate(product.sellPrice > 0 ? String(product.sellPrice) : "");
   }, [product]);
 
-  const tile = product ? isBoxUnit(product) : false;
-  const ppb = tile ? (Number(product.piecesPerBox) || 1) : 1;
-  const availPieces = product
-    ? Math.max(0, stockAvailPieces(product) - (Number(reservedPieces) || 0))
+  const allowed = product ? allowedUnitsOf(product) : [];
+  const unit = lineUnit || product?.unit || "box";
+  const tile = isBoxUnit({ unit });
+  const ppb = Number(product?.piecesPerBox) || 1;
+  const availPU = product
+    ? Math.max(0, stockAvailQty(product) - (Number(reservedPieces) || 0))
     : 0;
-  const availLabel = product ? formatAvailLabel(product, availPieces) : "";
+  const availPieces = product && usesPieceStock(product) ? availPU * ppb : availPU;
+  const availLabel = product ? formatAvailLabel(product, availPieces, unit) : "";
 
   const setQtyField = useCallback((field, raw) => {
     if (!product || !limitStock) {
       const cleaned = sanitizeNumber(raw);
-      const whole = cleaned.includes(".") ? cleaned.slice(0, cleaned.indexOf(".")) : cleaned;
-      if (field === "qty") setQty(whole);
-      else setPieces(whole);
+      if (field === "qty") setQty(cleaned);
+      else setPieces(cleaned);
       return;
     }
-    const next = clampSaleQtyFields({ product, qty, pieces, field, raw, availPieces });
+    const next = clampSaleQtyFields({
+      product, qty, pieces, field, raw, availPieces, lineUnit: unit,
+    });
     setQty(next.qty);
     setPieces(next.pieces);
-  }, [product, limitStock, qty, pieces, availPieces]);
+  }, [product, limitStock, qty, pieces, availPieces, unit]);
 
   const applySqft = useCallback((res) => {
     if (!product) return;
@@ -794,22 +854,23 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
     if (tile) {
       if (!(Number(qty) > 0 || Number(pieces) > 0)) return toast.error("Box ya pcs daaliye");
     } else if (!(Number(qty) > 0)) {
-      return toast.error("Pcs daaliye");
+      return toast.error("Qty daaliye");
     }
     if (!(Number(rate) > 0)) return toast.error("Rate daaliye");
     if (limitStock) {
-      const asked = tile
-        ? (Number(qty) || 0) * ppb + (Number(pieces) || 0)
-        : (Number(qty) || 0);
-      if (asked > availPieces) {
+      const asked = lineSoldQty({
+        qty, pieces: tile ? pieces : 0, unit, piecesPerBox: ppb,
+        productUnit: product.unit, packQty: product.packQty, size: product.size,
+      }, product);
+      if (asked > availPU + 1e-6) {
         return toast.error(`Stock sirf ${availLabel} hai`);
       }
-      if (availPieces <= 0) {
+      if (availPU <= 0) {
         return toast.error("Is item ka stock khatam hai");
       }
     }
-    onAdd({ qty, pieces: tile ? pieces : "", rate });
-  }, [product, tile, qty, pieces, rate, onAdd, limitStock, ppb, availPieces, availLabel]);
+    onAdd({ qty, pieces: tile ? pieces : "", rate, unit });
+  }, [product, tile, qty, pieces, rate, onAdd, limitStock, ppb, availPieces, availLabel, unit, availPU]);
 
   useHotkeyScope("modal:item-details", { exclusive: true, enabled: open && !sqftOpen });
   useHotkeys("modal:item-details", [
@@ -828,10 +889,14 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
 
   const amount = itemAmount({
     qty, pieces: tile ? pieces : 0, rate,
-    unit: tile ? UNIT_BOX : UNIT_PIECE,
+    unit,
     piecesPerBox: ppb,
+    productUnit: product.unit,
+    packQty: product.packQty,
+    size: product.size,
   });
-  const stockEmpty = limitStock && availPieces <= 0;
+  const stockEmpty = limitStock && availPU <= 0;
+  const sqftHint = derivedSqftRateLabel(product, rate);
   const sqftItem = {
     name: product.name,
     piecesPerBox: ppb,
@@ -879,9 +944,29 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
             </DialogTitle>
             <p className="text-xs text-slate-500">{productMetaLine(product)}</p>
           </DialogHeader>
-          <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className={`grid gap-3 ${tile ? "grid-cols-3" : "grid-cols-2"}`}>
+          <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className="grid gap-3">
+            {allowed.length > 1 && (
+              <div data-testid="detail-line-unit">
+                <SegmentedControl
+                  label="Bill unit"
+                  testPrefix="detail-unit"
+                  value={unit}
+                  onChange={(code) => { setLineUnit(code); setQty(""); setPieces(""); }}
+                  className={
+                    allowed.length >= 4 ? "grid grid-cols-4 gap-1.5"
+                      : allowed.length === 3 ? "grid grid-cols-3 gap-1.5"
+                        : "grid grid-cols-2 gap-1.5"
+                  }
+                  options={allowed.map((code) => ({
+                    value: code,
+                    label: UNITS[code]?.label || code,
+                  }))}
+                />
+              </div>
+            )}
+            <div className={`grid gap-3 ${tile ? "grid-cols-3" : "grid-cols-2"}`}>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">{qtyFieldLabel(product)}</label>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">{qtyFieldLabel(product, unit)}</label>
               <NumberInput data-testid="detail-qty" autoFocus value={qty} onChange={(v) => setQtyField("qty", v)} className={NUM} />
             </div>
             {tile && (
@@ -891,9 +976,11 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
               </div>
             )}
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">Rate{rateSuffix(product)}</label>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Rate{rateSuffix({ unit: product.unit })}</label>
               <NumberInput ref={rateRef} data-testid="detail-rate" value={rate} onChange={setRate} className={NUM} />
             </div>
+            </div>
+            {sqftHint && <p className="text-xs text-slate-500">{sqftHint}</p>}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex min-w-0 flex-1 items-center justify-between rounded-xl bg-mint-soft px-3 py-2">

@@ -11,7 +11,7 @@ import { money, itemAmount, round2, fmtDate } from "@/lib/calc";
 import { estimateReturnSettlementDetail, formatSettlementDetail } from "@/lib/settlement";
 import {
   isBoxUnit, qtyFieldLabel, formatQtyLabel, formatAvailLabel,
-  lineSoldPieces, remainingReturnableByProduct, priorReturnsForSale,
+  lineReturnQty, remainingReturnableByProduct, priorReturnsForSale,
   remainingReturnableAmount, clampSaleQtyFields,
 } from "@/lib/units";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
@@ -205,7 +205,7 @@ export default function Returns() {
       let nextPatch = { ...patch };
       // Clamp return qty/pcs to remaining returnable pieces.
       if ("retQty" in patch || "retPieces" in patch) {
-        const avail = remainingByProduct[cur.productId] ?? lineSoldPieces(cur);
+        const avail = remainingByProduct[cur.productId] ?? lineReturnQty(cur);
         const field = "retQty" in patch ? "qty" : "pieces";
         const raw = "retQty" in patch ? patch.retQty : patch.retPieces;
         const clamped = clampSaleQtyFields({
@@ -215,6 +215,7 @@ export default function Returns() {
           field,
           raw,
           availPieces: avail,
+          lineUnit: cur.unit,
         });
         nextPatch = { retQty: clamped.qty, retPieces: clamped.pieces };
       }
@@ -382,18 +383,18 @@ export default function Returns() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Select items to return</p>
                 {rows.map((it, i) => {
                   const tile = isBoxUnit(it);
-                  const left = remainingByProduct[it.productId] ?? lineSoldPieces(it);
+                  const left = remainingByProduct[it.productId] ?? lineReturnQty(it);
                   return (
                     <div key={i} data-testid={`return-row-${i}`} className="rounded-2xl border border-border p-3">
                       <div className="flex items-center justify-between">
                         <p className="font-semibold text-slate-900">{it.name}</p>
                         <span className="text-xs text-slate-400">
-                          sold {formatQtyLabel(it)} · left {formatAvailLabel(it, left)}
+                          sold {formatQtyLabel(it)} · left {formatAvailLabel(it, left, it.unit)}
                         </span>
                       </div>
                       <div className={`mt-2 grid gap-2 ${tile ? "grid-cols-3" : "grid-cols-2"}`}>
                         <div>
-                          <label className="text-xs text-slate-500">Return {qtyFieldLabel(it).toLowerCase()}</label>
+                          <label className="text-xs text-slate-500">Return {qtyFieldLabel(it, it.unit).toLowerCase()}</label>
                           <NumberInput data-testid={`return-qty-${i}`} value={it.retQty} onChange={(v) => updRow(i, { retQty: v })} className="w-full rounded-dense border border-border px-2 py-1.5 text-right text-sm tabular-nums" />
                         </div>
                         {tile && (

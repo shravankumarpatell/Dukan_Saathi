@@ -5,12 +5,13 @@ import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { useFormFlow } from "@/hooks/useFormFlow";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import NumberInput from "@/components/NumberInput";
-import UnitToggle from "@/components/UnitToggle";
+import { AllowedUnitChips, CategorySelect, DerivedSqftHint, PackQtyField, PriceUnitSelect } from "@/components/CatalogFields";
 import TileSizeSelect from "@/components/TileSizeSelect";
 import Kbd from "@/components/Kbd";
 import { KEYS } from "@/lib/keymap";
-import { isBoxUnit, UNIT_BOX, UNIT_PIECE, applyCatalogUnitChange, normalizeProductUnitFields } from "@/lib/units";
+import { catalogShowsPpb, catalogShowsSize, applyCatalogUnitChange, applyCatalogCategoryChange, normalizeProductUnitFields, rateSuffix, stockUnitWord, isSlabProduct } from "@/lib/units";
 import { PackagePlus, UserPlus } from "lucide-react";
+import MeasureToAdd from "@/components/MeasureToAdd";
 
 /**
  * "Create on the fly" — Tally's Alt+C.
@@ -111,24 +112,23 @@ function QuickProductDialog({ initialName, onDone }) {
   const { addProduct } = useApp();
   const [f, setF] = useState({
     name: initialName, code: "", company: "", size: "",
-    unit: UNIT_BOX, piecesPerBox: "", sellPrice: "", stockQty: "", lowStockThreshold: "",
+    unit: "box", category: "tiles", allowedUnits: ["box", "piece", "sqft"],
+    piecesPerBox: "", packQty: "1", sellPrice: "", stockQty: "", lowStockThreshold: "",
   });
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const tile = isBoxUnit(f);
+  const showSize = catalogShowsSize(f);
+  const showPpb = catalogShowsPpb(f);
 
   const submit = useCallback(async () => {
     if (busyRef.current) return;
     if (!f.name.trim()) return toast.error("Item ka naam daaliye");
-    if (isBoxUnit(f) && !(Number(f.piecesPerBox) > 0)) return toast.error("Tiles ke liye pieces / box daaliye");
-    if (isBoxUnit(f) && !String(f.size || "").trim()) return toast.error("Tiles ke liye size choose karein");
+    if (catalogShowsPpb(f) && !(Number(f.piecesPerBox) > 0)) return toast.error("Tiles ke liye pieces / box daaliye");
+    if (catalogShowsSize(f) && !String(f.size || "").trim()) return toast.error("Tiles ke liye size choose karein");
     busyRef.current = true;
     setBusy(true);
     try {
-      const saved = await addProduct(normalizeProductUnitFields({
-        ...f,
-        unit: isBoxUnit(f) ? UNIT_BOX : UNIT_PIECE,
-      }));
+      const saved = await addProduct(normalizeProductUnitFields(f));
       toast.success(`${saved.name} stock me add ho gaya`);
       onDone(saved);
     } catch {
@@ -167,24 +167,36 @@ function QuickProductDialog({ initialName, onDone }) {
           </DialogTitle>
         </DialogHeader>
         <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className="grid grid-cols-2 gap-3">
-          <UnitToggle
-            value={f.unit}
-            onChange={(unit) => setF(applyCatalogUnitChange(f, unit))}
-            testId="np-unit"
+          <CategorySelect
+            value={f.category}
+            onChange={(cat) => setF(applyCatalogCategoryChange(f, cat))}
+            testId="np-category"
+            className="col-span-2"
           />
+          <PriceUnitSelect product={f} onChange={(unit) => setF(applyCatalogUnitChange(f, unit))} testId="np-unit" />
+          <AllowedUnitChips product={f} onChange={(allowedUnits) => setF({ ...f, allowedUnits })} testId="np-allowed" />
           {T("name", "Name", "col-span-2")}
           {T("code", "Code")}
           {T("company", "Company")}
-          {tile && (
+          {showSize && (
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-600">Size</label>
               <TileSizeSelect testId="np-size" value={f.size} onChange={(v) => setF({ ...f, size: v })} />
             </div>
           )}
-          {tile && N("piecesPerBox", "Pieces / box")}
-          {N("sellPrice", `Price optional (${tile ? "₹/box" : "₹/pc"})`)}
-          {N("stockQty", `Stock (${tile ? "boxes" : "pcs"})`)}
+          {showPpb && N("piecesPerBox", "Pieces / box")}
+          <PackQtyField product={f} value={f.packQty} onChange={(v) => setF({ ...f, packQty: v })} testId="np-packQty" />
+          {N("sellPrice", `Price optional (₹${rateSuffix(f)})`)}
+          {N("stockQty", isSlabProduct(f) ? `Remaining (${stockUnitWord(f)})` : `Stock (${stockUnitWord(f)})`)}
+          {isSlabProduct(f) && (
+            <MeasureToAdd
+              product={f}
+              onAdd={(qty) => setF({ ...f, stockQty: String(Math.round(((Number(f.stockQty) || 0) + qty) * 10000) / 10000) })}
+              testPrefix="np-measure"
+            />
+          )}
           {N("lowStockThreshold", "Low-stock alert")}
+          <DerivedSqftHint product={f} rate={f.sellPrice} />
         </div>
         <SaveBar busy={busy} onSave={submit} label="Add & bill me lagayein" />
       </DialogContent>

@@ -7,8 +7,9 @@ import { useVisibleOpen } from "@/context/PageKeepAliveContext";
 import { itemAmount, money } from "@/lib/calc";
 import {
   isBoxUnit, qtyFieldLabel, rateSuffix, productMetaLine, unitKindLabel, unitKindChipClass,
-  stockAvailPieces, clampSaleQtyFields, formatAvailLabel, lineSoldPieces,
+  stockAvailQty, clampSaleQtyFields, formatAvailLabel, lineSoldQty,
 } from "@/lib/units";
+import { usesPieceStock } from "@/lib/uom";
 import { useHotkeyScope, useHotkeys } from "@/hooks/useHotkeys";
 import { useFormFlow } from "@/hooks/useFormFlow";
 import { KEYS } from "@/lib/keymap";
@@ -91,16 +92,18 @@ export default function BillCartDialog({
     if (limitStock) {
       const p = products.find((x) => x.id === it.productId) || it;
       const reserved = items.reduce((s, x, idx) => (
-        idx === i || x.productId !== it.productId ? s : s + lineSoldPieces(x)
+        idx === i || x.productId !== it.productId ? s : s + lineSoldQty(x, p)
       ), 0);
-      const availPieces = Math.max(0, stockAvailPieces(p) - reserved);
-      const availLabel = formatAvailLabel(p, availPieces);
-      const product = { ...p, unit: it.unit, piecesPerBox: it.piecesPerBox };
+      const availPU = Math.max(0, stockAvailQty(p) - reserved);
+      const ppbStock = Number(p.piecesPerBox) || 1;
+      const availPieces = usesPieceStock(p) ? availPU * ppbStock : availPU;
+      const availLabel = formatAvailLabel(p, availPieces, it.unit);
+      const product = { ...p, piecesPerBox: it.piecesPerBox };
       const afterBoxes = clampSaleQtyFields({
-        product, qty: "0", pieces: "0", field: "qty", raw: nextQty, availPieces,
+        product, qty: "0", pieces: "0", field: "qty", raw: nextQty, availPieces, lineUnit: "box",
       });
       const afterPcs = clampSaleQtyFields({
-        product, qty: afterBoxes.qty, pieces: "0", field: "pieces", raw: nextPcs, availPieces,
+        product, qty: afterBoxes.qty, pieces: "0", field: "pieces", raw: nextPcs, availPieces, lineUnit: "box",
       });
       nextQty = afterPcs.qty;
       nextPcs = afterPcs.pieces;
@@ -248,7 +251,7 @@ export default function BillCartDialog({
                   </div>
                   <div className="flex shrink-0 flex-wrap items-end gap-1.5">
                     <div className={FLD}>
-                      <label className="text-[10px] leading-none text-slate-500">{qtyFieldLabel(it)}</label>
+                      <label className="text-[10px] leading-none text-slate-500">{qtyFieldLabel(it, it.unit)}</label>
                       <NumberInput
                         data-testid={`item-qty-${i}`}
                         data-row={i}
@@ -272,7 +275,7 @@ export default function BillCartDialog({
                       </div>
                     )}
                     <div className={FLD_RATE}>
-                      <label className="text-[10px] leading-none text-slate-500">Rate{rateSuffix(it)}</label>
+                      <label className="text-[10px] leading-none text-slate-500">Rate{rateSuffix({ unit: it.productUnit || it.unit })}</label>
                       <NumberInput
                         data-testid={`item-rate-${i}`}
                         data-row={i}

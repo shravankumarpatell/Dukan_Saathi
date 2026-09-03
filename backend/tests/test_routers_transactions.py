@@ -23,6 +23,9 @@ def _create_product(client, headers, **kwargs):
         "stockQty": kwargs.get("stockQty", 10),
         "lowStockThreshold": 2,
     }
+    for key in ("category", "packQty", "allowedUnits"):
+        if key in kwargs:
+            body[key] = kwargs[key]
     res = client.post("/api/products", json=body, headers=headers)
     assert res.status_code == 201, res.text
     return res.json()
@@ -435,3 +438,159 @@ class TestPaymentsAndReconcile:
     def test_missing_token_is_401(self, client):
         res = client.get("/api/shops/me")
         assert res.status_code == 401
+
+
+class TestProductUom:
+    def test_piece_product_is_sanitaryware(self, client):
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(client, headers, unit="piece")
+        assert product["category"] == "sanitaryware"
+        assert product["unit"] == "piece"
+        assert "piece" in product["allowedUnits"]
+
+    def test_box_product_allows_sqft(self, client):
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(
+            client, headers, unit="box", size="2x2 ft", piecesPerBox=4, stockQty=20, sellPrice=800,
+        )
+        assert product["category"] == "tiles"
+        assert "sqft" in product["allowedUnits"]
+
+    def test_sqft_line_converts_to_box_rate(self, client):
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(
+            client, headers,
+            name="Kajaria 2x2", unit="box", size="2x2 ft", piecesPerBox=4,
+            stockQty=20, sellPrice=800,
+        )
+        res = client.post("/api/invoices", json={
+            "type": "sale",
+            "items": [{
+                "productId": product["id"],
+                "name": product["name"],
+                "qty": 150,
+                "pieces": 0,
+                "unit": "sqft",
+                "rate": 800,
+                "piecesPerBox": 4,
+                "size": "2x2 ft",
+            }],
+            "gstEnabled": False,
+            "payments": [{"mode": "cash", "amount": 7500}],
+        }, headers=headers)
+        assert res.status_code == 201, res.text
+        inv = res.json()
+        assert inv["grandTotal"] == 7500
+        stock = _get_product(client, headers, product["id"])
+        assert stock["stockQty"] == 10.625  # 20 - 9.375
+
+    def test_pipe_ft_decrements_meters(self, client):
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(
+            client, headers,
+            name="PVC 1 inch", unit="mtr", category="plumbing_construction",
+            stockQty=10, sellPrice=50, piecesPerBox=1,
+        )
+        res = client.post("/api/invoices", json={
+            "type": "sale",
+            "items": [{
+                "productId": product["id"],
+                "name": product["name"],
+                "qty": 10,
+                "pieces": 0,
+                "unit": "ft",
+                "rate": 50,
+                "piecesPerBox": 1,
+            }],
+            "gstEnabled": False,
+            "payments": [],
+        }, headers=headers)
+        assert res.status_code == 201, res.text
+        inv = res.json()
+        meters = 10 / 3.280839895
+        assert abs(inv["grandTotal"] - round(meters * 50, 2)) < 0.02
+        stock = _get_product(client, headers, product["id"])
+        assert abs(stock["stockQty"] - (10 - meters)) < 0.01
+
+    def test_bag_kg_line(self, client):
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(
+            client, headers,
+            name="Adhesive", unit="bag", category="tile_installation",
+            packQty=20, stockQty=5, sellPrice=400, piecesPerBox=1,
+        )
+        res = client.post("/api/invoices", json={
+            "type": "sale",
+            "items": [{
+                "productId": product["id"],
+                "name": product["name"],
+                "qty": 10,
+                "pieces": 0,
+                "unit": "kg",
+                "rate": 400,
+                "piecesPerBox": 1,
+            }],
+            "gstEnabled": False,
+            "payments": [{"mode": "cash", "amount": 200}],
+        }, headers=headers)
+        assert res.status_code == 201, res.text
+        assert res.json()["grandTotal"] == 200
+        stock = _get_product(client, headers, product["id"])
+        assert stock["stockQty"] == 4.5
+
+
+class TestSlabMeasurements:
+    def test_recomputes_qty_from_grid_and_decrements_remaining_sqft(self, client):
+        headers, _ = auth_header()
+        _create_shop(client, headers)
+        product = _create_product(
+            client, headers,
+            name="S-White",
+            unit="sqft",
+            category="natural_stone",
+            allowedUnits=["sqft", "sqm"],
+            stockQty=1000,
+            sellPrice=45,
+            piecesPerBox=1,
+            size="",
+        )
+        rows = [
+            {"length": 8, "width": 8.25},
+            {"length": 9.5, "width": 9.75},
+            {"length": 10, "width": 10},
+        ]
+        res = client.post("/api/invoices", json={
+            "type": "sale",
+            "vehicleNo": "GJ-01-AB-1234",
+            "items": [{
+                "productId": product["id"],
+                "name": product["name"],
+                "qty": 1,
+                "pieces": 0,
+                "unit": "sqft",
+                "rate": 45,
+                "piecesPerBox": 1,
+                "lotNo": "L-12",
+                "measureUnit": "ft",
+                "areaUnit": "sqft",
+                "measurements": rows,
+            }],
+            "gstEnabled": False,
+            "payments": [],
+        }, headers=headers)
+        assert res.status_code == 201, res.text
+        inv = res.json()
+        assert inv["vehicleNo"] == "GJ-01-AB-1234"
+        line = inv["items"][0]
+        assert line["qty"] == 258.625
+        assert line["lotNo"] == "L-12"
+        assert len(line["measurements"]) == 3
+        assert abs(inv["grandTotal"] - 11638.13) < 0.02
+        stock = _get_product(client, headers, product["id"])
+        assert abs(stock["stockQty"] - (1000 - 258.625)) < 1e-6
+

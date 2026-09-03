@@ -18,6 +18,12 @@ class BillItemInput(BaseModel):
     rate: float = Field(default=0, ge=0)
     piecesPerBox: int = Field(default=1, ge=1)
     size: str = ""
+    productUnit: Optional[str] = None
+    packQty: Optional[float] = None
+    lotNo: str = ""
+    measureUnit: str = "ft"
+    areaUnit: str = "sqft"
+    measurements: List[dict] = Field(default_factory=list)
 
 
 class DiscountInput(BaseModel):
@@ -44,6 +50,7 @@ class CreateBillRequest(BaseModel):
     customerPhone: str = ""
     isContractor: bool = False
     siteNote: str = ""
+    vehicleNo: str = ""
 
     createdVia: str = "manual"
     language: str = "hi"
@@ -59,6 +66,7 @@ class InvoiceResponse(BaseModel):
     customerPhone: str = ""
     isContractor: bool = False
     siteNote: str = ""
+    vehicleNo: str = ""
     items: List[dict] = Field(default_factory=list)
     discount: Optional[dict] = None
     gstEnabled: bool = False

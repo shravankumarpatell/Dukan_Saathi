@@ -60,6 +60,7 @@ export default function Layout({ children }) {
 
     { keys: KEYS.gotoDashboard, label: "Dashboard", handler: () => navigate("/") },
     { keys: KEYS.gotoBill, label: "New bill", handler: () => navigate("/bill") },
+    { keys: KEYS.gotoSlab, label: "Slab estimate", handler: () => navigate("/slab") },
     { keys: KEYS.gotoStock, label: "Stock", handler: () => navigate("/inventory") },
     { keys: KEYS.gotoHistory, label: "Bill history", handler: () => navigate("/history") },
     { keys: KEYS.gotoReturns, label: "Returns", handler: () => navigate("/returns") },
@@ -287,6 +288,7 @@ function getPageTitle(pathname) {
     "/": "Dashboard",
     "/inventory": "Stock Management",
     "/bill": "New Bill",
+    "/slab": "Slab Estimate",
     "/customers": "Udhari & Customers",
     "/returns": "Returns",
     "/chat": "AI Saathi",

@@ -195,7 +195,7 @@ def score_rows(gold_rows: Sequence[Any], pred_rows: Sequence[Any]) -> MetricResu
         if diffs:
             lines.append("Field diffs: " + " | ".join(diffs))
         lines.append(
-            "qty is boxes for tiles and pieces for sanitary, never area or amount. "
+            "qty is the printed count (boxes/pieces/m/bag), never area or amount. "
             "Drop total/GST/header rows. Use closed tile sizes."
         )
 

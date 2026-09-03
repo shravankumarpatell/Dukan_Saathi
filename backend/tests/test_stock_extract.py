@@ -39,6 +39,32 @@ def test_normalize_row_sanitary():
     assert row.unit == "piece"
     assert row.size == ""
     assert row.piecesPerBox == 1
+    assert row.category == "sanitaryware"
+
+
+def test_normalize_row_maps_mtr_bag_sft():
+    pipe = normalize_row(StockExtractRow(name="CPVC pipe", unit="mtr", qty=12))
+    assert pipe.unit == "mtr"
+    assert pipe.qty == 12
+    assert pipe.category == "plumbing_construction"
+
+    bag = normalize_row(StockExtractRow(name="Tile adhesive", unit="bag", qty=10))
+    assert bag.unit == "bag"
+    assert bag.qty == 10
+    assert bag.category == "tile_installation"
+
+    sft = normalize_row(StockExtractRow(name="Kajaria", unit="sft", size="2x2", qty=150))
+    assert sft.unit == "sqft"
+    assert sft.qty == 150
+    assert sft.size == "2x2 ft"
+    assert sft.category == "tiles"
+
+
+def test_normalize_row_tile_size_implies_tiles():
+    row = normalize_row(StockExtractRow(name="Dura", unit="box", size="2x2", qty=20))
+    assert row.unit == "box"
+    assert row.qty == 20
+    assert row.category == "tiles"
 
 
 def test_sheet_user_text_includes_tables():

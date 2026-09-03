@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
@@ -20,8 +21,15 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
+
+from app.common.uom import CATEGORY_CODES, UNIT_CODES
+
+JsonList = JSON().with_variant(JSONB(), "postgresql")
+_UNIT_IN = ", ".join(f"'{c}'" for c in UNIT_CODES)
+_CAT_IN = ", ".join(f"'{c}'" for c in CATEGORY_CODES)
 
 
 class Base(DeclarativeBase):
@@ -56,7 +64,8 @@ class Shop(Base):
 class Product(Base):
     __tablename__ = "products"
     __table_args__ = (
-        CheckConstraint("unit IN ('box', 'piece')", name="products_unit_check"),
+        CheckConstraint(f"unit IN ({_UNIT_IN})", name="products_unit_check"),
+        CheckConstraint(f"category IN ({_CAT_IN})", name="products_category_check"),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -66,9 +75,12 @@ class Product(Base):
     company: Mapped[str] = mapped_column(Text, default="")
     size: Mapped[str] = mapped_column(Text, default="")
     unit: Mapped[str] = mapped_column(Text, default="box")
+    category: Mapped[str] = mapped_column(Text, default="tiles")
+    allowed_units: Mapped[list] = mapped_column(JsonList, default=list)
     pieces_per_box: Mapped[int] = mapped_column(Integer, default=1)
+    pack_qty: Mapped[float] = mapped_column(Numeric(12, 4), default=1)
     sell_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
-    stock_qty: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    stock_qty: Mapped[float] = mapped_column(Numeric(12, 4), default=0)
     low_stock_threshold: Mapped[int] = mapped_column(Integer, default=10)
 
     shop: Mapped[Shop] = relationship(back_populates="products")
@@ -111,6 +123,7 @@ class Invoice(Base):
     customer_phone: Mapped[str] = mapped_column(Text, default="")
     is_contractor: Mapped[bool] = mapped_column(Boolean, default=False)
     site_note: Mapped[str] = mapped_column(Text, default="")
+    vehicle_no: Mapped[str] = mapped_column(Text, default="")
     discount_type: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     discount_value: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
     gst_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -172,6 +185,13 @@ class InvoiceItem(Base):
     rate: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     pieces_per_box: Mapped[int] = mapped_column(Integer, default=1)
     size: Mapped[str] = mapped_column(Text, default="")
+    product_unit: Mapped[str] = mapped_column(Text, default="box")
+    pack_qty: Mapped[float] = mapped_column(Numeric(12, 4), default=1)
+    price_qty: Mapped[float] = mapped_column(Numeric(12, 4), default=0)
+    lot_no: Mapped[str] = mapped_column(Text, default="")
+    measure_unit: Mapped[str] = mapped_column(Text, default="ft")
+    area_unit: Mapped[str] = mapped_column(Text, default="sqft")
+    measurements: Mapped[list] = mapped_column(JsonList, default=list)
 
     invoice: Mapped[Invoice] = relationship(back_populates="items")
 

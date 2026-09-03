@@ -87,6 +87,23 @@ describe("applyColumnFill", () => {
     expect(next[0].size).toBe("2x4 ft");
     expect(next[1].size).toBe("");
   });
+
+  it("does not fill box onto a stone row", () => {
+    const rows = [
+      tile(1, { category: "tiles", unit: UNIT_BOX }),
+      {
+        id: 2, name: "S2", category: "natural_stone", unit: "sqft",
+        size: "", piecesPerBox: 1, company: "", qty: "10", price: "",
+        allowedUnits: ["sqft", "sqm"],
+      },
+    ];
+    const { rows: next } = applyColumnFill({
+      rows, field: "unit", value: UNIT_BOX, mode: "all",
+    });
+    expect(next[0].unit).toBe(UNIT_BOX);
+    expect(next[1].unit).toBe("sqft");
+    expect(next[1].allowedUnits).toEqual(["sqft", "sqm"]);
+  });
 });
 
 describe("fillDownFrom", () => {

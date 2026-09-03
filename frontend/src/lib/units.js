@@ -1,103 +1,183 @@
 /**
- * Product selling unit for tiles & sanitaryware shops.
+ * Catalog / bill helpers on top of the unit master (uom.js).
  *
- *  - unit "box"   → Tiles: billed as boxes + loose pieces (rate is per box)
- *  - unit "piece" → Sanitary: billed as pieces only (rate is per piece)
- *
- * Stock is stored in the product's selling unit:
- *  - tiles: stockQty = boxes (may be fractional when loose pieces exist)
- *  - sanitary: stockQty = pieces
- *
- * Canonical catalog fields (every product form must follow this):
- *  Always: unit, name, code, company, sellPrice, stockQty, lowStockThreshold
- *  Tiles only: size, piecesPerBox
- *  Sanitary: size empty, piecesPerBox always 1 (never shown)
- *
- * Bill / return lines:
- *  Always: qty (boxes or pcs), rate, amount
- *  Tiles only: pieces (loose pcs), sq-ft calculator
+ * Rate is stored per product.unit. A bill line may use another allowed unit.
+ * Box lines keep Box + Pcs + Alt+Q; every other line unit is a single qty field.
  */
 
 import { formatTileSize, normalizeTileSize } from "./tileSizes";
+import {
+  CATEGORIES,
+  allowedUnitsOf,
+  categoryMeta,
+  conversionProduct,
+  defaultAllowedUnits,
+  fromProductUnit,
+  isSlabProduct,
+  needsPackQty,
+  needsTileFields,
+  normalizeCategory,
+  normalizeUnitCode,
+  ratePerSqft,
+  soldPieces,
+  sqftPerBox,
+  sqftPerPiece,
+  suggestedUnits,
+  toProductUnit,
+  unitKind,
+  unitShort,
+  usesPieceStock,
+} from "./uom";
 
 export const UNIT_BOX = "box";
 export const UNIT_PIECE = "piece";
 
 export function normalizeUnit(unit) {
-  return unit === UNIT_PIECE ? UNIT_PIECE : UNIT_BOX;
+  return normalizeUnitCode(unit, UNIT_BOX);
 }
 
-/** True for tiles — always show Box + Pcs fields, regardless of piecesPerBox. */
+/** True when this line/SKU uses Box + loose Pcs (priced per box). */
 export function isBoxUnit(productOrItem) {
-  return normalizeUnit(productOrItem?.unit) === UNIT_BOX;
+  const u = productOrItem?.unit;
+  if (u == null || u === "") return true;
+  return normalizeUnitCode(u, UNIT_BOX) === UNIT_BOX;
 }
 
 export function isPieceUnit(productOrItem) {
-  return normalizeUnit(productOrItem?.unit) === UNIT_PIECE;
+  return normalizeUnitCode(productOrItem?.unit, UNIT_BOX) === UNIT_PIECE;
 }
 
-/** Catalog fields that exist only for tiles. Hidden + cleared for sanitary. */
 export const TILE_ONLY_CATALOG_FIELDS = ["size", "piecesPerBox"];
 
 export function isTileOnlyCatalogField(field) {
   return TILE_ONLY_CATALOG_FIELDS.includes(field);
 }
 
+export function catalogShowsSize(product) {
+  return !!(categoryMeta(product?.category || normalizeCategory(product?.category, product?.unit)).needsSize
+    || (isBoxUnit(product) && normalizeCategory(product?.category, product?.unit) === "tiles"));
+}
+
+export function catalogShowsPpb(product) {
+  const cat = normalizeCategory(product?.category, product?.unit);
+  return !!(categoryMeta(cat).needsPpb || isBoxUnit(product));
+}
+
+/** Price unit allowed for this category — never injects a leftover unit from the previous type. */
+export function catalogUnitForCategory(category, unit) {
+  const cat = normalizeCategory(category);
+  const suggested = suggestedUnits(cat);
+  const fallback = categoryMeta(cat).defaultUnit;
+  const code = unit ? normalizeUnitCode(unit, fallback) : fallback;
+  return suggested.includes(code) ? code : fallback;
+}
+
+export function applyCatalogCategoryChange(product, nextCat) {
+  const cat = normalizeCategory(nextCat);
+  const suggested = suggestedUnits(cat);
+  const unit = catalogUnitForCategory(cat, product?.unit);
+  return applyCatalogUnitChange({
+    ...product,
+    category: cat,
+    allowedUnits: suggested,
+  }, unit);
+}
+
 /**
- * Apply a Type change on a catalog form/row.
- * Sanitary: drop size, force pcs/box to 1.
- * Tiles: drop the dummy pcs/box of 1 so the cashier fills the real value.
+ * Apply a price-unit change on a catalog form/row.
+ * Piece (sanitary-style): drop size, force pcs/box to 1.
+ * Box (tiles-style): drop the dummy pcs/box of 1 so the cashier fills the real value.
  */
 export function applyCatalogUnitChange(product, nextUnit) {
-  const unit = normalizeUnit(nextUnit);
-  const tile = unit === UNIT_BOX;
+  const unit = normalizeUnitCode(nextUnit, product?.unit || UNIT_BOX);
+  const cat = normalizeCategory(product?.category, unit);
+  const meta = categoryMeta(cat);
   const prev = product?.piecesPerBox;
   const stringy = typeof prev === "string" || prev === "" || prev == null;
+  const showPpb = meta.needsPpb || unit === UNIT_BOX;
+  const showSize = meta.needsSize;
+  let allowed = Array.isArray(product?.allowedUnits) && product.allowedUnits.length
+    ? [...new Set(product.allowedUnits.map((u) => normalizeUnitCode(u, unit)))]
+    : defaultAllowedUnits(cat, unit);
+  if (!allowed.includes(unit)) allowed = [unit, ...allowed];
   return {
     ...product,
     unit,
-    piecesPerBox: tile
+    category: cat,
+    allowedUnits: allowed,
+    piecesPerBox: showPpb
       ? (Number(prev) > 1 ? prev : "")
       : (stringy ? "1" : 1),
-    size: tile ? (product?.size || "") : "",
+    size: showSize ? (product?.size || "") : "",
   };
 }
 
 export function piecesPerBoxOf(productOrItem) {
-  if (isPieceUnit(productOrItem)) return 1;
+  if (isPieceUnit(productOrItem) && !categoryMeta(productOrItem?.category).needsPpb) return 1;
   const n = Number(productOrItem?.piecesPerBox);
   return n > 0 ? n : 1;
+}
+
+export function stockOnHand(product) {
+  if (!product) return 0;
+  return (Number(product.showroomQty) || 0) + (Number(product.godownQty) || 0) + (Number(product.stockQty) || 0);
+}
+
+export function stockAvailQty(product) {
+  return Math.max(0, stockOnHand(product));
 }
 
 /** Total available stock converted to pieces (tiles: boxes × pcs/box). */
 export function stockAvailPieces(product) {
   if (!product) return 0;
-  const total = (Number(product.showroomQty) || 0) + (Number(product.godownQty) || 0) + (Number(product.stockQty) || 0);
-  if (isPieceUnit(product)) return Math.max(0, Math.round(total));
+  const total = stockOnHand(product);
+  if (isPieceUnit(product) || !usesPieceStock(product)) return Math.max(0, Math.round(total));
   return Math.max(0, Math.round(total * piecesPerBoxOf(product)));
 }
 
-/** Pieces this line item consumes (tiles: boxes×ppb + loose). */
-export function lineSoldPieces(item) {
+export function lineSoldQty(item, product) {
   if (!item) return 0;
-  if (isPieceUnit(item)) return Math.max(0, Math.round(Number(item.qty) || 0));
-  const ppb = piecesPerBoxOf(item);
-  return Math.max(0, Math.round((Number(item.qty) || 0) * ppb + (Number(item.pieces) || 0)));
+  const fields = conversionProduct(item, product || item);
+  const unit = item.unit == null || item.unit === "" ? "box" : item.unit;
+  return Math.max(0, toProductUnit(fields, unit, item.qty, item.pieces));
 }
 
-/** productId -> pieces still returnable (sold − already returned). */
+/** Pieces this line item consumes (tiles: boxes×ppb + loose). */
+export function lineSoldPieces(item, product) {
+  if (!item) return 0;
+  return Math.max(0, soldPieces(item, product || item));
+}
+
+/** Comparable qty for remaining-returnable (pieces for tiles; product.unit otherwise). */
+export function lineReturnQty(item, product) {
+  const fields = conversionProduct(item, product);
+  if (isSlabProduct(item) || isSlabProduct(product) || isSlabProduct(fields)) {
+    return lineSoldQty(item, product);
+  }
+  const lineU = item?.unit == null || item.unit === "" ? "box" : normalizeUnitCode(item.unit, "box");
+  const tileArea = unitKind(lineU) === "area" && sqftPerPiece(fields) > 0;
+  if (usesPieceStock(fields) || lineU === "box" || lineU === "piece" || tileArea) {
+    return lineSoldPieces(item, fields);
+  }
+  return lineSoldQty(item, product);
+}
+
+/** productId -> qty still returnable (sold − already returned). */
 export function remainingReturnableByProduct(originalItems, priorReturnItems) {
   const sold = {};
   for (const it of originalItems || []) {
     if (!it?.productId) continue;
-    sold[it.productId] = (sold[it.productId] || 0) + lineSoldPieces(it);
+    sold[it.productId] = (sold[it.productId] || 0) + lineReturnQty(it);
   }
   for (const it of priorReturnItems || []) {
     if (!it?.productId) continue;
-    sold[it.productId] = (sold[it.productId] || 0) - lineSoldPieces(it);
+    sold[it.productId] = (sold[it.productId] || 0) - lineReturnQty(it);
   }
   const out = {};
-  Object.entries(sold).forEach(([pid, n]) => { out[pid] = Math.max(0, Math.round(n)); });
+  Object.entries(sold).forEach(([pid, n]) => {
+    const rem = Math.max(0, n);
+    out[pid] = Math.abs(rem - Math.round(rem)) < 1e-9 ? Math.round(rem) : rem;
+  });
   return out;
 }
 
@@ -127,26 +207,56 @@ export function remainingReturnableAmount(sale, allInvoices) {
   return Math.max(0, Math.round((grand - already) * 100) / 100);
 }
 
+function sanitizeIntegerQty(raw) {
+  let v = String(raw ?? "").replace(/[^0-9.]/g, "");
+  const i = v.indexOf(".");
+  if (i !== -1) v = v.slice(0, i);
+  return v;
+}
+
+function sanitizeDecimalQty(raw) {
+  let v = String(raw ?? "").replace(/[^0-9.]/g, "");
+  const i = v.indexOf(".");
+  if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, "");
+  return v;
+}
+
 /**
  * Clamp a sale qty/pieces edit so boxes×ppb + pieces never exceeds availPieces.
  * `field` is "qty" | "pieces". Returns the next { qty, pieces } string values.
- * Pass `availPieces` to subtract qty already reserved on the bill.
  */
-export function clampSaleQtyFields({ product, qty, pieces, field, raw, availPieces }) {
-  const cleaned = sanitizeQtyRaw(raw);
-  const tile = isBoxUnit(product);
+export function clampSaleQtyFields({ product, qty, pieces, field, raw, availPieces, lineUnit }) {
+  const code = lineUnit
+    ? normalizeUnitCode(lineUnit, "box")
+    : (product?.unit == null || product?.unit === "" ? "box" : normalizeUnitCode(product.unit, "box"));
+
+  if (code !== "box") {
+    const cleaned = sanitizeDecimalQty(raw);
+    if (field === "pieces") return { qty: qty ?? "", pieces: "" };
+    if (cleaned === "" || cleaned === ".") return { qty: cleaned, pieces: "" };
+    const n = Number(cleaned);
+    if (!Number.isFinite(n)) return { qty, pieces: "" };
+    const availPU = availPieces != null && usesPieceStock(product)
+      ? availPieces / piecesPerBoxOf(product)
+      : (availPieces ?? stockAvailQty(product));
+    const max = fromProductUnit(product, code, Math.max(0, availPU));
+    const clamped = Math.min(Math.max(0, n), max > 0 ? max : 0);
+    const rounded = Math.round(clamped * 10000) / 10000;
+    return { qty: String(rounded), pieces: "" };
+  }
+
+  const cleaned = sanitizeIntegerQty(raw);
+  const tile = isBoxUnit({ unit: code });
   const ppb = piecesPerBoxOf(product);
   const avail = Math.max(0, availPieces ?? stockAvailPieces(product));
 
   if (!tile) {
-    // Sanitary: qty is pieces.
     if (cleaned === "" || cleaned === ".") return { qty: cleaned, pieces: "" };
     const n = Number(cleaned);
     if (!Number.isFinite(n)) return { qty, pieces: "" };
     return { qty: String(Math.min(Math.max(0, Math.floor(n)), avail)), pieces: "" };
   }
 
-  const curQty = field === "qty" ? cleaned : (qty ?? "");
   const curPcs = field === "pieces" ? cleaned : (pieces ?? "");
 
   if (field === "qty") {
@@ -159,7 +269,6 @@ export function clampSaleQtyFields({ product, qty, pieces, field, raw, availPiec
     return { qty: String(boxes), pieces: pieces ?? "" };
   }
 
-  // field === pieces
   if (cleaned === "" || cleaned === ".") return { qty: qty ?? "", pieces: cleaned };
   const boxesNum = Math.max(0, Math.floor(Number(qty) || 0));
   const maxPcs = Math.max(0, avail - boxesNum * ppb);
@@ -169,110 +278,156 @@ export function clampSaleQtyFields({ product, qty, pieces, field, raw, availPiec
   return { qty: qty ?? "", pieces: String(pcs) };
 }
 
-function sanitizeQtyRaw(raw) {
-  let v = String(raw ?? "").replace(/[^0-9.]/g, "");
-  const i = v.indexOf(".");
-  // Qty/pieces are whole numbers in practice — drop decimals for clamping UX.
-  if (i !== -1) v = v.slice(0, i);
-  return v;
+function fmtQtyNumber(n) {
+  const v = Number(n) || 0;
+  if (Number.isInteger(v)) return String(v);
+  return String(Math.round(v * 10000) / 10000);
 }
 
-/** Short remaining label: "12b+3p" or "7 pcs". */
-export function formatAvailLabel(product, availPieces = stockAvailPieces(product)) {
-  if (isPieceUnit(product)) return `${Math.max(0, availPieces)} pcs`;
+/** Short remaining label: "12b+3p" or "7 pcs" or "3.2 m". */
+export function formatAvailLabel(product, availPieces = stockAvailPieces(product), lineUnit) {
+  const code = lineUnit ? normalizeUnitCode(lineUnit, product?.unit || "box") : null;
+  if (code && code !== "box" && code !== "piece") {
+    const availPU = usesPieceStock(product)
+      ? (availPieces ?? 0) / piecesPerBoxOf(product)
+      : (availPieces ?? stockAvailQty(product));
+    const inLine = fromProductUnit(product, code, Math.max(0, availPU));
+    return `${fmtQtyNumber(inLine)} ${unitShort(code)}`;
+  }
+  if (isPieceUnit(product) || (code === "piece" && !isBoxUnit(product))) {
+    return `${Math.max(0, Math.round(availPieces ?? stockAvailPieces(product)))} pcs`;
+  }
+  if (!usesPieceStock(product) && !isBoxUnit(product)) {
+    return `${fmtQtyNumber(stockAvailQty(product))} ${unitShort(product?.unit)}`;
+  }
   const ppb = piecesPerBoxOf(product);
-  const boxes = Math.trunc(Math.max(0, availPieces) / ppb);
-  const pc = Math.max(0, availPieces) - boxes * ppb;
+  const pieces = Math.max(0, availPieces ?? 0);
+  const boxes = Math.trunc(pieces / ppb);
+  const pc = pieces - boxes * ppb;
   return pc > 0 ? `${boxes}b+${pc}p` : `${boxes}b`;
 }
 
-/** Short badge: "Tiles" | "Sanitary" */
 export function unitKindLabel(productOrItem) {
-  return isBoxUnit(productOrItem) ? "Tiles" : "Sanitary";
+  const cat = normalizeCategory(productOrItem?.category, productOrItem?.unit);
+  return CATEGORIES[cat]?.short || categoryMeta(cat).label;
 }
 
-/** Chip classes — mint for tiles, cool cyan for sanitary. Never amber. */
 export function unitKindChipClass(productOrItem) {
-  return isBoxUnit(productOrItem) ? "ds-chip ds-chip-tile" : "ds-chip ds-chip-sanitary";
+  const cat = normalizeCategory(productOrItem?.category, productOrItem?.unit);
+  if (cat === "tiles") return "ds-chip ds-chip-tile";
+  if (cat === "sanitaryware") return "ds-chip ds-chip-sanitary";
+  return "ds-chip ds-chip-role";
 }
 
 export const CONTRACTOR_CHIP = "ds-chip ds-chip-role";
 
-/** Form option label: "Tiles · Boxes + Pcs" | "Sanitary · Pieces" */
 export function unitOptionLabel(unit) {
-  return normalizeUnit(unit) === UNIT_BOX ? "Tiles · Boxes + Pcs" : "Sanitary · Pieces";
+  const u = normalizeUnitCode(unit, UNIT_BOX);
+  if (u === UNIT_BOX) return "Tiles · Boxes + Pcs";
+  if (u === UNIT_PIECE) return "Sanitary · Pieces";
+  return unitShort(u);
 }
 
-/** Rate field suffix */
 export function rateSuffix(productOrItem) {
-  return isBoxUnit(productOrItem) ? "/box" : "/pc";
+  return `/${unitShort(productOrItem?.productUnit || productOrItem?.unit || "box")}`;
 }
 
-/** Primary qty field label on bill/return forms */
-export function qtyFieldLabel(productOrItem) {
-  return isBoxUnit(productOrItem) ? "Box" : "Pcs";
+export function qtyFieldLabel(productOrItem, lineUnit) {
+  const u = lineUnit || productOrItem?.unit;
+  if (u == null || u === "" || normalizeUnitCode(u, "box") === "box") return "Box";
+  if (normalizeUnitCode(u, "box") === "piece") return "Pcs";
+  return unitShort(u);
 }
 
-/** Stock quantity unit word */
 export function stockUnitWord(productOrItem) {
-  return isBoxUnit(productOrItem) ? "boxes" : "pcs";
+  return unitShort(productOrItem?.unit || "box");
+}
+
+export function derivedSqftRateLabel(product, rate) {
+  const r = ratePerSqft(product, rate);
+  if (!(r > 0)) return "";
+  return `≈ ₹${Math.round(r * 100) / 100}/sq.ft`;
 }
 
 /**
  * Human stock label for lists / search.
- * Tiles with fractional stock → "12b+3p"; sanitary → "7 pcs".
  */
 export function formatStockLabel(product, piecesBreakdownFn) {
-  const total = (product.showroomQty || 0) + (product.godownQty || 0) + (product.stockQty || 0);
+  const total = stockOnHand(product);
   if (isPieceUnit(product)) return `${Math.round(total)} pcs`;
+  if (!usesPieceStock(product)) return `${fmtQtyNumber(total)} ${unitShort(product?.unit)}`;
   const ppb = piecesPerBoxOf(product);
   if (typeof piecesBreakdownFn === "function") {
     const bd = piecesBreakdownFn(total, ppb);
     return `${bd.boxes}b${bd.loose ? `+${bd.loose}p` : ""}`;
   }
-  return `${total} box`;
+  return `${fmtQtyNumber(total)} box`;
 }
 
 /**
- * Invoice / PDF qty line: "2 box + 3 pc" or "5 pcs".
- * For piece items, quantity lives in `qty` (not `pieces`).
+ * Invoice / PDF qty line: "2 box + 3 pc", "16 sq.ft", "5 pcs".
  */
 export function formatQtyLabel(item) {
-  if (isPieceUnit(item)) {
+  const unit = item?.unit == null || item.unit === "" ? "box" : normalizeUnitCode(item.unit, "box");
+  if (unit === "piece") {
     const n = Number(item.qty) || 0;
     return `${n} pcs`;
   }
-  const boxes = Number(item.qty) || 0;
-  const pcs = Number(item.pieces) || 0;
-  if (pcs > 0) return `${boxes} box + ${pcs} pc`;
-  return `${boxes} box`;
+  if (unit === "box") {
+    const boxes = Number(item.qty) || 0;
+    const pcs = Number(item.pieces) || 0;
+    if (pcs > 0) return `${boxes} box + ${pcs} pc`;
+    return `${boxes} box`;
+  }
+  return `${fmtQtyNumber(item.qty)} ${unitShort(unit)}`;
 }
 
-/** Meta line under a product name — size and pcs/box only for tiles. */
 export function productMetaLine(product, { includeKind = true } = {}) {
   const parts = [product?.code, product?.company].filter(Boolean);
-  if (isBoxUnit(product)) {
+  const cat = normalizeCategory(product?.category, product?.unit);
+  const meta = categoryMeta(cat);
+  if (product?.lotNo) parts.push(`Lot ${product.lotNo}`);
+  if (meta.needsSize || isBoxUnit(product)) {
     const size = formatTileSize(product?.size);
     if (size) parts.push(size);
-    parts.push(`${piecesPerBoxOf(product)} pcs/box`);
-    if (includeKind) parts.push("Tiles");
-  } else if (includeKind) {
-    parts.push("Sanitary");
   }
+  if (meta.needsPpb || isBoxUnit(product)) {
+    parts.push(`${piecesPerBoxOf(product)} pcs/box`);
+  }
+  if (includeKind) parts.push(unitKindLabel(product));
+  const sqft = derivedSqftRateLabel(product, product?.sellPrice);
+  if (sqft) parts.push(sqft);
   return parts.join(" · ");
 }
 
-/**
- * Normalize product fields when saving.
- * Sanitary: piecesPerBox = 1 and size cleared. Tiles keep size and ppb (min 1).
- */
 export function normalizeProductUnitFields(p) {
-  const unit = normalizeUnit(p.unit);
-  const tile = unit === UNIT_BOX;
+  const unit = normalizeUnitCode(p.unit, UNIT_BOX);
+  const category = normalizeCategory(p.category, unit);
+  const meta = categoryMeta(category);
+  let allowed = allowedUnitsOf({ ...p, unit, category });
+  if (!allowed.includes(unit)) allowed = [unit, ...allowed];
+  const showPpb = meta.needsPpb || unit === UNIT_BOX;
+  const showSize = meta.needsSize;
   return {
     ...p,
     unit,
-    piecesPerBox: tile ? Math.max(1, Number(p.piecesPerBox) || 1) : 1,
-    size: tile ? (normalizeTileSize(p.size) || String(p.size || "").trim()) : "",
+    category,
+    allowedUnits: allowed,
+    piecesPerBox: showPpb ? Math.max(1, Number(p.piecesPerBox) || 1) : 1,
+    size: showSize
+      ? (normalizeTileSize(p.size) || String(p.size || "").trim())
+      : (unit === UNIT_PIECE ? "" : String(p.size || "").trim()),
+    packQty: Math.max(0.0001, Number(p.packQty) || 1),
   };
 }
+
+export {
+  allowedUnitsOf,
+  defaultAllowedUnits,
+  isSlabProduct,
+  needsPackQty,
+  needsTileFields,
+  normalizeCategory,
+  fromProductUnit,
+  sqftPerBox,
+};
