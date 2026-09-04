@@ -38,7 +38,6 @@ const NumberInput = forwardRef(function NumberInput({ value, onChange, className
       ref={ref}
       type="text"
       inputMode="decimal"
-      enterKeyHint={props.enterKeyHint || "next"}
       pattern="[0-9]*[.]?[0-9]*"
       value={value == null || value === "" ? "" : String(value)}
       onChange={(e) => onChange(sanitizeNumber(e.target.value))}

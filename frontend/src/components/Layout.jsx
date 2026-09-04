@@ -17,7 +17,6 @@ import { LayoutDashboard, Package, Undo2, Plus, LogOut, Keyboard, Search, Ruler 
 import { signOut as signOutUser } from "@/services/auth";
 import { LOGOUT } from "@/constants/testIds/auth";
 import ThemeToggle from "@/components/ThemeToggle";
-import MobileFlowBar from "@/components/MobileFlowBar";
 
 /* ─── Mobile nav (a deliberately shorter list than the sidebar) ─── */
 const MOBILE_LEFT = [
@@ -275,8 +274,6 @@ export default function Layout({ children }) {
           </AppNavLink>
         ))}
       </nav>
-
-      <MobileFlowBar />
 
       <DraftCard />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />

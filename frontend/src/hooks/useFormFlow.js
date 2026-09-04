@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { isMobileViewport } from "@/hooks/useMediaQuery";
 
 /**
@@ -36,13 +36,6 @@ const FIELD_SELECTOR = [
 const isVisible = (el) =>
   !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
 
-export function formFlowFields(root) {
-  if (!root) return [];
-  return Array.from(root.querySelectorAll(FIELD_SELECTOR)).filter(
-    (el) => !el.hasAttribute("data-flow-skip") && !el.readOnly && isVisible(el)
-  );
-}
-
 function isCheckable(el) {
   if (!el) return false;
   const tag = (el.tagName || "").toUpperCase();
@@ -68,14 +61,13 @@ function activate(el) {
 export function useFormFlow({ onSave, onCancel, enabled = true } = {}) {
   const containerRef = useRef(null);
 
-  useLayoutEffect(() => {
-    const el = containerRef.current;
-    if (!el) return undefined;
-    el.setAttribute("data-form-flow", "");
-    return () => el.removeAttribute("data-form-flow");
-  });
-
-  const getFields = useCallback(() => formFlowFields(containerRef.current), []);
+  const getFields = useCallback(() => {
+    const root = containerRef.current;
+    if (!root) return [];
+    return Array.from(root.querySelectorAll(FIELD_SELECTOR)).filter(
+      (el) => !el.hasAttribute("data-flow-skip") && !el.readOnly && isVisible(el)
+    );
+  }, []);
 
   const focusField = useCallback((el) => {
     if (!el) return;
