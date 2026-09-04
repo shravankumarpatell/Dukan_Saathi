@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { ChevronLeft } from "lucide-react";
 import { formFlowFields } from "@/hooks/useFormFlow";
+
+const BAR_H = 44;
 
 function isFlowField(el) {
   if (!el || el.nodeType !== 1) return false;
@@ -40,12 +41,21 @@ function fireEnter(shift) {
   });
 }
 
+function readViewport() {
+  const vv = typeof window !== "undefined" ? window.visualViewport : null;
+  if (!vv) {
+    return { offsetTop: 0, height: typeof window !== "undefined" ? window.innerHeight : 0, offsetLeft: 0, width: 0, inset: 0 };
+  }
+  const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  return { offsetTop: vv.offsetTop, height: vv.height, offsetLeft: vv.offsetLeft, width: vv.width, inset };
+}
+
 /**
- * Sits just above the on-screen keyboard and replays the desktop Enter flow
- * (Next / Back / Done on the last field).
+ * Keyboard accessory: equal Back / Next|Done, glued to the visual viewport
+ * (the top of the on-screen keyboard) so page scroll does not drag it.
  */
 export default function MobileFlowBar() {
-  const [kbInset, setKbInset] = useState(0);
+  const [vp, setVp] = useState(readViewport);
   const [active, setActive] = useState(null);
 
   const syncActive = useCallback(() => {
@@ -55,21 +65,17 @@ export default function MobileFlowBar() {
 
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    const syncKb = () => {
-      if (!vv) {
-        setKbInset(0);
-        return;
-      }
-      setKbInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
-    };
-    syncKb();
-    vv?.addEventListener("resize", syncKb);
-    vv?.addEventListener("scroll", syncKb);
+    const pin = () => setVp(readViewport());
+    pin();
+    vv?.addEventListener("resize", pin);
+    vv?.addEventListener("scroll", pin);
+    window.addEventListener("scroll", pin, { passive: true });
     document.addEventListener("focusin", syncActive);
     document.addEventListener("focusout", syncActive);
     return () => {
-      vv?.removeEventListener("resize", syncKb);
-      vv?.removeEventListener("scroll", syncKb);
+      vv?.removeEventListener("resize", pin);
+      vv?.removeEventListener("scroll", pin);
+      window.removeEventListener("scroll", pin);
       document.removeEventListener("focusin", syncActive);
       document.removeEventListener("focusout", syncActive);
     };
@@ -78,39 +84,47 @@ export default function MobileFlowBar() {
   if (!active) return null;
   const root = active.closest?.("[data-form-flow]");
   if (!root) return null;
+  // Only while the keyboard is up — hide when it closes so we don't float over the page.
+  if (vp.inset < 80) return null;
+
   const fields = formFlowFields(root);
   const idx = fields.indexOf(active);
-  const last = root && idx >= 0 && idx === fields.length - 1;
-  const canBack = !root || idx > 0;
-  const bottom = kbInset > 24 ? kbInset : 76;
+  const last = idx >= 0 && idx === fields.length - 1;
+  const canBack = idx > 0;
+  const y = vp.offsetTop + vp.height - BAR_H;
+  const btn = "h-11 min-w-0 flex-1 text-[15px] font-semibold";
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 z-[70] px-3 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-2 lg:hidden"
-      style={{ bottom }}
+      className="fixed z-[80] grid grid-cols-2 lg:hidden"
+      style={{
+        top: 0,
+        left: vp.offsetLeft || 0,
+        width: vp.width || "100%",
+        height: BAR_H,
+        transform: `translate3d(0, ${y}px, 0)`,
+      }}
       data-testid="mobile-flow-bar"
     >
-      <div className="pointer-events-auto mx-auto flex max-w-md gap-2">
-        <button
-          type="button"
-          data-testid="mobile-flow-back"
-          disabled={!canBack}
-          onPointerDown={(e) => e.preventDefault()}
-          onClick={() => fireEnter(true)}
-          className="inline-flex items-center justify-center gap-1 rounded-control border border-border bg-panel px-3 py-3 text-sm font-semibold text-ink shadow-lg disabled:opacity-40"
-        >
-          <ChevronLeft className="h-4 w-4" /> Back
-        </button>
-        <button
-          type="button"
-          data-testid="mobile-flow-next"
-          onPointerDown={(e) => e.preventDefault()}
-          onClick={() => fireEnter(false)}
-          className="min-w-0 flex-1 rounded-control bg-mint py-3 text-sm font-semibold text-white shadow-lg active:scale-[0.99]"
-        >
-          {last ? "OK" : "Next"}
-        </button>
-      </div>
+      <button
+        type="button"
+        data-testid="mobile-flow-back"
+        disabled={!canBack}
+        onPointerDown={(e) => e.preventDefault()}
+        onClick={() => fireEnter(true)}
+        className={`${btn} bg-slate-200 text-ink disabled:opacity-40 dark:bg-slate-300 dark:text-slate-900`}
+      >
+        Back
+      </button>
+      <button
+        type="button"
+        data-testid="mobile-flow-next"
+        onPointerDown={(e) => e.preventDefault()}
+        onClick={() => fireEnter(false)}
+        className={`${btn} bg-mint text-white`}
+      >
+        {last ? "Done" : "Next"}
+      </button>
     </div>
   );
 }
