@@ -14,6 +14,16 @@ import { generateUdhariVusoolReceiptPDF } from "@/services/billPdf";
 import { ReceiptIndianRupee } from "lucide-react";
 import SegmentedControl from "@/components/SegmentedControl";
 
+/** Keep the typed string unless it exceeds this invoice's pending udhari. */
+function capToPending(raw, pending) {
+  const max = round2(Number(pending) || 0);
+  if (raw === "" || raw === ".") return raw;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return "";
+  if (n > max) return String(Math.round(max * 100) / 100);
+  return raw;
+}
+
 export default function PaymentDialog({ customer, bills, shop, onClose, onSubmit, onReconcile, onShowPdf }) {
   const open = useVisibleOpen(!!customer);
   const [alloc, setAlloc] = useState({});
@@ -69,6 +79,12 @@ export default function PaymentDialog({ customer, bills, shop, onClose, onSubmit
       .map(([invoiceId, amount]) => ({ invoiceId, amount: Number(amount) || 0 }))
       .filter((a) => a.amount > 0);
     if (allocations.length === 0) return toast.error("Kam se kam ek bill par amount daaliye");
+    const over = allocations.find((a) => {
+      const bill = bills.find((b) => b.id === a.invoiceId);
+      const pending = round2(Number(bill?.amountPending) || 0);
+      return a.amount > pending + 0.001;
+    });
+    if (over) return toast.error("Amount is bill ke pending udhari se zyada nahi ho sakti");
     setBusy(true);
     try {
       const result = await onSubmit(customer.id, allocations, payMode);
@@ -148,7 +164,7 @@ export default function PaymentDialog({ customer, bills, shop, onClose, onSubmit
                 </div>
                 <button type="button" data-flow-skip data-testid={`pay-bill-fill-${b.id}`} onClick={() => setAlloc((a) => ({ ...a, [b.id]: String(Math.round((b.amountPending || 0) * 100) / 100) }))} className="text-xs font-semibold text-mint-dark">Full</button>
               </div>
-              <NumberInput data-testid={`pay-bill-amt-${b.id}`} value={alloc[b.id] ?? ""} onChange={(v) => setAlloc((a) => ({ ...a, [b.id]: v }))} placeholder="Amount ₹" className="mt-2 w-full rounded-control border border-border px-3 py-2 text-right text-sm tabular-nums outline-none focus:border-mint" />
+              <NumberInput data-testid={`pay-bill-amt-${b.id}`} value={alloc[b.id] ?? ""} onChange={(v) => setAlloc((a) => ({ ...a, [b.id]: capToPending(v, b.amountPending) }))} placeholder={`Max ${money(b.amountPending)}`} className="mt-2 w-full rounded-control border border-border px-3 py-2 text-right text-sm tabular-nums outline-none focus:border-mint" />
             </div>
           ))}
           {bills.length === 0 && <p className="py-4 text-center text-sm text-ink-muted">Is customer ke koi pending bill nahi.</p>}
