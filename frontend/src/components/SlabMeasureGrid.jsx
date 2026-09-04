@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import NumberInput from "@/components/NumberInput";
 import { formatArea, rowAreaSqft } from "@/lib/slab";
 import { SQM_TO_SQFT, unitShort } from "@/lib/uom";
@@ -32,25 +32,8 @@ export default function SlabMeasureGrid({
 }) {
   const rootRef = useRef(null);
   const pendingFocusRef = useRef(null);
-  const [active, setActive] = useState(null);
-  const [kbInset, setKbInset] = useState(0);
   const view = pageSize > 0 ? rows.slice(offset, offset + pageSize) : rows;
   const absIndex = (i) => offset + i;
-
-  useEffect(() => {
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    if (!vv) return undefined;
-    const sync = () => {
-      setKbInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
-    };
-    sync();
-    vv.addEventListener("resize", sync);
-    vv.addEventListener("scroll", sync);
-    return () => {
-      vv.removeEventListener("resize", sync);
-      vv.removeEventListener("scroll", sync);
-    };
-  }, []);
 
   const focusCell = useCallback((abs, field) => {
     const el = rootRef.current?.querySelector(
@@ -59,7 +42,6 @@ export default function SlabMeasureGrid({
     if (el) {
       el.focus();
       el.scrollIntoView({ block: "nearest", inline: "nearest" });
-      setActive({ abs, field });
       pendingFocusRef.current = null;
       return;
     }
@@ -127,8 +109,6 @@ export default function SlabMeasureGrid({
     onChange(rows.filter((_, i) => i !== index));
   };
 
-  const showNextBar = !!active;
-
   return (
     <div ref={rootRef} className="space-y-2">
       <div className="max-h-[min(52vh,28rem)] overflow-auto rounded-lg border border-border">
@@ -156,7 +136,6 @@ export default function SlabMeasureGrid({
                       autoComplete="off"
                       value={r.length}
                       onChange={(v) => setCell(abs, "length", v)}
-                      onFocus={() => setActive({ abs, field: "length" })}
                       onKeyDown={(e) => handleCellKeyDown(e, abs, "length")}
                       className={CELL}
                     />
@@ -168,7 +147,6 @@ export default function SlabMeasureGrid({
                       autoComplete="off"
                       value={r.width}
                       onChange={(v) => setCell(abs, "width", v)}
-                      onFocus={() => setActive({ abs, field: "width" })}
                       onKeyDown={(e) => handleCellKeyDown(e, abs, "width")}
                       className={CELL}
                     />
@@ -206,23 +184,6 @@ export default function SlabMeasureGrid({
         >
           <Plus className="h-3.5 w-3.5" /> Add {Math.max(10, minRows)} rows
         </button>
-      ) : null}
-      {showNextBar ? (
-        <div
-          className="fixed inset-x-0 z-[70] px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 lg:hidden"
-          style={{ bottom: Math.max(kbInset, 72) }}
-        >
-          <button
-            type="button"
-            data-flow-skip
-            data-testid={`${testPrefix}-next`}
-            onPointerDown={(e) => e.preventDefault()}
-            onClick={() => active && advance(active.abs, active.field)}
-            className="w-full rounded-control bg-mint py-3 text-sm font-semibold text-white shadow-lg active:scale-[0.99]"
-          >
-            Next
-          </button>
-        </div>
       ) : null}
     </div>
   );

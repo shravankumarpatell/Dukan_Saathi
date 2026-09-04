@@ -25,6 +25,12 @@ export function useMediaQuery(query) {
   return matches;
 }
 
+/** True below Tailwind `lg` (1024px). Sync — safe to call inside effects (not during SSR). */
+export function isMobileViewport() {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(max-width: 1023px)").matches;
+}
+
 /** Tailwind `lg` breakpoint and below — where we swap grids for stacked cards. */
 export function useIsMobile() {
   return useMediaQuery("(max-width: 1023px)");

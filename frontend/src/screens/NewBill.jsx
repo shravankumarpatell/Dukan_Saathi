@@ -885,6 +885,13 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
   // Enter through fields; Enter on Rate adds the item (this dialog's primary action).
   const flow = useFormFlow({ onSave: submit, onCancel: onClose });
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const t = setTimeout(() => flow.focusFirst(), 60);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, product?.id]);
+
   if (!product) return null;
 
   const amount = itemAmount({
@@ -967,7 +974,7 @@ function ItemDetailsDialog({ product, type, reservedPieces = 0, onClose, onAdd }
             <div className={`grid gap-3 ${tile ? "grid-cols-3" : "grid-cols-2"}`}>
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-600">{qtyFieldLabel(product, unit)}</label>
-              <NumberInput data-testid="detail-qty" autoFocus value={qty} onChange={(v) => setQtyField("qty", v)} className={NUM} />
+              <NumberInput data-testid="detail-qty" value={qty} onChange={(v) => setQtyField("qty", v)} className={NUM} />
             </div>
             {tile && (
               <div>

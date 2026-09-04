@@ -564,7 +564,7 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
     : `Sab pe lagaao (${eligibleRows.length})`;
 
   return (
-    <div className="ds-panel overflow-hidden" ref={tableRef}>
+    <div className="ds-panel overflow-hidden" ref={tableRef} data-form-flow="">
       {rows.length > 0 && (
         <div className="space-y-2 border-b border-slate-100 bg-slate-50/70 p-3" data-testid="bulk-edit-bar">
           <div className="flex items-center justify-between gap-2">
