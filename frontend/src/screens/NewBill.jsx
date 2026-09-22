@@ -8,10 +8,18 @@ import SqftDialog from "@/components/SqftDialog";
 import NumberInput from "@/components/NumberInput";
 import Kbd from "@/components/Kbd";
 import SegmentedControl from "@/components/SegmentedControl";
-import { generateBillPDF } from "@/services/billPdf";
+import { billPdfFilename, generateBillPDF } from "@/services/billPdf";
+import { downloadBillPdf } from "@/lib/billsFolder";
+import {
+  buildBillWaText,
+  firstNonEmptyPhone,
+  openWhatsAppTab,
+  shouldAutoOpenWhatsApp,
+} from "@/lib/whatsapp";
 import PdfViewerDialog from "@/components/PdfViewerDialog";
 import { usePdfPreview } from "@/hooks/usePdfPreview";
 import { billLimitError, computeBillTotals, itemAmount, money, rateFromAmount, round2, todayISO } from "@/lib/calc";
+import { isTextEntry, previousTextField } from "@/lib/keepFieldFocus";
 import { sanitizeNumber } from "@/components/NumberInput";
 import {
   isBoxUnit, qtyFieldLabel, rateSuffix, productMetaLine, unitKindLabel, unitKindChipClass,
@@ -38,7 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calculator, Save, Eye, ShoppingCart, Eraser } from "lucide-react";
+import { Calculator, Save, Eye, ShoppingCart, Eraser, Plus, X } from "lucide-react";
 
 const NUM = "w-full rounded-control border border-border bg-white px-3 py-2 text-sm text-right tabular-nums outline-none hover:border-mint focus:border-mint";
 const SEL = "rounded-control border border-border bg-white px-2 py-1.5 text-sm outline-none hover:border-mint focus:border-mint";
@@ -85,6 +93,23 @@ export default function NewBill() {
   const [gstEnabled, setGstEnabled] = useState(s?.gstEnabled ?? (shop?.gstEnabled ?? true));
   const [gstRate, setGstRate] = useState(s?.gstRate ?? 18);
   const [discount, setDiscount] = useState(s?.discount || { type: "flat", value: "" });
+  const [roundOffManual, setRoundOffManual] = useState(!!s?.roundOffManual);
+  const [roundOffInput, setRoundOffInput] = useState(s?.roundOffInput ?? "");
+  const chargeSeq = useRef(
+    Math.max(1, ...((s?.charges || []).map((c) => Number(c.id) || 0)), 0) + 1,
+  );
+  const focusChargeId = useRef(null);
+  const pendingFocusEl = useRef(null);
+  const [charges, setCharges] = useState(() => {
+    const saved = (s?.charges || []).map((c, i) => ({
+      id: c.id || i + 1,
+      label: c.label || "",
+      amount: c.amount ?? "",
+    }));
+    // One row stays in the Enter chain after Discount, even before any amount.
+    if (saved.length) return saved;
+    return [{ id: chargeSeq.current++, label: "", amount: "" }];
+  });
   const [pay, setPay] = useState(s?.pay || { cash: "", online: "" });
   const [selectedCustomer, setSelectedCustomer] = useState(s?.selectedCustomer || null);
   const [useCredit, setUseCredit] = useState(s?.useCredit || false);
@@ -156,10 +181,53 @@ export default function NewBill() {
   useEffect(() => {
     saveDraft({
       items, customerName, customerPhone, isContractor, siteNote, vehicleNo,
-      gstEnabled, gstRate, discount, pay, selectedCustomer, useCredit,
+      gstEnabled, gstRate, discount, charges, roundOffManual, roundOffInput, pay, selectedCustomer, useCredit,
       focusTestId: focusTestIdRef.current,
     });
-  }, [items, customerName, customerPhone, isContractor, siteNote, vehicleNo, gstEnabled, gstRate, discount, pay, selectedCustomer, useCredit]);
+  }, [items, customerName, customerPhone, isContractor, siteNote, vehicleNo, gstEnabled, gstRate, discount, charges, roundOffManual, roundOffInput, pay, selectedCustomer, useCredit]);
+
+  useEffect(() => {
+    const id = focusChargeId.current;
+    if (id != null) {
+      focusChargeId.current = null;
+      pendingFocusEl.current = null;
+      const el = pageRef.current?.querySelector(`[data-charge-id="${id}"]`);
+      el?.focus();
+      return;
+    }
+    const el = pendingFocusEl.current;
+    pendingFocusEl.current = null;
+    if (!el) return undefined;
+    const place = () => {
+      if (!el.isConnected) return;
+      el.focus();
+      const len = el.value?.length ?? 0;
+      try { el.setSelectionRange(len, len); } catch { /* not a text caret */ }
+    };
+    place();
+    const frame = requestAnimationFrame(place);
+    return () => cancelAnimationFrame(frame);
+  }, [charges]);
+
+  const removeCharge = (id) => {
+    const root = flow.containerRef.current;
+    const rowEl = root?.querySelector(`[data-charge-row="${id}"]`);
+    const active = document.activeElement;
+    const caretInRow = !!(rowEl && active instanceof Element && rowEl.contains(active));
+    if (caretInRow) {
+      const fields = Array.from(root.querySelectorAll("input, textarea")).filter(
+        (el) => isTextEntry(el) && !el.disabled && !el.readOnly,
+      );
+      pendingFocusEl.current = previousTextField(fields, active, rowEl);
+    }
+    setCharges((rows) => {
+      const next = rows.filter((row) => row.id !== id);
+      if (next.length) return next;
+      const blankId = chargeSeq.current++;
+      if (caretInRow && !pendingFocusEl.current) focusChargeId.current = blankId;
+      return [{ id: blankId, label: "", amount: "" }];
+    });
+  };
 
   const focusSearch = useCallback(() => setTimeout(() => searchRef.current?.focus(), 60), []);
   const focusCartBtn = useCallback(() => setTimeout(() => cartBtnRef.current?.focus(), 80), []);
@@ -279,6 +347,8 @@ export default function NewBill() {
   const reset = useCallback(() => {
     setItems([]); setCustomerName(""); setCustomerPhone(""); setIsContractor(false); setSiteNote(""); setVehicleNo("");
     setGstEnabled(shop?.gstEnabled ?? true); setGstRate(18); setDiscount({ type: "flat", value: "" });
+    setCharges([{ id: chargeSeq.current++, label: "", amount: "" }]);
+    setRoundOffManual(false); setRoundOffInput("");
     setPay({ cash: "", online: "" }); setSelectedCustomer(null); setUseCredit(false);
     setCartOpen(false);
     setDetailsFor(null);
@@ -349,12 +419,14 @@ export default function NewBill() {
   const draftBase = useMemo(() => ({
     kind: type, type, items, gstEnabled, gstRate: Number(gstRate),
     discount: Number(discount.value) > 0 ? discount : null,
+    charges,
+    roundOff: roundOffManual ? roundOffInput : null,
     payments: [
       ...(Number(pay.cash) > 0 ? [{ mode: "cash", amount: Number(pay.cash) }] : []),
       ...(Number(pay.online) > 0 ? [{ mode: "online", amount: Number(pay.online) }] : []),
     ],
     customerName, customerPhone, isContractor, siteNote, vehicleNo, createdVia: "manual", date: todayISO(), language: "hi",
-  }), [type, items, gstEnabled, gstRate, discount, pay, customerName, customerPhone, isContractor, siteNote, vehicleNo]);
+  }), [type, items, gstEnabled, gstRate, discount, charges, roundOffManual, roundOffInput, pay, customerName, customerPhone, isContractor, siteNote, vehicleNo]);
 
   const totals = computeBillTotals(draftBase);
   const creditAvail = selectedCustomer?.storeCredit || 0;
@@ -475,13 +547,33 @@ export default function NewBill() {
     }
     if (saving) return;
     setSaving(true);
+    const phone = firstNonEmptyPhone(customerPhone, selectedCustomer?.phone);
+    const wantWa = shouldAutoOpenWhatsApp(shop, phone);
     try {
       const { invoice, customer } = await commitBill(buildDraft());
-      showPdf(generateBillPDF({ shop, invoice, customer: customer || { name: invoice.customerName } }, "bloburl"));
+      const party = customer || selectedCustomer || { name: invoice.customerName || customerName || "Walk-in" };
+      const blob = generateBillPDF({ shop, invoice, customer: party }, "blob");
+      const filename = billPdfFilename({ invoice, customer: party });
+      downloadBillPdf(blob, filename);
+      if (wantWa) {
+        const opened = openWhatsAppTab({
+          phone,
+          text: buildBillWaText({
+            shopName: shop?.name,
+            invoiceNo: invoice.invoiceNo,
+            grandTotal: invoice.grandTotal,
+            amountPaid: invoice.amountPaid,
+            amountPending: invoice.amountPending,
+          }),
+        });
+        if (!opened.opened) toast.message("WhatsApp app nahi khula. Windows WhatsApp install karein.");
+      }
       toast.success(`${invoice.invoiceNo} save ho gaya`);
       reset();
-      focusCustomerAfterSave();
-    } catch (e) { toast.error(e?.message || "Save nahi hua, dobara koshish karein"); } finally { setSaving(false); }
+      focusCustomer();
+    } catch (e) {
+      toast.error(e?.message || "Save nahi hua, dobara koshish karein");
+    } finally { setSaving(false); }
   };
 
   /* ── Keyboard ────────────────────────────────────────────────────────────
@@ -509,18 +601,6 @@ export default function NewBill() {
 
   return (
     <div ref={pageRef} className="space-y-4 ds-fade pb-10" data-testid="new-bill-page">
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <button
-          type="button"
-          data-testid="clear-bill-btn"
-          data-flow-skip
-          onClick={requestClear}
-          className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 active:scale-95"
-        >
-          <Eraser className="h-4 w-4" /> Clear <Kbd keys={KEYS.clearBill} />
-        </button>
-      </div>
-
       <div ref={flow.containerRef} onKeyDown={flow.handleKeyDown} className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <div className="ds-panel p-4">
@@ -623,14 +703,61 @@ export default function NewBill() {
 
         <div className="space-y-4">
           <div className="ds-panel p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <label className="text-sm font-semibold text-slate-700">GST</label>
-              <label className="flex items-center gap-2 rounded-control px-1 py-0.5 text-sm hover:bg-mint-soft has-[:focus-visible]:bg-mint-soft">
-                <input data-testid="gst-toggle" type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} />
-                <Kbd keys={KEYS.toggleCheckbox} />
-                {gstEnabled && <select data-testid="gst-rate" value={gstRate} onChange={(e) => setGstRate(e.target.value)} className={SEL}>{[0,5,12,18,28,40].map((r) => <option key={r} value={r}>{r}%</option>)}</select>}
-              </label>
+            <div className="mb-3">
+              <label className="text-xs font-semibold text-slate-600">Additional charges</label>
+              {charges.map((c, i) => {
+                const onlyBlank = charges.length === 1 && !String(c.label || "").trim() && !String(c.amount || "").trim();
+                return (
+                  <div key={c.id} data-charge-row={c.id} className="mt-1.5 flex gap-2">
+                    <input
+                      data-testid={`charge-label-${i}`}
+                      data-charge-id={c.id}
+                      value={c.label}
+                      maxLength={40}
+                      placeholder="Loading, transport…"
+                      onChange={(e) => {
+                        const label = e.target.value;
+                        setCharges((rows) => rows.map((row) => (row.id === c.id ? { ...row, label } : row)));
+                      }}
+                      className="min-w-0 flex-1 rounded-control border border-border bg-white px-3 py-2 text-sm outline-none hover:border-mint focus:border-mint"
+                    />
+                    <NumberInput
+                      data-testid={`charge-amount-${i}`}
+                      value={c.amount}
+                      onChange={(v) => setCharges((rows) => rows.map((row) => (row.id === c.id ? { ...row, amount: v } : row)))}
+                      className="w-28 shrink-0 rounded-control border border-border bg-white px-3 py-2 text-right text-sm tabular-nums outline-none hover:border-mint focus:border-mint"
+                    />
+                    {!onlyBlank && (
+                      <button
+                        type="button"
+                        data-testid={`charge-remove-${i}`}
+                        aria-label="Remove charge"
+                        onClick={() => removeCharge(c.id)}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-border text-slate-500 hover:bg-rose-50 hover:text-rose-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                data-testid="add-charge-btn"
+                data-flow-field
+                disabled={charges.length >= 12}
+                onClick={() => {
+                  if (charges.length >= 12) return;
+                  const id = chargeSeq.current++;
+                  focusChargeId.current = id;
+                  setCharges((rows) => [...rows, { id, label: "", amount: "" }]);
+                }}
+                className="mt-1.5 inline-flex items-center gap-1 rounded-control px-1 py-1 text-xs font-semibold text-mint-dark hover:bg-mint-soft focus:bg-mint-soft disabled:opacity-40"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add another <Kbd keys={KEYS.toggleCheckbox} />
+              </button>
             </div>
+
             <div className="mb-3">
               <label className="text-xs font-semibold text-slate-600">Discount</label>
               <div className="mt-1 flex gap-2">
@@ -667,10 +794,39 @@ export default function NewBill() {
               </div>
             </div>
 
+            <div className="mb-3">
+              <label className="text-xs font-semibold text-slate-600" htmlFor="round-off">Round off</label>
+              <NumberInput
+                id="round-off"
+                data-testid="round-off"
+                allowNegative
+                value={roundOffManual ? roundOffInput : String(totals.roundOff ?? 0)}
+                onChange={(v) => {
+                  if (v === "" || v === "-" || v === "." || v === "-.") {
+                    setRoundOffManual(false);
+                    setRoundOffInput("");
+                    return;
+                  }
+                  setRoundOffManual(true);
+                  setRoundOffInput(v);
+                }}
+                onBlur={() => {
+                  if (!roundOffManual) return;
+                  const snapped = String(totals.roundOff ?? 0);
+                  setRoundOffInput(snapped);
+                }}
+                className={NUM}
+              />
+            </div>
+
             <div className="space-y-1.5 border-t border-slate-100 pt-3 text-sm">
               <Row l="Subtotal" v={money(totals.subtotal)} />
+              {(totals.charges || []).map((c, i) => (
+                <Row key={`charge-line-${i}`} l={c.label} v={money(c.amount)} />
+              ))}
               {totals.discountOff > 0 && <Row l="Discount" v={"- " + money(totals.discountOff)} />}
               {totals.gstRate > 0 && <Row l={`GST ${totals.gstRate}%`} v={money(totals.gstAmount)} />}
+              {Math.abs(Number(totals.roundOff) || 0) > 0.001 && <Row l="Round off" v={money(totals.roundOff)} />}
               <div className="flex justify-between border-t border-slate-200 pt-2 font-display text-lg font-bold text-slate-900"><span>Total</span><span data-testid="bill-grand-total">{money(totals.grandTotal)}</span></div>
             </div>
           </div>
@@ -711,6 +867,15 @@ export default function NewBill() {
             <button data-testid="preview-bill-btn" onClick={preview} className="flex items-center justify-center gap-2 rounded-control border border-mint/40 bg-mint-soft px-4 py-3.5 font-bold text-mint-dark transition-transform active:scale-95"><Eye className="h-5 w-5" /> Preview <Kbd keys={KEYS.preview} /></button>
             <button data-testid="confirm-save-btn" onClick={save} disabled={saving} className="flex items-center justify-center gap-2 rounded-control bg-mint px-4 py-3.5 font-bold text-white shadow-md transition-transform active:scale-95 hover:bg-mint-dark disabled:opacity-60"><Save className="h-5 w-5" /> {saving ? "…" : "Save"} <Kbd keys={KEYS.save} tone="dark" /></button>
           </div>
+          <button
+            type="button"
+            data-testid="clear-bill-btn"
+            data-flow-skip
+            onClick={requestClear}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100 active:scale-95"
+          >
+            <Eraser className="h-4 w-4" /> Clear <Kbd keys={KEYS.clearBill} />
+          </button>
         </div>
       </div>
 

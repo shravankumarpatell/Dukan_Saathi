@@ -97,6 +97,43 @@ export function genInvoiceNo(seq, gstEnabled, prefix) {
   return `${p}${yr}${nn}`;
 }
 
+/** Labeled extras (loading, transport). Zero amounts dropped. Added after GST. */
+export function normalizeCharges(raw) {
+  const rows = Array.isArray(raw) ? raw.slice(0, 12) : [];
+  const out = [];
+  for (const row of rows) {
+    const amount = round2(Number(row?.amount) || 0);
+    if (amount <= 0) continue;
+    const label = String(row?.label || "").trim().slice(0, 40) || "Charge";
+    out.push({ label, amount });
+  }
+  return out;
+}
+
+const MAX_ROUND_OFF = 999.99;
+
+/** Nearest rupee, half up. 100.50 → 101, 100.40 → 100. */
+export function nearestRupee(n) {
+  const v = round2(n);
+  return Math.sign(v) * Math.round(Math.abs(v));
+}
+
+/** Paise adjustment that lands on a whole rupee. Empty input means this value. */
+export function autoRoundOff(before) {
+  const base = round2(before);
+  return round2(nearestRupee(base) - base);
+}
+
+export function resolveRoundOff(before, raw) {
+  const base = round2(before);
+  if (raw == null || raw === "" || raw === "-" || raw === "." || raw === "-.") return autoRoundOff(base);
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return autoRoundOff(base);
+  const whole = nearestRupee(base + n);
+  const off = round2(whole - base);
+  return Math.max(-MAX_ROUND_OFF, Math.min(MAX_ROUND_OFF, off));
+}
+
 export function computeBillTotals(draft) {
   const items = draft.items || [];
   const subtotal = round2(items.reduce((s, it) => s + itemAmount(it), 0));
@@ -112,14 +149,18 @@ export function computeBillTotals(draft) {
   const taxable = round2(Math.max(0, subtotal - discountOff));
   const gstRate = draft.gstEnabled ? (Number(draft.gstRate) || GST_DEFAULT) : 0;
   const gstAmount = round2(taxable * (gstRate / 100));
-  const grandTotal = round2(taxable + gstAmount);
+  const charges = normalizeCharges(draft.charges);
+  const chargesTotal = round2(charges.reduce((s, c) => s + c.amount, 0));
+  const beforeRound = round2(taxable + gstAmount + chargesTotal);
+  const roundOff = resolveRoundOff(beforeRound, draft.roundOff);
+  const grandTotal = round2(beforeRound + roundOff);
   const payments = draft.payments || [];
   const amountPaid = round2(payments.reduce((s, p) => s + (Number(p.amount) || 0), 0));
   const amountPending = round2(Math.max(0, grandTotal - amountPaid));
   let paymentStatus = "paid";
   if (amountPending > 0.5 && amountPaid > 0.5) paymentStatus = "partial";
   else if (amountPending > 0.5) paymentStatus = "pending";
-  return { subtotal, discountOff, taxable, gstRate, gstAmount, grandTotal, amountPaid, amountPending, paymentStatus };
+  return { subtotal, discountOff, taxable, gstRate, gstAmount, charges, chargesTotal, beforeRound, roundOff, grandTotal, amountPaid, amountPending, paymentStatus };
 }
 
 /** @returns {string|null} Hindi error message when totals exceed DB limit */

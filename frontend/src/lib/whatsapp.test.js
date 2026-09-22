@@ -28,7 +28,7 @@ test("waMeUrl encodes text and returns null when phone is empty or incomplete", 
   expect(waMeUrl("", "hello")).toBeNull();
   expect(waMeUrl("98765", "hello")).toBeNull();
   const url = waMeUrl("9876543210", "Bill GST1\nTotal: Rs 1,000");
-  expect(url).toMatch(/^https:\/\/wa\.me\/919876543210\?text=/);
+  expect(url).toMatch(/^whatsapp:\/\/send\?phone=919876543210&text=/);
   expect(url).toContain(encodeURIComponent("Bill GST1\nTotal: Rs 1,000"));
   expect(url).not.toContain("₹");
 });
@@ -105,7 +105,9 @@ test("Hinglish templates use Rs not rupee sign", () => {
   expect(ping).toContain("Udhari: Rs");
 });
 
-test("openWhatsAppTab uses a preopened tab and closes it when there is no URL", () => {
+test("openWhatsAppTab launches the desktop app and closes a leftover blank tab", () => {
+  const open = jest.spyOn(window, "open");
+  const click = jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   const tab = { location: "about:blank", close: jest.fn() };
   const opened = openWhatsAppTab({
     phone: "9876543210",
@@ -114,32 +116,36 @@ test("openWhatsAppTab uses a preopened tab and closes it when there is no URL", 
   });
   expect(opened.opened).toBe(true);
   expect(opened.blocked).toBe(false);
-  expect(tab.location).toMatch(/^https:\/\/wa\.me\/919876543210/);
-  expect(tab.close).not.toHaveBeenCalled();
+  expect(opened.url).toMatch(/^whatsapp:\/\/send\?phone=919876543210/);
+  expect(tab.location).toBe("about:blank");
+  expect(tab.close).toHaveBeenCalled();
+  expect(open).not.toHaveBeenCalled();
+  expect(click).toHaveBeenCalled();
 
   const blank = { location: "about:blank", close: jest.fn() };
   const skipped = openWhatsAppTab({ phone: "98765", text: "hello", preopened: blank });
   expect(skipped.opened).toBe(false);
   expect(skipped.url).toBeNull();
   expect(blank.close).toHaveBeenCalled();
+  open.mockRestore();
+  click.mockRestore();
 });
 
-test("openWhatsAppTab reports blocked when window.open returns null", () => {
-  const orig = window.open;
-  window.open = jest.fn(() => null);
+test("openWhatsAppTab does not open a browser tab", () => {
+  const open = jest.spyOn(window, "open");
+  const click = jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   const result = openWhatsAppTab({ phone: "9876543210", text: "hi" });
-  expect(result.opened).toBe(false);
-  expect(result.blocked).toBe(true);
-  expect(result.url).toMatch(/^https:\/\/wa\.me\/919876543210/);
-  window.open = orig;
+  expect(result.opened).toBe(true);
+  expect(result.blocked).toBe(false);
+  expect(result.url).toMatch(/^whatsapp:\/\/send\?phone=919876543210/);
+  expect(open).not.toHaveBeenCalled();
+  open.mockRestore();
+  click.mockRestore();
 });
 
-test("beginWhatsAppOpen does not open a tab when the shop toggle is off", () => {
+test("beginWhatsAppOpen never opens a browser tab", () => {
   window.open = jest.fn(() => ({ location: "about:blank", close: jest.fn() }));
   expect(beginWhatsAppOpen({ whatsappAfterSave: false }, "9876543210")).toBeNull();
-  expect(beginWhatsAppOpen({ whatsappAfterSave: true }, "98765")).toBeNull();
+  expect(beginWhatsAppOpen({ whatsappAfterSave: true }, "9876543210")).toBeNull();
   expect(window.open).not.toHaveBeenCalled();
-  const tab = beginWhatsAppOpen({ whatsappAfterSave: true }, "9876543210");
-  expect(window.open).toHaveBeenCalledWith("about:blank", "_blank");
-  expect(tab).toBeTruthy();
 });

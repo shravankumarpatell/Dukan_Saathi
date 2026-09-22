@@ -129,6 +129,66 @@ class TestComputeBillTotals:
         assert t["discountOff"] == 100  # 10% of 1000
         assert t["grandTotal"] == 1062  # (1000-100)*1.18
 
+    def test_additional_charges_after_gst(self):
+        draft = {
+            "items": [{"qty": 1, "rate": 1000, "unit": "box", "piecesPerBox": 1}],
+            "gstEnabled": True,
+            "gstRate": 18,
+            "charges": [
+                {"label": "Loading", "amount": 100},
+                {"label": "  ", "amount": 50},
+                {"label": "Zero", "amount": 0},
+            ],
+            "payments": [],
+        }
+        t = compute_bill_totals(draft)
+        assert t["gstAmount"] == 180
+        assert t["charges"] == [
+            {"label": "Loading", "amount": 100},
+            {"label": "Charge", "amount": 50},
+        ]
+        assert t["chargesTotal"] == 150
+        assert t["grandTotal"] == 1330  # 1000 + 180 GST + 150, charges not taxed
+
+    def test_auto_round_off_nearest_rupee(self):
+        down = compute_bill_totals({
+            "items": [{"qty": 1, "rate": 100.4, "unit": "piece", "piecesPerBox": 1}],
+            "gstEnabled": False,
+            "payments": [],
+        })
+        assert down["beforeRound"] == 100.4
+        assert down["roundOff"] == -0.4
+        assert down["grandTotal"] == 100
+
+        up = compute_bill_totals({
+            "items": [{"qty": 1, "rate": 100.5, "unit": "piece", "piecesPerBox": 1}],
+            "gstEnabled": False,
+            "payments": [],
+        })
+        assert up["roundOff"] == 0.5
+        assert up["grandTotal"] == 101
+
+    def test_manual_round_off_snaps_to_whole_rupee(self):
+        t = compute_bill_totals({
+            "items": [{"qty": 1, "rate": 100.4, "unit": "piece", "piecesPerBox": 1}],
+            "gstEnabled": False,
+            "roundOff": 0.18,
+            "payments": [],
+        })
+        # 100.40 + 0.18 = 100.58 → nearest ₹101, so round-off becomes +0.60
+        assert t["roundOff"] == 0.6
+        assert t["grandTotal"] == 101
+        assert t["grandTotal"] == int(t["grandTotal"])
+
+        keep = compute_bill_totals({
+            "items": [{"qty": 1, "rate": 100.4, "unit": "piece", "piecesPerBox": 1}],
+            "gstEnabled": False,
+            "roundOff": 1.6,
+            "payments": [],
+        })
+        assert keep["roundOff"] == 1.6
+        assert keep["grandTotal"] == 102
+
     def test_multiple_items(self):
         draft = {
             "items": [

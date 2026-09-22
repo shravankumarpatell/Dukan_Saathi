@@ -16,6 +16,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ErrorState from "@/components/ErrorState";
 import GlobalErrorListeners from "@/components/GlobalErrorListeners";
+import { installKeepFieldFocus } from "@/lib/keepFieldFocus";
 
 function BootError({ error, onRetry, onLogout }) {
   return (
@@ -96,6 +97,8 @@ function ThemedToaster() {
 }
 
 export default function App() {
+  useEffect(() => installKeepFieldFocus(), []);
+
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return undefined;
     const register = () => {

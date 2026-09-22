@@ -414,8 +414,10 @@ export function generateBillPDF({ shop, invoice, customer }, output = "bloburl")
     }
   } else {
     trow("Subtotal", num(totals.subtotal));
+    (totals.charges || []).forEach((c) => trow(c.label || "Charge", num(c.amount)));
     if (totals.discountOff > 0) trow("Discount", "- " + num(totals.discountOff));
     if (totals.gstRate > 0) trow(`GST @ ${totals.gstRate}%`, num(totals.gstAmount));
+    if (Math.abs(Number(totals.roundOff) || 0) > 0.001) trow("Round off", num(totals.roundOff));
     yy += 6; doc.setDrawColor(190); doc.setLineWidth(0.8); doc.line(lx, yy, rx, yy); doc.setLineWidth(0.5); yy += 18;
     trow("Grand Total", num(totals.grandTotal), true);
     doc.setFont("helvetica", "italic"); doc.setFontSize(9); doc.setTextColor(90);

@@ -48,7 +48,12 @@ def _postgres_pool_kwargs(*, pool_size: int, max_overflow: int) -> dict:
         "pool_timeout": settings.DB_POOL_TIMEOUT_S,
         "pool_use_lifo": True,
         # psycopg: give up on a dead pooler instead of hanging the request.
-        "connect_args": {"connect_timeout": settings.DB_CONNECT_TIMEOUT_S},
+        # prepare_threshold=None: Supabase's pooler (PgBouncer) drops named
+        # prepared statements, which surfaces as "prepared statement does not exist".
+        "connect_args": {
+            "connect_timeout": settings.DB_CONNECT_TIMEOUT_S,
+            "prepare_threshold": None,
+        },
     }
 
 

@@ -127,6 +127,8 @@ async def create_bill(
         "gstEnabled": body.gstEnabled,
         "gstRate": body.gstRate,
         "discount": body.discount.model_dump() if body.discount else None,
+        "charges": [c.model_dump() for c in body.charges],
+        "roundOff": body.roundOff,
         "payments": [p.model_dump() for p in body.payments],
     }
     totals = compute_bill_totals(draft)
@@ -206,6 +208,8 @@ async def create_bill(
         subtotal=totals["subtotal"],
         discount_off=totals["discountOff"],
         gst_amount=totals["gstAmount"],
+        extra_charges=totals["charges"],
+        round_off=totals["roundOff"],
         grand_total=totals["grandTotal"],
         amount_paid=totals["amountPaid"],
         amount_pending=totals["amountPending"],

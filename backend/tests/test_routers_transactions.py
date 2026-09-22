@@ -512,7 +512,9 @@ class TestProductUom:
         assert res.status_code == 201, res.text
         inv = res.json()
         meters = 10 / 3.280839895
-        assert abs(inv["grandTotal"] - round(meters * 50, 2)) < 0.02
+        line_amount = round(meters * 50, 2)
+        assert abs(inv["grandTotal"] - round(line_amount)) < 0.02
+        assert abs((line_amount + inv["roundOff"]) - inv["grandTotal"]) < 0.02
         stock = _get_product(client, headers, product["id"])
         assert abs(stock["stockQty"] - (10 - meters)) < 0.01
 
@@ -590,7 +592,8 @@ class TestSlabMeasurements:
         assert line["qty"] == 258.625
         assert line["lotNo"] == "L-12"
         assert len(line["measurements"]) == 3
-        assert abs(inv["grandTotal"] - 11638.13) < 0.02
+        assert abs((11638.13 + inv["roundOff"]) - inv["grandTotal"]) < 0.02
+        assert inv["grandTotal"] == 11638
         stock = _get_product(client, headers, product["id"])
         assert abs(stock["stockQty"] - (1000 - 258.625)) < 1e-6
 

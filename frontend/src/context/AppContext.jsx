@@ -181,6 +181,10 @@ export function AppProvider({ children }) {
       gstEnabled: !!d.gstEnabled,
       gstRate: Number(d.gstRate) || 18,
       discount: d.discount || null,
+      charges: (d.charges || [])
+        .map((c) => ({ label: String(c.label || "").trim(), amount: Number(c.amount) || 0 }))
+        .filter((c) => c.amount > 0),
+      roundOff: d.roundOff == null || d.roundOff === "" ? null : Number(d.roundOff),
       payments: d.payments || [],
       customerId: d.customerId || null,
       customerName: d.customerName || "",

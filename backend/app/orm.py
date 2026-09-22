@@ -131,6 +131,8 @@ class Invoice(Base):
     subtotal: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     discount_off: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     gst_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    extra_charges: Mapped[list] = mapped_column(JsonList, default=list)
+    round_off: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     grand_total: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     amount_paid: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     amount_pending: Mapped[float] = mapped_column(Numeric(12, 2), default=0)

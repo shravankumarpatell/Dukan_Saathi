@@ -1,17 +1,20 @@
 import React, { forwardRef } from "react";
 
-/** Strip everything except digits and at most one decimal point. */
-export function sanitizeNumber(raw) {
-  let v = String(raw ?? "").replace(/[^0-9.]/g, "");
+/** Strip everything except digits and at most one decimal point. `signed` keeps a leading minus. */
+export function sanitizeNumber(raw, { signed = false } = {}) {
+  let v = String(raw ?? "");
+  const neg = signed && v.trim().startsWith("-");
+  v = v.replace(/[^0-9.]/g, "");
   const i = v.indexOf(".");
   if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, "");
-  return v;
+  if (!neg) return v;
+  return v ? `-${v}` : "-";
 }
 
 // Numeric text field: digits/decimal only, empty by default (no stuck "0"),
 // no spinner / scroll-to-change. Stores raw string.
 // Forwards its ref so keyboard shortcuts can drop focus straight onto it.
-const NumberInput = forwardRef(function NumberInput({ value, onChange, className = "", ...props }, ref) {
+const NumberInput = forwardRef(function NumberInput({ value, onChange, className = "", allowNegative = false, ...props }, ref) {
   const handleFocus = (e) => {
     const el = e.target;
     const val = el.value;
@@ -23,8 +26,9 @@ const NumberInput = forwardRef(function NumberInput({ value, onChange, className
   const handleKeyDown = (e) => {
     // Block scientific notation / sign characters that number keyboards may emit.
     // Do not swallow Alt/Ctrl/Meta chords (Alt+E expense, etc.).
+    const blockMinus = e.key === "-" && !allowNegative;
     if (
-      (e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-")
+      (e.key === "e" || e.key === "E" || e.key === "+" || blockMinus)
       && !e.altKey && !e.ctrlKey && !e.metaKey
     ) {
       e.preventDefault();
@@ -40,7 +44,7 @@ const NumberInput = forwardRef(function NumberInput({ value, onChange, className
       inputMode="decimal"
       pattern="[0-9]*[.]?[0-9]*"
       value={value == null || value === "" ? "" : String(value)}
-      onChange={(e) => onChange(sanitizeNumber(e.target.value))}
+      onChange={(e) => onChange(sanitizeNumber(e.target.value, { signed: allowNegative }))}
       onFocus={handleFocus}
       onKeyDown={handleKeyDown}
       onWheel={(e) => e.currentTarget.blur()}

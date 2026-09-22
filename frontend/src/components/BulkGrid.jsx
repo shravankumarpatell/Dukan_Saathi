@@ -202,12 +202,12 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
 
     e.preventDefault();
     const clipboardRows = text.split(/\r?\n/).filter((r) => r.trim());
-
+    
     setRows((prev) => {
       const newRows = [...prev];
       const startIndex = newRows.findIndex((r) => r.id === rowId);
       if (startIndex === -1) return prev;
-
+      
       clipboardRows.forEach((rowStr, i) => {
         const cells = rowStr.split("\t");
         const targetRowIndex = startIndex + i;
@@ -471,17 +471,17 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
         />
       );
     }
-    return (
-      <input
-        data-rowid={r.id}
-        data-field={field}
+  return (
+                    <input
+                      data-rowid={r.id}
+                      data-field={field}
         type="text"
         inputMode={NUMERIC_FIELDS.has(field) ? "decimal" : "text"}
         enterKeyHint={mobile ? (fieldIdx === FIELDS.length - 1 ? "done" : "next") : undefined}
-        value={r[field] || ""}
+                      value={r[field] || ""}
         onFocus={() => markFocus(r.id, field, index)}
-        onChange={(e) => updateRow(r.id, field, e.target.value)}
-        onPaste={(e) => handlePaste(e, r.id, fieldIdx)}
+                      onChange={(e) => updateRow(r.id, field, e.target.value)}
+                      onPaste={(e) => handlePaste(e, r.id, fieldIdx)}
         onKeyDown={(e) => {
           if (NUMERIC_FIELDS.has(field) && (e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") && !e.altKey && !e.ctrlKey && !e.metaKey) {
             e.preventDefault();
@@ -698,7 +698,7 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
                   <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
                     {r.name || <span className="font-normal text-ink-muted">Naya item</span>}
                   </p>
-                  <button
+                  <button 
                     type="button"
                     onClick={() => removeRow(r.id)}
                     className="rounded-control p-2 text-slate-400 active:bg-rose-50 active:text-rose-500"
@@ -873,11 +873,11 @@ export default function BulkGrid({ rows, setRows, autofocus = true }) {
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </table>
+      </div>
       )}
-
+      
       <div className="border-t border-slate-100 bg-slate-50/50 p-2">
         <button
           type="button"

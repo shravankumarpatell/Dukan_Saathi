@@ -138,6 +138,8 @@ def invoice_calc_dict(inv: Invoice) -> dict:
         "subtotal": money(inv.subtotal),
         "discountOff": money(inv.discount_off),
         "gstAmount": money(inv.gst_amount),
+        "charges": list(inv.extra_charges or []),
+        "roundOff": money(getattr(inv, "round_off", 0) or 0),
         "grandTotal": money(inv.grand_total),
         "payments": [payment_dict(p) for p in inv.payments],
         "amountPaid": money(inv.amount_paid),

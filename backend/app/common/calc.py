@@ -6,6 +6,7 @@ but the backend is the final arbiter for all financial and stock calculations.
 
 from __future__ import annotations
 from datetime import datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional, Any
 import math
 
@@ -81,7 +82,14 @@ def compute_bill_totals(draft: dict) -> dict:
     if gst_rate not in GST_SLABS:
         gst_rate = GST_DEFAULT if draft.get("gstEnabled") else 0
     gst_amount = round2(taxable * (gst_rate / 100))
-    grand_total = round2(taxable + gst_amount)
+
+    # Extra rupees the cashier typed (loading, transport, …). Added after GST
+    # so ₹100 loading stays ₹100 — not a silent extra tax line.
+    charges = normalize_charges(draft.get("charges"))
+    charges_total = round2(sum(c["amount"] for c in charges))
+    before_round = round2(taxable + gst_amount + charges_total)
+    round_off = resolve_round_off(before_round, draft.get("roundOff", None))
+    grand_total = round2(before_round + round_off)
 
     # Payments
     payments = draft.get("payments") or []
@@ -102,11 +110,75 @@ def compute_bill_totals(draft: dict) -> dict:
         "taxable": taxable,
         "gstRate": gst_rate,
         "gstAmount": gst_amount,
+        "charges": charges,
+        "chargesTotal": charges_total,
+        "beforeRound": before_round,
+        "roundOff": round_off,
         "grandTotal": grand_total,
         "amountPaid": amount_paid,
         "amountPending": amount_pending,
         "paymentStatus": payment_status,
     }
+
+
+MAX_CHARGES = 12
+MAX_CHARGE_LABEL = 40
+MAX_ROUND_OFF = 999.99
+
+
+def nearest_rupee(n: float) -> float:
+    """Nearest rupee, half up. 100.50 → 101, 100.40 → 100."""
+    return float(Decimal(str(round2(n))).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def auto_round_off(before: float) -> float:
+    base = round2(before)
+    return round2(nearest_rupee(base) - base)
+
+
+def resolve_round_off(before: float, raw: Any) -> float:
+    """Empty = automatic. Any typed value is snapped so the bill total is a whole rupee."""
+    base = round2(before)
+    if raw is None or raw == "":
+        return auto_round_off(base)
+    try:
+        n = float(raw)
+    except (TypeError, ValueError):
+        return auto_round_off(base)
+    if not math.isfinite(n):
+        return auto_round_off(base)
+    whole = nearest_rupee(base + n)
+    off = round2(whole - base)
+    if off > MAX_ROUND_OFF:
+        return MAX_ROUND_OFF
+    if off < -MAX_ROUND_OFF:
+        return -MAX_ROUND_OFF
+    return off
+
+
+def normalize_charges(raw) -> list[dict]:
+    """Keep labeled extra amounts. Zero rows are dropped. Blank label → Charge."""
+    from app.common.errors import ValidationError
+
+    rows = list(raw or [])
+    if len(rows) > MAX_CHARGES:
+        raise ValidationError(f"Additional charges max {MAX_CHARGES} hain.")
+    out: list[dict] = []
+    for row in rows:
+        if isinstance(row, dict):
+            label = str(row.get("label") or "").strip()
+            amount = round2(row.get("amount") or 0)
+        else:
+            label = str(getattr(row, "label", "") or "").strip()
+            amount = round2(getattr(row, "amount", 0) or 0)
+        if amount <= 0:
+            continue
+        if amount > MAX_MONEY:
+            raise ValidationError(f"Charge ₹{amount:,.2f} bahut bada hai.")
+        if not label:
+            label = "Charge"
+        out.append({"label": label[:MAX_CHARGE_LABEL], "amount": amount})
+    return out
 
 
 def cash_online_total(payments) -> float:
@@ -140,6 +212,7 @@ def validate_bill_limits(totals: dict, items=None) -> None:
         rate = float((it.get("rate") if isinstance(it, dict) else getattr(it, "rate", 0)) or 0)
         validate_money_limit(rate, f"'{name}' rate")
     validate_money_limit(totals.get("subtotal", 0), "Subtotal")
+    validate_money_limit(totals.get("chargesTotal", 0), "Additional charges")
     validate_money_limit(totals.get("grandTotal", 0), "Bill total")
     validate_money_limit(totals.get("amountPaid", 0), "Amount paid")
     validate_money_limit(totals.get("amountPending", 0), "Pending amount")

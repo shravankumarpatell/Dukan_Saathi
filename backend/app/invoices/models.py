@@ -31,6 +31,11 @@ class DiscountInput(BaseModel):
     value: float = Field(default=0, ge=0)
 
 
+class ChargeInput(BaseModel):
+    label: str = Field(default="", max_length=40)
+    amount: float = Field(default=0, ge=0)
+
+
 class CreateBillRequest(BaseModel):
     """Request body for creating a sale invoice.
 
@@ -42,6 +47,8 @@ class CreateBillRequest(BaseModel):
     gstEnabled: bool = True
     gstRate: float = Field(default=18, ge=0)
     discount: Optional[DiscountInput] = None
+    charges: List[ChargeInput] = Field(default_factory=list, max_length=12)
+    roundOff: Optional[float] = None
     payments: List[PaymentEntry] = Field(default_factory=list)
 
     # Customer (optional — blank = Walk-in)
@@ -74,6 +81,8 @@ class InvoiceResponse(BaseModel):
     subtotal: float = 0
     discountOff: float = 0
     gstAmount: float = 0
+    charges: List[dict] = Field(default_factory=list)
+    roundOff: float = 0
     grandTotal: float = 0
     payments: List[dict] = Field(default_factory=list)
     amountPaid: float = 0
