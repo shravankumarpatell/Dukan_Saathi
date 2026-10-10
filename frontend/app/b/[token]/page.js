@@ -3,6 +3,10 @@ import { invoiceShareText, loadSharedBill } from "@/lib/invoicePreview";
 
 export const dynamic = "force-dynamic";
 
+const APP_TITLE = "DukanSaathi — Bill banao, stock sambhalo";
+const APP_DESCRIPTION = "DukanSaathi — keyboard-first stock, billing, and udhari for local shops.";
+const APP_ICON = { url: "/icon-192.png", width: 192, height: 192, alt: "DukanSaathi" };
+
 export async function generateMetadata({ params }) {
   const { token } = await params;
   const bill = await loadSharedBill(token);
@@ -11,18 +15,27 @@ export async function generateMetadata({ params }) {
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "";
   const proto = (requestHeaders.get("x-forwarded-proto") || "https").split(",")[0].trim();
   const metadataBase = host ? new URL(`${proto}://${host}`) : undefined;
+  const title = text.found ? text.title : APP_TITLE;
+  const description = text.found ? text.description : APP_DESCRIPTION;
 
   return {
     metadataBase,
-    title: { absolute: text.found ? text.title : "Invoice" },
-    description: text.found ? text.description : "Open the link to view this invoice.",
+    title: { absolute: title },
+    description,
     robots: { index: false, follow: false },
     openGraph: {
-      title: text.found ? text.title : "Invoice",
-      description: text.found ? text.description : "Open the link to view this invoice.",
+      title,
+      description,
       type: "website",
-      siteName: text.found ? text.shopName : "Invoice",
+      siteName: "DukanSaathi",
       url: host ? `${proto}://${host}/b/${token}` : undefined,
+      images: [APP_ICON],
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+      images: [APP_ICON.url],
     },
   };
 }
