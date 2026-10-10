@@ -8,8 +8,7 @@ import SqftDialog from "@/components/SqftDialog";
 import NumberInput from "@/components/NumberInput";
 import Kbd from "@/components/Kbd";
 import SegmentedControl from "@/components/SegmentedControl";
-import { billPdfFilename, generateBillPDF } from "@/services/billPdf";
-import { downloadBillPdf } from "@/lib/billsFolder";
+import { generateBillPDF } from "@/services/billPdf";
 import { publicBillUrl } from "@/lib/billLink";
 import {
   buildBillWaText,
@@ -553,9 +552,6 @@ export default function NewBill() {
     try {
       const { invoice, customer } = await commitBill(buildDraft());
       const party = customer || selectedCustomer || { name: invoice.customerName || customerName || "Walk-in" };
-      const blob = generateBillPDF({ shop, invoice, customer: party }, "blob");
-      const filename = billPdfFilename({ invoice, customer: party });
-      downloadBillPdf(blob, filename);
       if (wantWa) {
         const opened = openWhatsAppTab({
           phone,

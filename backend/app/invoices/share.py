@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.errors import NotFoundError
 from app.db import get_session
-from app.invoices.pdf import pdf_filename, render_invoice_pdf
 from app.orm import Invoice, Shop
 from app.persist import INVOICE_LOAD, public_bill_payload
 
@@ -20,14 +19,18 @@ router = APIRouter(prefix="/b", tags=["share"])
 _TOKEN = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
 
 
-def _no_store(response: Response) -> None:
+@router.get("/{token}")
+async def get_shared_bill(
+    token: str,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+):
+    """One bill, for the customer who was sent the link. No login."""
     response.headers["Cache-Control"] = "private, no-store"
     response.headers["X-Robots-Tag"] = "noindex, nofollow"
-
-
-async def _shared_payload(token: str, session: AsyncSession) -> dict:
     if not _TOKEN.fullmatch(token):
         raise NotFoundError("Invoice")
+
     inv = (
         await session.execute(
             select(Invoice).options(*INVOICE_LOAD).where(Invoice.share_token == token)
@@ -39,32 +42,3 @@ async def _shared_payload(token: str, session: AsyncSession) -> dict:
     if shop is None:
         raise NotFoundError("Invoice")
     return public_bill_payload(shop, inv)
-
-
-@router.get("/{token}/invoice.pdf")
-async def get_shared_bill_pdf(
-    token: str,
-    response: Response,
-    session: AsyncSession = Depends(get_session),
-):
-    """The file WhatsApp fetches. A PDF response is what makes the chat preview the bill."""
-    _no_store(response)
-    payload = await _shared_payload(token, session)
-    filename = pdf_filename(payload)
-    response.headers["Content-Disposition"] = f'inline; filename="{filename}"'
-    return Response(
-        content=render_invoice_pdf(payload),
-        media_type="application/pdf",
-        headers=dict(response.headers),
-    )
-
-
-@router.get("/{token}")
-async def get_shared_bill(
-    token: str,
-    response: Response,
-    session: AsyncSession = Depends(get_session),
-):
-    """One bill, for the customer who was sent the link. No login."""
-    _no_store(response)
-    return await _shared_payload(token, session)

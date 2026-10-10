@@ -29,5 +29,5 @@ export function publicBillUrl(token, origin) {
   }
   base = base.replace(/\/$/, "");
   if (!/^https?:\/\//i.test(base)) return "";
-  return `${base}/b/${token}/invoice.pdf`;
+  return `${base}/b/${token}`;
 }
