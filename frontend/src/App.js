@@ -17,6 +17,8 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import ErrorState from "@/components/ErrorState";
 import GlobalErrorListeners from "@/components/GlobalErrorListeners";
 import { installKeepFieldFocus } from "@/lib/keepFieldFocus";
+import { billShareToken } from "@/lib/billLink";
+import PublicBill from "@/screens/PublicBill";
 
 function BootError({ error, onRetry, onLogout }) {
   return (
@@ -48,6 +50,10 @@ function BootError({ error, onRetry, onLogout }) {
 function Shell() {
   const { user, authLoading, shop, bootError, retryBoot, logout } = useApp();
   const pathname = usePathname();
+  const shareToken = billShareToken(pathname);
+
+  // Customer invoice link. No login. The PDF is built in the browser.
+  if (shareToken !== null) return <PublicBill token={shareToken} />;
 
   // Backend / auth unreachable at startup: show a retry screen, never an endless spinner.
   if (bootError && (!user || !shop)) {

@@ -31,6 +31,7 @@ from app.persist import (
     invoice_response,
     load_invoice,
     money,
+    new_share_token,
     parse_uuid,
     product_dict,
     shop_uuid,
@@ -215,6 +216,7 @@ async def create_bill(
         amount_pending=totals["amountPending"],
         payment_status=totals["paymentStatus"],
         created_via=body.createdVia,
+        share_token=new_share_token(),
     )
     for idx, item in enumerate(enriched_items):
         pdata = product_dict(products_by_id[parse_uuid(item["productId"], "Product")])

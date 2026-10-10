@@ -1,5 +1,5 @@
-import React from "react";
-import { Zap, ScanLine, ReceiptIndianRupee } from "lucide-react";
+import React, { useState } from "react";
+import { Zap, ScanLine, ReceiptIndianRupee, Eye, EyeOff } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const FEATURES = [
@@ -68,6 +68,40 @@ export function OrDivider() {
       <div className="h-px flex-1 bg-border" />
       <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted">or</span>
       <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+export function PasswordField({
+  id,
+  value,
+  onChange,
+  autoComplete = "current-password",
+  testId,
+  placeholder = "••••••••",
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        type={show ? "text" : "password"}
+        autoComplete={autoComplete}
+        required
+        value={value}
+        onChange={onChange}
+        data-testid={testId}
+        placeholder={placeholder}
+        className="w-full rounded-control border border-border bg-white px-3 py-2.5 pr-10 text-sm text-ink outline-none focus:border-mint"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((open) => !open)}
+        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-ink-muted hover:text-ink"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
     </div>
   );
 }

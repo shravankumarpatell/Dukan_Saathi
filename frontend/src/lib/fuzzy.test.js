@@ -20,6 +20,18 @@ test("searchProducts keeps zero-stock at bottom when filtering", () => {
   expect(sorted).toContain("a");
 });
 
+test("searchProducts with Infinity returns the full catalog", () => {
+  const many = Array.from({ length: 40 }, (_, i) => ({
+    id: String(i),
+    name: `Tile ${i}`,
+    stockQty: 1,
+    unit: "box",
+    piecesPerBox: 4,
+  }));
+  expect(searchProducts(many, "", {}, 30)).toHaveLength(30);
+  expect(searchProducts(many, "", {}, Infinity)).toHaveLength(40);
+});
+
 test("searchInvoices matches invoice no and customer name", () => {
   const invoices = [
     { id: "1", invoiceNo: "INV20260018", customerName: "azad", type: "sale" },

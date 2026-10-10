@@ -165,6 +165,13 @@ async function request(path, options = {}) {
 
 // ── Shop ──
 
+export function signupPhoneAccount({ phone, password, name }) {
+  return request("/auth/phone-signup", {
+    method: "POST",
+    body: JSON.stringify({ phone, password, name: name || "" }),
+  });
+}
+
 export async function getShop() {
   return request("/shops/me");
 }
@@ -218,6 +225,11 @@ export async function bulkImportProducts(rows) {
 
 export async function listInvoices() {
   return request("/invoices");
+}
+
+/** Public bill for /b/<token>. No login. */
+export function getSharedBill(token) {
+  return request(`/b/${encodeURIComponent(token)}`);
 }
 
 export async function getInvoice(id) {

@@ -10,6 +10,7 @@ import Kbd from "@/components/Kbd";
 import SegmentedControl from "@/components/SegmentedControl";
 import { billPdfFilename, generateBillPDF } from "@/services/billPdf";
 import { downloadBillPdf } from "@/lib/billsFolder";
+import { publicBillUrl } from "@/lib/billLink";
 import {
   buildBillWaText,
   firstNonEmptyPhone,
@@ -560,10 +561,12 @@ export default function NewBill() {
           phone,
           text: buildBillWaText({
             shopName: shop?.name,
+            customerName: party.name || invoice.customerName || customerName,
             invoiceNo: invoice.invoiceNo,
             grandTotal: invoice.grandTotal,
             amountPaid: invoice.amountPaid,
             amountPending: invoice.amountPending,
+            pdfUrl: publicBillUrl(invoice.shareToken),
           }),
         });
         if (!opened.opened) toast.message("WhatsApp app nahi khula. Windows WhatsApp install karein.");

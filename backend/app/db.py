@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -19,6 +21,54 @@ _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 _analyst_engine: AsyncEngine | None = None
 _analyst_session_factory: async_sessionmaker[AsyncSession] | None = None
+
+
+def _libpq_bin_dir() -> str:
+    """Newest PostgreSQL bin folder that contains libpq.dll, or ""."""
+    roots = [
+        os.environ.get("PROGRAMFILES", r"C:\Program Files"),
+        os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"),
+    ]
+    found: list[tuple[tuple[int, ...], str]] = []
+    for root in roots:
+        base = os.path.join(root, "PostgreSQL")
+        if not os.path.isdir(base):
+            continue
+        for name in os.listdir(base):
+            bin_dir = os.path.join(base, name, "bin")
+            if not os.path.isfile(os.path.join(bin_dir, "libpq.dll")):
+                continue
+            parts: list[int] = []
+            for piece in name.split("."):
+                if piece.isdigit():
+                    parts.append(int(piece))
+                else:
+                    break
+            found.append((tuple(parts) or (0,), bin_dir))
+    if not found:
+        return ""
+    found.sort()
+    return found[-1][1]
+
+
+def _prefer_python_psycopg() -> None:
+    """Windows Smart App Control blocks the unsigned psycopg_binary .pyd.
+
+    The pure-Python driver loads libpq.dll from a normal PostgreSQL install,
+    which this machine already allows. Linux keeps the faster binary wheel.
+    """
+    if sys.platform != "win32" or os.environ.get("PSYCOPG_IMPL"):
+        return
+    bin_dir = _libpq_bin_dir()
+    if not bin_dir:
+        return
+    os.environ["PSYCOPG_IMPL"] = "python"
+    path = os.environ.get("PATH", "")
+    if bin_dir.lower() not in {part.lower() for part in path.split(os.pathsep)}:
+        os.environ["PATH"] = bin_dir + os.pathsep + path
+
+
+_prefer_python_psycopg()
 
 
 def _normalize_url(url: str) -> str:

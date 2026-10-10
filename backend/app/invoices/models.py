@@ -96,3 +96,4 @@ class InvoiceResponse(BaseModel):
     settlementConvertedTo: Optional[str] = None
     originalInvoiceNo: Optional[str] = None
     refundTotal: Optional[float] = None
+    shareToken: str = ""

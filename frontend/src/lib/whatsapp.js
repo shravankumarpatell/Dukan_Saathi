@@ -39,61 +39,38 @@ export function shouldAutoOpenWhatsApp(shop, phone) {
   return shopWantsWhatsApp(shop) && !!indianMobileDigits(phone);
 }
 
-/**
- * Build a polished invoice message for the customer.
- *
- * Example:
- *
- * Namaste 🙏
- *
- * *Aajana Trading Company*
- * 🧾 *Invoice: INV20260026*
- *
- * 💰 *Total Amount:* Rs 45,000
- * ✅ *Paid:* Rs 1,000
- * 📌 *Balance/Udhari:* Rs 44,000
- *
- * Thank you for your business.
- * _Please keep this message for your records._
- *
- * Dhanyavaad 🙏
- */
+
+function invoicePdfUrl(raw) {
+  const url = String(raw || "").trim();
+  if (!/^https?:\/\/\S+$/i.test(url)) return "";
+  return url;
+}
+
 export function buildBillWaText({
   shopName,
+  customerName,
   invoiceNo,
   grandTotal,
   amountPaid,
   amountPending,
+  pdfUrl,
 } = {}) {
-  const shop = String(shopName || "DukanSaathi").trim();
-  const invoice = String(invoiceNo || "").trim();
-  const total = Number(grandTotal) || 0;
-  const paid = Number(amountPaid) || 0;
-  const pending = Number(amountPending) || 0;
-
   const lines = [
-    "Namaste 🙏",
+    `Namaste 🙏 ${customerName || ""}`.trim(),
     "",
-    `*${shop}*`,
-    invoice ? `🧾 *Invoice: ${invoice}*` : "🧾 *Invoice*",
-    "",
-    `💰 *Total Amount:* ${rs(total)}`,
-    `✅ *Paid:* ${rs(paid)}`,
+    "🧾 *Invoice Details*",
+    "━━━━━━━━━━━━━━",
+    `Bill No: *${invoiceNo || ""}*`,
+    `Total: *${rs(grandTotal)}*`,
+    `Paid: *${rs(amountPaid)}*`,
+    `Balance: *${rs(amountPending)}*`,
+    "━━━━━━━━━━━━━━",
   ];
-
-  if (pending > 0) {
-    lines.push(`📌 *Balance/Udhari:* ${rs(pending)}`);
-  } else {
-    lines.push("🎉 *Payment Status:* Fully Paid");
+  const link = invoicePdfUrl(pdfUrl);
+  if (link) {
+    lines.push("", "Your invoice PDF:", link);
   }
-
-  lines.push(
-    "",
-    "Thank you for your business. ❤️",
-    "_Please keep this message for your records._",
-    "",
-    "Dhanyavaad 🙏"
-  );
+  lines.push("", `Thank you for shopping with *${shopName || "DukanSaathi"}*.❤️`);
 
   return lines.join("\n");
 }

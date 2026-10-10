@@ -152,7 +152,7 @@ export default function Layout({ children }) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-white">{user?.name || user?.email || "User"}</p>
-              <p className="truncate text-[11px] text-white/40">{user?.email || ""}</p>
+              <p className="truncate text-[11px] text-white/40">{user?.phone || user?.email || ""}</p>
             </div>
             <button
               data-testid={LOGOUT.button}

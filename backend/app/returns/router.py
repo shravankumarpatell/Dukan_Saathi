@@ -37,6 +37,7 @@ from app.persist import (
     invoice_response,
     load_invoice,
     money,
+    new_share_token,
     parse_uuid,
     product_dict,
     set_settlement,
@@ -294,6 +295,7 @@ async def create_return(
         original_invoice_id=original.id,
         original_invoice_no=body.originalInvoiceNo.strip(),
         refund_total=refund,
+        share_token=new_share_token(),
     )
     for idx, item in enumerate(body.items):
         pid = parse_uuid(item.productId, "Product")

@@ -4,17 +4,18 @@ import React, { useState } from "react";
 import AppLink from "@/components/AppLink";
 import { useSearchParams } from "@/context/AppHistoryContext";
 import { useNavigate } from "@/hooks/useNavigate";
-import { signInGoogle, signInEmail, resetPassword } from "@/services/auth";
+import { signInGoogle, signInPhone, getRememberMe, rememberedPhone, setRememberMe } from "@/services/auth";
 import { usePWA } from "@/hooks/usePWA";
 import { toast } from "sonner";
 import { Download } from "lucide-react";
 import { LOGIN } from "@/constants/testIds/auth";
-import AuthLayout, { GoogleButton, OrDivider } from "@/components/AuthLayout";
+import AuthLayout, { GoogleButton, OrDivider, PasswordField } from "@/components/AuthLayout";
 
 export default function Login() {
   const [busy, setBusy] = useState(false);
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState(() => rememberedPhone());
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(() => getRememberMe());
   const params = useSearchParams();
   const navigate = useNavigate();
   const { isInstallable, installApp } = usePWA();
@@ -30,6 +31,7 @@ export default function Login() {
   };
 
   const doGoogle = async () => {
+    setRememberMe(remember, phone);
     setBusy(true);
     try {
       await signInGoogle();
@@ -39,28 +41,16 @@ export default function Login() {
     }
   };
 
-  const doEmail = async (e) => {
+  const doPhone = async (e) => {
     e.preventDefault();
     setBusy(true);
     try {
-      await signInEmail(email.trim(), password);
+      setRememberMe(remember, phone);
+      await signInPhone(phone, password);
     } catch (err) {
-      toast.error(err?.message || "Sign-in failed. Email ya password check karein.");
+      toast.error(err?.message || "Sign-in failed. Number ya password check karein.");
     }
     setBusy(false);
-  };
-
-  const doReset = async () => {
-    if (!email.trim()) {
-      toast.error("Reset ke liye pehle email likhiye");
-      return;
-    }
-    try {
-      await resetPassword(email.trim());
-      toast.success("Password reset link email par bhej diya.");
-    } catch (err) {
-      toast.error(err?.message || "Reset email nahi bhej paye.");
-    }
   };
 
   const card = isInstallMode && isInstallable ? (
@@ -91,35 +81,42 @@ export default function Login() {
       <div className="mt-6">
         <GoogleButton onClick={doGoogle} disabled={busy} />
         <OrDivider />
-        <form onSubmit={doEmail} className="space-y-3">
+        <form onSubmit={doPhone} className="space-y-3">
           <div>
-            <label htmlFor="login-email" className="mb-1 block text-xs font-semibold text-ink-muted">Email</label>
+            <label htmlFor="login-phone" className="mb-1 block text-xs font-semibold text-ink-muted">Phone</label>
             <input
-              id="login-email"
-              type="email"
-              autoComplete="email"
+              id="login-phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               data-testid={LOGIN.emailInput}
-              placeholder="shop@email.com"
+              placeholder="98xxxxxxxx"
               className="w-full rounded-control border border-border bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-mint"
             />
           </div>
           <div>
             <label htmlFor="login-password" className="mb-1 block text-xs font-semibold text-ink-muted">Password</label>
-            <input
+            <PasswordField
               id="login-password"
-              type="password"
               autoComplete="current-password"
-              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              data-testid={LOGIN.passwordInput}
-              placeholder="••••••••"
-              className="w-full rounded-control border border-border bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-mint"
+              testId={LOGIN.passwordInput}
             />
           </div>
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              data-testid="login-remember-me"
+              className="h-4 w-4 accent-mint"
+            />
+            Remember me
+          </label>
           <button
             type="submit"
             disabled={busy}
@@ -129,15 +126,7 @@ export default function Login() {
             Sign in
           </button>
         </form>
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <button
-            type="button"
-            onClick={doReset}
-            data-testid={LOGIN.forgotPasswordLink}
-            className="font-semibold text-ink-muted hover:text-ink"
-          >
-            Forgot password?
-          </button>
+        <div className="mt-4 text-right text-sm">
           <AppLink
             href="/signup"
             data-testid={LOGIN.registerLink}

@@ -2,15 +2,15 @@
 
 import React, { useState } from "react";
 import AppLink from "@/components/AppLink";
-import { signInGoogle, signUpEmail } from "@/services/auth";
+import { signInGoogle, signUpPhone } from "@/services/auth";
 import { toast } from "sonner";
 import { REGISTER } from "@/constants/testIds/auth";
-import AuthLayout, { GoogleButton, OrDivider } from "@/components/AuthLayout";
+import AuthLayout, { GoogleButton, OrDivider, PasswordField } from "@/components/AuthLayout";
 
 export default function Signup() {
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
 
@@ -36,10 +36,8 @@ export default function Signup() {
     }
     setBusy(true);
     try {
-      const data = await signUpEmail(email.trim(), password, name.trim());
-      if (!data.session) {
-        toast.success("Account ban gaya. Email confirm karke sign in karein.");
-      }
+      const data = await signUpPhone(phone, password, name.trim());
+      if (data?.session) return;
     } catch (err) {
       toast.error(err?.message || "Sign up failed.");
     }
@@ -70,45 +68,40 @@ export default function Signup() {
               />
             </div>
             <div>
-              <label htmlFor="signup-email" className="mb-1 block text-xs font-semibold text-ink-muted">Email</label>
+              <label htmlFor="signup-phone" className="mb-1 block text-xs font-semibold text-ink-muted">Phone</label>
               <input
-                id="signup-email"
-                type="email"
-                autoComplete="email"
+                id="signup-phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 data-testid={REGISTER.emailInput}
-                placeholder="shop@email.com"
+                placeholder="98xxxxxxxx"
                 className="w-full rounded-control border border-border bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-mint"
               />
             </div>
             <div>
               <label htmlFor="signup-password" className="mb-1 block text-xs font-semibold text-ink-muted">Password</label>
-              <input
+              <PasswordField
                 id="signup-password"
-                type="password"
                 autoComplete="new-password"
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                data-testid={REGISTER.passwordInput}
+                testId={REGISTER.passwordInput}
                 placeholder="Kam se kam 6 characters"
-                className="w-full rounded-control border border-border bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-mint"
               />
             </div>
             <div>
               <label htmlFor="signup-confirm" className="mb-1 block text-xs font-semibold text-ink-muted">Password confirm</label>
-              <input
+              <PasswordField
                 id="signup-confirm"
-                type="password"
                 autoComplete="new-password"
-                required
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                data-testid={REGISTER.passwordConfirmInput}
+                testId={REGISTER.passwordConfirmInput}
                 placeholder="Dobara likhein"
-                className="w-full rounded-control border border-border bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-mint"
               />
             </div>
             <button

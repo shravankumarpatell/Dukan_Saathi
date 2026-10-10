@@ -36,7 +36,7 @@ const ProductSearch = forwardRef(function ProductSearch(
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const salesQty = useMemo(() => productSalesQtyMap(invoices), [invoices]);
-  const results = useMemo(() => searchProducts(products, q, salesQty), [products, q, salesQty]);
+  const results = useMemo(() => searchProducts(products, q, salesQty, Infinity), [products, q, salesQty]);
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
   const tap = useTapSelect();
@@ -181,7 +181,7 @@ const ProductSearch = forwardRef(function ProductSearch(
           id="product-search-list"
           role="listbox"
           ref={nav.listRef}
-          className="absolute z-[60] mt-1 max-h-72 w-full overflow-auto overscroll-contain rounded-lg border border-border bg-panel shadow-lg touch-manipulation"
+          className="absolute z-[60] mt-1 max-h-[min(24rem,50vh)] w-full overflow-auto overscroll-contain rounded-lg border border-border bg-panel shadow-lg touch-manipulation"
           onScroll={tap.cancel}
           onPointerCancel={tap.releaseHold}
         >

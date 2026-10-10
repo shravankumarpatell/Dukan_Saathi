@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -14,6 +15,11 @@ from sqlalchemy.orm import selectinload
 from app.common.errors import NotFoundError
 from app.invoices.models import InvoiceResponse
 from app.orm import Invoice, InvoiceItem, Payment, Product, ReturnAllocation, Shop
+
+
+def new_share_token() -> str:
+    """24-character public id (~144 bits). Not the bill number."""
+    return secrets.token_urlsafe(18)
 
 
 def money(value: Any) -> float:
@@ -153,6 +159,30 @@ def invoice_calc_dict(inv: Invoice) -> dict:
         "settlementConvertedTo": inv.settlement_converted_to,
         "originalInvoiceNo": inv.original_invoice_no,
         "refundTotal": money(inv.refund_total) if inv.refund_total is not None else None,
+        "shareToken": inv.share_token or "",
+    }
+
+
+def public_bill_payload(shop: Shop, inv: Invoice) -> dict:
+    """Customer-facing bill. No shop, customer, or product ids."""
+    data = invoice_calc_dict(inv)
+    for key in ("id", "customerId", "shareToken", "createdVia"):
+        data.pop(key, None)
+    for item in data.get("items") or []:
+        item.pop("productId", None)
+    detail = data.get("settlementDetail")
+    if detail:
+        for alloc in detail.get("invoiceAllocations") or []:
+            alloc.pop("invoiceId", None)
+    return {
+        "shop": {
+            "name": shop.name or "",
+            "address": shop.address or "",
+            "phone": shop.phone or "",
+            "gstEnabled": bool(shop.gst_enabled),
+            "gstin": shop.gstin or "",
+        },
+        "invoice": data,
     }
 
 

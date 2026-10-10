@@ -152,6 +152,8 @@ class Invoice(Base):
     )
     original_invoice_no: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     refund_total: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    # Unguessable id for the public invoice page. The PDF is rebuilt on open, not stored.
+    share_token: Mapped[Optional[str]] = mapped_column(Text, unique=True, nullable=True)
 
     shop: Mapped[Shop] = relationship(back_populates="invoices")
     items: Mapped[list["InvoiceItem"]] = relationship(

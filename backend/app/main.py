@@ -112,19 +112,23 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, unhandled_error_handler)
 
     from app.analytics.router import router as analytics_router
+    from app.auth.router import router as auth_router
     from app.customers.router import router as customers_router
     from app.expenses.router import router as expenses_router
     from app.gemini.router import router as gemini_router
     from app.genai.router import router as new_genai_router
     from app.invoices.router import router as invoices_router
+    from app.invoices.share import router as share_router
     from app.products.router import router as products_router
     from app.returns.router import router as returns_router
     from app.shops.router import router as shops_router
 
     api_prefix = "/api"
+    app.include_router(auth_router, prefix=api_prefix)
     app.include_router(shops_router, prefix=api_prefix)
     app.include_router(products_router, prefix=api_prefix)
     app.include_router(invoices_router, prefix=api_prefix)
+    app.include_router(share_router, prefix=api_prefix)
     app.include_router(customers_router, prefix=api_prefix)
     app.include_router(returns_router, prefix=api_prefix)
     app.include_router(expenses_router, prefix=api_prefix)
@@ -142,7 +146,7 @@ def create_app() -> FastAPI:
                 body["status"] = "degraded"
         return body
 
-    logger.info("DukanSaathi API initialized with %d routers", 9)
+    logger.info("DukanSaathi API initialized with %d routers", 10)
     return app
 
 

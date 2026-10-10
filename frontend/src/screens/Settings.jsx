@@ -202,8 +202,8 @@ export default function Settings({ isOnboarding = false }) {
 
       <div className="ds-panel space-y-3 p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Account</p>
-        {user?.email && (
-          <p className="truncate text-sm text-ink">{user.email}</p>
+        {(user?.phone || user?.email) && (
+          <p className="truncate text-sm text-ink">{user.phone || user.email}</p>
         )}
         <button
           type="button"

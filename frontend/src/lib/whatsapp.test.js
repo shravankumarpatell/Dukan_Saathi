@@ -52,17 +52,18 @@ test("shop toggle defaults on and skips auto-open without a valid mobile", () =>
 test("Hinglish templates use Rs not rupee sign", () => {
   const bill = buildBillWaText({
     shopName: "Shree Tiles",
+    customerName: "Geeta",
     invoiceNo: "GST12",
     grandTotal: 1500,
     amountPaid: 500,
     amountPending: 1000,
   });
+  expect(bill).toContain("Namaste");
+  expect(bill).toContain("Geeta");
   expect(bill).toContain("Shree Tiles");
-  expect(bill).toContain("Bill GST12");
-  expect(bill).toContain("Total: Rs");
-  expect(bill).toContain("Paid: Rs");
-  expect(bill).toContain("Udhari: Rs");
-  expect(bill).toContain("Dhanyavaad.");
+  expect(bill).toContain("GST12");
+  expect(bill).toContain("Total:");
+  expect(bill).toContain("Rs");
   expect(bill).not.toContain("₹");
 
   const paidUp = buildBillWaText({
@@ -81,8 +82,9 @@ test("Hinglish templates use Rs not rupee sign", () => {
     settlement: "adjust_udhari",
     settlementDetail: { cash: 0, udhariAdjusted: 200, storeCredit: 0 },
   });
-  expect(ret).toContain("Return RET1");
-  expect(ret).toContain("udhari Rs");
+  expect(ret).toContain("Return: RET1");
+  expect(ret).toContain("Udhari Adjusted:");
+  expect(ret).toContain("Rs");
   expect(ret).not.toContain("₹");
 
   const vusool = buildVusoolWaText({
@@ -91,9 +93,10 @@ test("Hinglish templates use Rs not rupee sign", () => {
     mode: "online",
     remainingUdhari: 700,
   });
-  expect(vusool).toContain("Udhari vusool");
+  expect(vusool).toContain("Payment Received");
   expect(vusool).toContain("(online)");
-  expect(vusool).toContain("Baaki: Rs");
+  expect(vusool).toContain("Remaining Udhari:");
+  expect(vusool).toContain("Rs");
   expect(vusool).not.toContain("₹");
 
   const ping = buildCustomerPingWaText({
@@ -102,7 +105,35 @@ test("Hinglish templates use Rs not rupee sign", () => {
     udhari: 400,
   });
   expect(ping).toContain("Ramesh");
-  expect(ping).toContain("Udhari: Rs");
+  expect(ping).toContain("Udhari Amount:");
+  expect(ping).toContain("Rs");
+});
+
+test("bill message writes a real invoice link and skips an unsafe url", () => {
+  const link = "https://shop.example/b/abcdefghijklmnopqrstuvwx";
+  const linked = buildBillWaText({
+    shopName: "Shree Tiles",
+    customerName: "Geeta",
+    invoiceNo: "GST12",
+    grandTotal: 1500,
+    amountPaid: 500,
+    amountPending: 1000,
+    pdfUrl: link,
+  });
+  expect(linked).toContain("Your invoice PDF:");
+  expect(linked).toContain(link);
+  expect(linked).not.toMatch(/attached/i);
+
+  const blocked = buildBillWaText({
+    shopName: "Shree Tiles",
+    invoiceNo: "GST12",
+    grandTotal: 1,
+    amountPaid: 1,
+    amountPending: 0,
+    pdfUrl: "javascript:alert(1)",
+  });
+  expect(blocked).not.toContain("javascript:");
+  expect(blocked).not.toContain("Your invoice PDF:");
 });
 
 test("openWhatsAppTab launches the desktop app and closes a leftover blank tab", () => {
