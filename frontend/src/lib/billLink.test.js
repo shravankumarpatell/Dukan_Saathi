@@ -5,7 +5,7 @@ const token = "abcdefghijklmnopqrstuvwx";
 test("publicBillUrl uses the site origin and rejects a short or unsafe token", () => {
   expect(isShareToken(token)).toBe(true);
   expect(isShareToken("short")).toBe(false);
-  expect(publicBillUrl(token, "https://shop.example/")).toBe(`https://shop.example/b/${token}`);
+  expect(publicBillUrl(token, "https://shop.example/")).toBe(`https://shop.example/b/${token}/invoice.pdf`);
   expect(publicBillUrl("GST12", "https://shop.example")).toBe("");
   expect(publicBillUrl(token, "javascript:alert(1)")).toBe("");
 });

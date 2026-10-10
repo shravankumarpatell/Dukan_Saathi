@@ -30,6 +30,11 @@ def test_shared_bill_is_public_and_hides_ids(client):
     assert "productId" not in invoice["items"][0]
     assert set(body["shop"]) == {"name", "address", "phone", "gstEnabled", "gstin"}
 
+    pdf = client.get(f"/api/b/{token}/invoice.pdf")
+    assert pdf.status_code == 200, pdf.text
+    assert pdf.headers["content-type"].startswith("application/pdf")
+    assert pdf.content.startswith(b"%PDF")
+
     assert client.get(f"/api/b/{sale['id']}").status_code == 404
     assert client.get("/api/b/short").status_code == 404
     assert client.get("/api/b/" + ("a" * 24)).status_code == 404
